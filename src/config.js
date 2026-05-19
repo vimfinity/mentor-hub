@@ -24,6 +24,17 @@ function readJsonFile(filePath, fallback) {
 }
 
 function normalizeConfig(config) {
+  const hasOwn = (key) => Object.prototype.hasOwnProperty.call(config, key);
+  const readBoolean = (...keys) => {
+    for (const key of keys) {
+      if (hasOwn(key)) {
+        return Boolean(config[key]);
+      }
+    }
+
+    return false;
+  };
+
   return {
     title: config.title || config.titel || 'KI-Hub',
     defaultLanguage: config.defaultLanguage || config.standardSprache || 'de',
@@ -31,7 +42,8 @@ function normalizeConfig(config) {
     port: config.port || 3000,
     sessionDurationMs: config.sessionDurationMs || config.sitzungsDauerMs || 86400000,
     adminPasswordHash: config.adminPasswordHash || config.adminPasswortHash || '',
-    adminPasswordSalt: config.adminPasswordSalt || config.adminPasswortSalt || ''
+    adminPasswordSalt: config.adminPasswordSalt || config.adminPasswortSalt || '',
+    devReloadEnabled: readBoolean('devReloadEnabled', 'devReloadAktiviert', 'devMode', 'entwicklungsModus')
   };
 }
 

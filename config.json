@@ -3,5 +3,6 @@
   "host": "127.0.0.1",
   "title": "KI-Hub",
   "defaultLanguage": "de",
-  "sessionDurationMs": 28800000
+  "sessionDurationMs": 28800000,
+  "devReloadEnabled": false
 }

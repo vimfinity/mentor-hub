@@ -1,12 +1,26 @@
 import * as api from '../services/api-client.js';
+import { holeAbfrage } from '../services/query-cache.js';
 import { t } from '../services/i18n.js';
+import { normalisiereAuswahl, paginiereElemente } from '../services/view-state.js';
 import { escapeHtml } from './modal.js';
 import { icon } from './icons.js';
+import { renderListensteuerung, verbindeListensteuerung } from './list-controls.js';
 
 let currentFilter = 'all';
+let currentSort = 'newest';
 
-async function render(container) {
-  const response = await api.get('/api/resources');
+const RESSOURCEN_CACHE_KEY = ['resources'];
+const RESSOURCEN_CACHE_TTL_MS = 5 * 60 * 1000;
+const VALID_FILTERS = ['all', 'tool', 'article', 'video', 'tutorial'];
+const VALID_SORTS = ['newest', 'oldest', 'title-asc', 'title-desc'];
+const RESSOURCEN_PRO_SEITE = 6;
+
+async function render(container, context = {}) {
+  const response = await holeAbfrage({
+    schluessel: RESSOURCEN_CACHE_KEY,
+    abrufFunktion: () => api.get('/api/resources'),
+    ttlMs: RESSOURCEN_CACHE_TTL_MS
+  });
 
   if (!response.ok || !response.data || response.data.length === 0) {
     container.innerHTML = `
@@ -18,16 +32,25 @@ async function render(container) {
     return;
   }
 
-  currentFilter = 'all';
-  renderContent(container, response.data);
+  currentFilter = normalisiereFilter(context.suchparameter?.get('filter'));
+  currentSort = normalisiereAuswahl(context.suchparameter?.get('sort'), VALID_SORTS, 'newest');
+  renderContent(container, response.data, context);
 }
 
-function renderContent(container, resources) {
-  const categories = ['all', 'tool', 'article', 'video', 'tutorial'];
+function renderContent(container, resources, context = {}) {
+  const categories = VALID_FILTERS;
+  const sortierOptionen = [
+    { value: 'newest', label: t('general.sortNewest') },
+    { value: 'oldest', label: t('general.sortOldest') },
+    { value: 'title-asc', label: t('general.sortTitleAsc') },
+    { value: 'title-desc', label: t('general.sortTitleDesc') }
+  ];
 
   const filteredResources = currentFilter === 'all'
     ? resources
     : resources.filter((resource) => resource.category === currentFilter);
+  const sortierteRessourcen = sortiereRessourcen(filteredResources, currentSort);
+  const pagination = paginiereElemente(sortierteRessourcen, context.suchparameter?.get('page'), RESSOURCEN_PRO_SEITE);
 
   const html = `
     <h1 class="sektion-titel">${t('resource.title')}</h1>
@@ -39,8 +62,16 @@ function renderContent(container, resources) {
         </button>
       `).join('')}
     </div>
+    ${renderListensteuerung({
+      sortierOptionen,
+      aktuelleSortierung: currentSort,
+      aktuelleSeite: pagination.aktuelleSeite,
+      gesamtSeiten: pagination.gesamtSeiten,
+      gesamtElemente: pagination.gesamtElemente,
+      ergebnisLabel: t('general.resultsCount').replace('{count}', String(pagination.gesamtElemente))
+    })}
     <div class="karten-grid">
-      ${filteredResources.map((resource) => renderCard(resource)).join('')}
+      ${pagination.elemente.map((resource) => renderCard(resource)).join('')}
     </div>
   `;
 
@@ -49,9 +80,60 @@ function renderContent(container, resources) {
   container.querySelectorAll('.filter-btn').forEach((button) => {
     button.addEventListener('click', () => {
       currentFilter = button.dataset.category;
-      renderContent(container, resources);
+      if (context.setSearchParams) {
+        context.setSearchParams({
+          filter: currentFilter === 'all' ? null : currentFilter,
+          page: null
+        });
+        return;
+      }
+      renderContent(container, resources, context);
     });
   });
+
+  verbindeListensteuerung(container, {
+    onSortierung: (sortierung) => {
+      currentSort = normalisiereAuswahl(sortierung, VALID_SORTS, 'newest');
+      context.setSearchParams?.({ sort: currentSort === 'newest' ? null : currentSort, page: null });
+      renderContent(container, resources, context);
+    },
+    onSeite: (seite) => {
+      context.setSearchParams?.({ page: seite <= 1 ? null : seite });
+      renderContent(container, resources, context);
+    }
+  });
+}
+
+function normalisiereFilter(filter) {
+  return VALID_FILTERS.includes(filter) ? filter : 'all';
+}
+
+function preload() {
+  return holeAbfrage({
+    schluessel: RESSOURCEN_CACHE_KEY,
+    abrufFunktion: () => api.get('/api/resources'),
+    ttlMs: RESSOURCEN_CACHE_TTL_MS
+  });
+}
+
+function sortiereRessourcen(resources, sortierung) {
+  const kopie = [...resources];
+
+  kopie.sort((links, rechts) => {
+    switch (sortierung) {
+      case 'oldest':
+        return new Date(links.createdAt || 0) - new Date(rechts.createdAt || 0);
+      case 'title-asc':
+        return links.title.localeCompare(rechts.title, document.documentElement.lang);
+      case 'title-desc':
+        return rechts.title.localeCompare(links.title, document.documentElement.lang);
+      case 'newest':
+      default:
+        return new Date(rechts.createdAt || 0) - new Date(links.createdAt || 0);
+    }
+  });
+
+  return kopie;
 }
 
 function renderCard(resource) {
@@ -69,4 +151,4 @@ function renderCard(resource) {
   `;
 }
 
-export { render };
+export { render, preload };

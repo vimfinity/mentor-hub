@@ -32,6 +32,17 @@ function requireAuth(req, res) {
  * @param {Object} router - Router instance
  */
 function registerRoutes(router) {
+  router.get('/api/admin/session', (req, res) => {
+    const config = loadConfig();
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+
+    sendJson(res, 200, {
+      configured: !!(config.adminPasswordHash && config.adminPasswordHash.length > 0),
+      authenticated: auth.verifySession(token, config.sessionDurationMs)
+    });
+  });
+
   router.get('/api/admin/setup', (req, res) => {
     const config = loadConfig();
     sendJson(res, 200, {

@@ -1,11 +1,19 @@
 import * as api from '../services/api-client.js';
+import { holeAbfrage } from '../services/query-cache.js';
 import { t } from '../services/i18n.js';
 import { escapeHtml } from './modal.js';
 import { icon } from './icons.js';
 import { showError, showSuccess } from './toast.js';
 
+const UMFRAGEN_CACHE_KEY = ['surveys'];
+const UMFRAGEN_CACHE_TTL_MS = 60 * 1000;
+
 async function render(container) {
-  const response = await api.get('/api/surveys');
+  const response = await holeAbfrage({
+    schluessel: UMFRAGEN_CACHE_KEY,
+    abrufFunktion: () => api.get('/api/surveys'),
+    ttlMs: UMFRAGEN_CACHE_TTL_MS
+  });
   const hasSurveys = response.ok && response.data && response.data.length > 0;
 
   let html = `<h1 class="sektion-titel">${t('survey.title')}</h1>`;
@@ -22,6 +30,14 @@ async function render(container) {
 
   container.innerHTML = html;
   registerEvents(container);
+}
+
+function preload() {
+  return holeAbfrage({
+    schluessel: UMFRAGEN_CACHE_KEY,
+    abrufFunktion: () => api.get('/api/surveys'),
+    ttlMs: UMFRAGEN_CACHE_TTL_MS
+  });
 }
 
 function renderConcernForm() {
@@ -252,4 +268,4 @@ async function submitSurvey(form) {
   }
 }
 
-export { render };
+export { render, preload };

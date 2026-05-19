@@ -2,6 +2,7 @@
 
 const path = require('path');
 const fs = require('fs');
+const { loadConfig } = require('../config');
 const surveys = require('../data/surveys');
 const resources = require('../data/resources');
 const concerns = require('../data/concerns');
@@ -14,6 +15,15 @@ const localesDirectory = path.join(__dirname, '..', '..', 'locales');
  * @param {Object} router - Router instance
  */
 function registerRoutes(router) {
+  router.get('/api/runtime-config', (req, res) => {
+    const config = loadConfig();
+    sendJson(res, 200, {
+      title: config.title,
+      defaultLanguage: config.defaultLanguage,
+      devReloadEnabled: !!config.devReloadEnabled
+    });
+  });
+
   router.get('/api/i18n/:locale', (req, res, params) => {
     const locale = params.locale;
     if (!/^[a-z]{2}$/.test(locale)) {

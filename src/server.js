@@ -11,6 +11,10 @@ const adminApi = require('./api/admin');
 
 const config = loadConfig();
 const publicDirectory = path.join(__dirname, '..', 'public');
+const localesDirectory = path.join(__dirname, '..', 'locales');
+const devReloadClients = new Set();
+const devReloadWatchers = [];
+let devReloadVersion = Date.now();
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -29,6 +33,10 @@ const router = createRouter();
 publicApi.registerRoutes(router);
 adminApi.registerRoutes(router);
 
+if (config.devReloadEnabled) {
+  initializeDevReload();
+}
+
 /**
  * Sets security headers on every response.
  * @param {Object} res - HTTP response
@@ -42,6 +50,12 @@ function setSecurityHeaders(res) {
     'Content-Security-Policy',
     "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'"
   );
+}
+
+function applyRateLimitHeaders(res, headers) {
+  Object.keys(headers || {}).forEach((headerName) => {
+    res.setHeader(headerName, headers[headerName]);
+  });
 }
 
 /**
@@ -116,16 +130,90 @@ function serveStaticFile(req, res) {
  * @returns {string} Client IP address
  */
 function getClientIp(req) {
-  return req.headers['x-forwarded-for'] || req.socket.remoteAddress || '0.0.0.0';
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string' && forwarded.length > 0) {
+    return forwarded.split(',')[0].trim();
+  }
+
+  return req.socket.remoteAddress || '0.0.0.0';
+}
+
+function isDevReloadRequest(req) {
+  return config.devReloadEnabled && req.url.split('?')[0] === '/api/dev/events';
+}
+
+function handleDevReloadRequest(req, res) {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream; charset=utf-8',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive'
+  });
+  res.write('event: ready\n');
+  res.write('data: ' + JSON.stringify({ version: devReloadVersion }) + '\n\n');
+
+  devReloadClients.add(res);
+
+  req.on('close', () => {
+    devReloadClients.delete(res);
+  });
+}
+
+function broadcastDevReload(changedPath) {
+  devReloadVersion = Date.now();
+  const payload = JSON.stringify({ version: devReloadVersion, changedPath });
+
+  for (const client of devReloadClients) {
+    client.write('event: reload\n');
+    client.write('data: ' + payload + '\n\n');
+  }
+}
+
+function initializeDevReload() {
+  const watchedDirectories = [
+    publicDirectory,
+    localesDirectory
+  ];
+
+  watchedDirectories.forEach((directory) => {
+    try {
+      const watcher = fs.watch(directory, { recursive: true }, (eventType, fileName) => {
+        if (!fileName) {
+          return;
+        }
+
+        if (String(fileName).indexOf('.git') >= 0) {
+          return;
+        }
+
+        broadcastDevReload(String(fileName));
+      });
+
+      devReloadWatchers.push(watcher);
+    } catch (error) {
+      console.warn('Dev reload watcher failed for', directory, error.message);
+    }
+  });
 }
 
 const server = http.createServer((req, res) => {
   setSecurityHeaders(res);
 
+  if (isDevReloadRequest(req)) {
+    handleDevReloadRequest(req, res);
+    return;
+  }
+
   const clientIp = getClientIp(req);
-  if (!rateLimiter.isAllowed(clientIp)) {
+  const rateLimitStatus = rateLimiter.checkRequest(req, clientIp);
+  applyRateLimitHeaders(res, rateLimitStatus.headers);
+
+  if (!rateLimitStatus.allowed) {
     res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({ error: 'Too many requests. Please try again later.' }));
+    res.end(JSON.stringify({
+      error: 'Too many requests. Please try again later.',
+      fehler: 'Zu viele Anfragen. Bitte spaeter erneut versuchen.',
+      retryAfterSeconds: rateLimitStatus.retryAfterSeconds
+    }));
     return;
   }
 
@@ -209,12 +297,14 @@ function getLocalIp() {
 
 process.on('SIGINT', () => {
   console.log('\nStopping server...');
+  devReloadWatchers.forEach((watcher) => watcher.close());
   server.close(() => {
     process.exit(0);
   });
 });
 
 process.on('SIGTERM', () => {
+  devReloadWatchers.forEach((watcher) => watcher.close());
   server.close(() => {
     process.exit(0);
   });

@@ -9,30 +9,15 @@
   <link rel="icon" href="/assets/logo.svg" type="image/svg+xml">
 </head>
 <body>
-  <!-- Kopfzeile -->
-  <header class="kopfzeile">
-    <div class="kopfzeile-inhalt">
-      <a href="/" class="logo-bereich">
-        <img src="/assets/logo.svg" alt="GFOS Logo" class="logo-bild">
-        <span class="logo-text">KI-Hub</span>
-      </a>
-      <nav class="tab-navigation">
-        <a href="/" class="tab-link" id="admin-back-link">&#8592; Zurueck zur Hauptseite</a>
-        <button class="sprach-wechsel" id="admin-language-button" type="button" title="Language switch">
-          <span>EN</span>
-        </button>
-      </nav>
-    </div>
-  </header>
-
-  <!-- Admin-App Container -->
-  <div id="admin-app">
+  <main class="hauptinhalt">
     <div class="login-container">
-      <p class="leer-zustand-text" id="admin-loading-text">Wird geladen...</p>
+      <div class="login-karte">
+        <h1 class="login-titel">Admin</h1>
+        <p class="leer-zustand-text">Weiterleitung zum Admin-Bereich...</p>
+        <p class="sektion-beschreibung"><a href="/admin">/admin</a></p>
+      </div>
     </div>
-  </div>
-
-  <!-- Admin-Script (ES Module) -->
-  <script type="module" src="/js/admin.js"></script>
+  </main>
+  <script type="module" src="/js/admin-redirect.js"></script>
 </body>
 </html>
