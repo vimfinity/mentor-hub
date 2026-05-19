@@ -1,0 +1,88 @@
+{
+  "app": {
+    "titel": "KI-Mentor Hub",
+    "untertitel": "Wissen teilen. Feedback sammeln. Gemeinsam wachsen."
+  },
+  "nav": {
+    "neuigkeiten": "Neuigkeiten",
+    "feedback": "Feedback",
+    "ressourcen": "Ressourcen",
+    "admin": "Admin",
+    "sprache": "EN"
+  },
+  "news": {
+    "titel": "Neuigkeiten",
+    "leer": "Noch keine Neuigkeiten vorhanden.",
+    "am": "am"
+  },
+  "survey": {
+    "titel": "Feedback-Umfragen",
+    "leer": "Derzeit keine aktiven Umfragen.",
+    "absenden": "Absenden",
+    "anonym": "Anonym bleiben",
+    "namePlaceholder": "Name (optional)",
+    "erfolg": "Vielen Dank fuer Ihr Feedback!",
+    "fehler": "Fehler beim Absenden. Bitte erneut versuchen.",
+    "pflichtfeld": "Bitte beantworten Sie alle Fragen.",
+    "freitext": "Ihre Antwort...",
+    "jaLabel": "Ja",
+    "neinLabel": "Nein"
+  },
+  "resource": {
+    "titel": "KI-Ressourcen",
+    "leer": "Noch keine Ressourcen vorhanden.",
+    "alle": "Alle",
+    "tool": "Tools",
+    "artikel": "Artikel",
+    "video": "Videos",
+    "tutorial": "Tutorials",
+    "oeffnen": "Oeffnen"
+  },
+  "painpoint": {
+    "titel": "Anliegen mitteilen",
+    "beschreibung": "Problem, Wunsch oder Anregung zum Thema KI? Teilen Sie es uns mit - bei Bedarf kommen wir direkt zu einer Loesung.",
+    "titelLabel": "Was beschreibt Ihr Anliegen? *",
+    "titelPlaceholder": "Kurze Beschreibung des Problems/Wunsches",
+    "detailLabel": "Details (optional)",
+    "detailPlaceholder": "Beschreiben Sie Ihr Anliegen ausfuehrlicher...",
+    "nameLabel": "Name (optional)",
+    "namePlaceholder": "Ihr Name, falls Sie moechten",
+    "absenden": "Absenden",
+    "erfolg": "Vielen Dank! Ihr Anliegen wurde erfasst.",
+    "fehler": "Fehler beim Absenden. Bitte erneut versuchen."
+  },
+  "admin": {
+    "login": "Admin-Anmeldung",
+    "passwort": "Passwort",
+    "anmelden": "Anmelden",
+    "abmelden": "Abmelden",
+    "fehler": "Anmeldung fehlgeschlagen.",
+    "umfragen": "Umfragen",
+    "ressourcen": "Ressourcen",
+    "painpoints": "Anliegen",
+    "neuigkeiten": "Neuigkeiten",
+    "erstellen": "Erstellen",
+    "bearbeiten": "Bearbeiten",
+    "loeschen": "Loeschen",
+    "speichern": "Speichern",
+    "abbrechen": "Abbrechen",
+    "bestaetigung": "Sind Sie sicher?",
+    "status": "Status",
+    "offen": "Offen",
+    "inBearbeitung": "In Bearbeitung",
+    "erledigt": "Erledigt",
+    "antworten": "Antworten",
+    "aktiv": "Aktiv",
+    "inaktiv": "Inaktiv",
+    "setup": "Ersteinrichtung",
+    "setupBeschreibung": "Bitte setzen Sie ein Admin-Passwort (min. 8 Zeichen).",
+    "setupErfolg": "Passwort wurde gesetzt. Sie koennen sich jetzt anmelden."
+  },
+  "allgemein": {
+    "laden": "Wird geladen...",
+    "fehler": "Ein Fehler ist aufgetreten.",
+    "schliessen": "Schliessen",
+    "ja": "Ja",
+    "nein": "Nein"
+  }
+}

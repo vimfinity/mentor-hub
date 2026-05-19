@@ -1,0 +1,88 @@
+{
+  "app": {
+    "titel": "AI Mentor Hub",
+    "untertitel": "Share knowledge. Collect feedback. Grow together."
+  },
+  "nav": {
+    "neuigkeiten": "News",
+    "feedback": "Feedback",
+    "ressourcen": "Resources",
+    "admin": "Admin",
+    "sprache": "DE"
+  },
+  "news": {
+    "titel": "News",
+    "leer": "No news available yet.",
+    "am": "on"
+  },
+  "survey": {
+    "titel": "Feedback Surveys",
+    "leer": "No active surveys at the moment.",
+    "absenden": "Submit",
+    "anonym": "Stay anonymous",
+    "namePlaceholder": "Name (optional)",
+    "erfolg": "Thank you for your feedback!",
+    "fehler": "Error submitting. Please try again.",
+    "pflichtfeld": "Please answer all questions.",
+    "freitext": "Your answer...",
+    "jaLabel": "Yes",
+    "neinLabel": "No"
+  },
+  "resource": {
+    "titel": "AI Resources",
+    "leer": "No resources available yet.",
+    "alle": "All",
+    "tool": "Tools",
+    "artikel": "Articles",
+    "video": "Videos",
+    "tutorial": "Tutorials",
+    "oeffnen": "Open"
+  },
+  "painpoint": {
+    "titel": "Share a Concern",
+    "beschreibung": "Have a problem, wish, or suggestion regarding AI? Let us know - we may be able to help directly.",
+    "titelLabel": "What describes your concern? *",
+    "titelPlaceholder": "Short description of the problem/wish",
+    "detailLabel": "Details (optional)",
+    "detailPlaceholder": "Describe your concern in more detail...",
+    "nameLabel": "Name (optional)",
+    "namePlaceholder": "Your name, if you wish",
+    "absenden": "Submit",
+    "erfolg": "Thank you! Your concern has been recorded.",
+    "fehler": "Error submitting. Please try again."
+  },
+  "admin": {
+    "login": "Admin Login",
+    "passwort": "Password",
+    "anmelden": "Sign In",
+    "abmelden": "Sign Out",
+    "fehler": "Login failed.",
+    "umfragen": "Surveys",
+    "ressourcen": "Resources",
+    "painpoints": "Concerns",
+    "neuigkeiten": "News",
+    "erstellen": "Create",
+    "bearbeiten": "Edit",
+    "loeschen": "Delete",
+    "speichern": "Save",
+    "abbrechen": "Cancel",
+    "bestaetigung": "Are you sure?",
+    "status": "Status",
+    "offen": "Open",
+    "inBearbeitung": "In Progress",
+    "erledigt": "Done",
+    "antworten": "Responses",
+    "aktiv": "Active",
+    "inaktiv": "Inactive",
+    "setup": "Initial Setup",
+    "setupBeschreibung": "Please set an admin password (min. 8 characters).",
+    "setupErfolg": "Password set. You can now sign in."
+  },
+  "allgemein": {
+    "laden": "Loading...",
+    "fehler": "An error occurred.",
+    "schliessen": "Close",
+    "ja": "Yes",
+    "nein": "No"
+  }
+}

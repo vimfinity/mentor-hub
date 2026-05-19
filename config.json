@@ -1,0 +1,9 @@
+{
+  "port": 21000,
+  "host": "0.0.0.0",
+  "titel": "KI-Mentor Hub",
+  "standardSprache": "de",
+  "adminPasswortHash": "1d503834448438e1335aac46372d0fb24b82567d81518e73db172989c21bab59",
+  "adminPasswortSalt": "79a0002cafa47fe0e78eb5d4b7eaf7ba88962e342414dea11c1d1b9fa61f773e",
+  "sitzungsDauerMs": 28800000
+}
