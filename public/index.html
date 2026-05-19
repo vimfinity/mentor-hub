@@ -4,7 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#007d8f">
   <title>KI-Hub</title>
+  <script>
+    (function() {
+      var t = localStorage.getItem('theme-preference');
+      if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="icon" href="/assets/logo.svg" type="image/svg+xml">
 </head>
@@ -16,7 +27,7 @@
         <img src="/assets/logo.svg" alt="GFOS Logo" class="logo-bild">
         <span class="logo-text">KI-Hub</span>
       </a>
-      <nav class="tab-navigation" id="tab-navigation">
+      <nav class="tab-navigation" id="tab-navigation" aria-label="Hauptnavigation">
         <!-- Wird dynamisch durch app.js gefuellt -->
       </nav>
     </div>

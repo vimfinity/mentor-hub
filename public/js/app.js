@@ -4,6 +4,7 @@ import { starteDevReload } from './services/dev-reload.js';
 import { installiereRoutenPrefetch } from './services/route-prefetch.js';
 import { renderRouteSkeleton } from './components/loading-state.js';
 import { icon } from './components/icons.js';
+import { renderThemeToggle, bindeThemeToggle, initTheme } from './components/theme-toggle.js';
 import * as adminConsole from './features/admin-console.js';
 import * as newsFeed from './components/news-feed.js';
 import * as feedbackSection from './components/feedback-section.js';
@@ -39,6 +40,7 @@ Object.values(ROUTEN).forEach((route) => {
 });
 
 async function start() {
+  initTheme();
   starteDevReload();
 
   try {
@@ -126,7 +128,9 @@ function renderNavigation() {
     </button>
   `;
 
-  navigation.innerHTML = html + languageSwitcherHtml;
+  const themeToggleHtml = renderThemeToggle();
+
+  navigation.innerHTML = html + languageSwitcherHtml + themeToggleHtml;
 
   navigation.querySelectorAll('.tab-link').forEach((link) => {
     link.addEventListener('click', (event) => {
@@ -150,6 +154,8 @@ function renderNavigation() {
       languageButton.disabled = false;
     });
   }
+
+  bindeThemeToggle();
 }
 
 async function renderRoute(route) {

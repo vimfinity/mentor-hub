@@ -3,7 +3,6 @@ function renderAdminBereich({ titel, beschreibung = '', aktionen = '', inhalt = 
     <section class="admin-bereich">
       <div class="admin-bereich-kopf">
         <div class="admin-bereich-meta">
-          <span class="admin-bereich-label">Admin</span>
           <h2 class="sektion-titel admin-bereich-titel">${titel}</h2>
           ${beschreibung ? `<p class="sektion-beschreibung admin-bereich-beschreibung">${beschreibung}</p>` : ''}
         </div>

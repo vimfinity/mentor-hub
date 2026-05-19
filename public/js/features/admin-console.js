@@ -6,6 +6,7 @@ import { showError, showSuccess } from '../components/toast.js';
 import { escapeHtml, openModal, confirmDialog } from '../components/modal.js';
 import { renderAdminBereich, renderAdminPanel, renderAdminLeerzustand } from '../components/admin-ui.js';
 import { renderListensteuerung, verbindeListensteuerung } from '../components/list-controls.js';
+import { icon } from '../components/icons.js';
 
 const SESSION_CACHE_KEY = 'admin:session';
 const SURVEYS_CACHE_KEY = 'admin:surveys';
@@ -189,7 +190,7 @@ function renderLogin(container, context) {
 async function renderAdminShell(container, context, section) {
   container.innerHTML = `
     <div class="admin-layout">
-      <aside class="admin-sidebar admin-panel">
+      <aside class="admin-sidebar">
         ${Object.keys(SECTION_META).map((key) => `
           <a class="admin-nav-link ${section === key ? 'aktiv' : ''}"
             href="${SECTION_META[key].path}" data-admin-route="${key}">${t('admin.' + key)}</a>
@@ -197,7 +198,7 @@ async function renderAdminShell(container, context, section) {
         <hr class="admin-trenner">
         <button class="admin-nav-link" id="sign-out-button" type="button">${t('admin.signOut')}</button>
       </aside>
-      <div class="admin-inhalt admin-panel" id="admin-content">
+      <div class="admin-inhalt" id="admin-content">
         <p class="sektion-beschreibung">${t('general.loading')}</p>
       </div>
     </div>
@@ -290,13 +291,13 @@ async function renderSurveysAdmin(container, context) {
             <td>${(survey.responses || []).length}</td>
             <td class="tabelle-aktionen">
               <button class="btn btn-klein btn-sekundaer" data-action="toggle" data-id="${survey.id}">
-                ${survey.active ? '&#10074;&#10074;' : '&#9654;'}
+                ${survey.active ? icon('pause', 16) : icon('play', 16)}
               </button>
               <button class="btn btn-klein btn-sekundaer" data-action="details" data-id="${survey.id}">
-                &#128065;
+                ${icon('eye', 16)}
               </button>
               <button class="btn btn-klein btn-gefahr" data-action="delete" data-id="${survey.id}">
-                &#128465;
+                ${icon('trash', 16)}
               </button>
             </td>
           </tr>
@@ -530,10 +531,10 @@ async function renderResourcesAdmin(container, context) {
           <tr>
             <td>${escapeHtml(resource.title)}</td>
             <td><span class="karte-kategorie">${escapeHtml(t('resource.' + resource.category))}</span></td>
-            <td><a href="${escapeHtml(resource.url)}" target="_blank" rel="noopener">&#128279;</a></td>
+            <td><a href="${escapeHtml(resource.url)}" target="_blank" rel="noopener">${icon('link', 16)}</a></td>
             <td class="tabelle-aktionen">
               <button class="btn btn-klein btn-gefahr" data-id="${resource.id}">
-                &#128465;
+                ${icon('trash', 16)}
               </button>
             </td>
           </tr>
@@ -686,7 +687,7 @@ async function renderConcernsAdmin(container, context) {
             <td>${formatDate(concern.createdAt)}</td>
             <td class="tabelle-aktionen">
               <button class="btn btn-klein btn-gefahr concern-delete-button" data-id="${concern.id}">
-                &#128465;
+                ${icon('trash', 16)}
               </button>
             </td>
           </tr>
@@ -788,7 +789,7 @@ async function renderNewsAdmin(container, context) {
             <td>${formatDate(item.createdAt)}</td>
             <td class="tabelle-aktionen">
               <button class="btn btn-klein btn-gefahr news-delete-button" data-id="${item.id}">
-                &#128465;
+                ${icon('trash', 16)}
               </button>
             </td>
           </tr>
