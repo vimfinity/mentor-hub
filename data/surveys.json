@@ -1,26 +1,26 @@
-[
-  {
-    "id": "a8a749eb-bc44-4b99-b72f-f8b97682810f",
-    "erstelltAm": "2026-05-19T09:04:53.117Z",
-    "titel": "Hub Bewertung",
-    "beschreibung": "Bewertung vom neuen Hub",
-    "fragen": [
-      {
-        "text": "Wie findet ihr das neue hub?",
-        "typ": "bewertung"
-      }
-    ],
-    "aktiv": false,
-    "antworten": [
-      {
-        "id": "9da6a1d8-ffd2-48de-aaf5-178711d99f33",
-        "name": "Simon",
-        "antworten": [
-          5
-        ],
-        "eingereichtAm": "2026-05-19T09:07:01.162Z"
-      }
-    ],
-    "aktualisiertAm": "2026-05-19T09:08:50.063Z"
-  }
+[ 
+	{
+		"id": "a8a749eb-bc44-4b99-b72f-f8b97682810f",
+		"createdAt": "2026-05-19T09:04:53.117Z",
+		"title": "Hub Feedback",
+		"description": "Feedback on the new hub",
+		"questions": [
+			{
+				"text": "What do you think about the new hub?",
+				"type": "rating"
+			}
+		],
+		"active": false,
+		"responses": [
+			{
+				"id": "9da6a1d8-ffd2-48de-aaf5-178711d99f33",
+				"name": "Simon",
+				"responses": [
+					5
+				],
+				"submittedAt": "2026-05-19T09:07:01.162Z"
+			}
+		],
+		"updatedAt": "2026-05-19T09:08:50.063Z"
+	}
 ]

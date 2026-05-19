@@ -2,102 +2,102 @@
 
 const crypto = require('crypto');
 
-// Aktive Sitzungen: Map<token, { erstelltAm: number }>
-const sitzungen = new Map();
+// Active sessions: Map<token, { createdAt: number }>
+const sessions = new Map();
 
 /**
- * Erzeugt einen SHA-256 Hash mit Salt.
- * @param {string} passwort - Klartext-Passwort
- * @param {string} salt - Zufaelliger Salt
- * @returns {string} Hex-kodierter Hash
+ * Creates a SHA-256 password hash with salt.
+ * @param {string} password - Plain text password
+ * @param {string} salt - Random salt
+ * @returns {string} Hex-encoded hash
  */
-function hashPasswort(passwort, salt) {
+function hashPassword(password, salt) {
   return crypto
     .createHash('sha256')
-    .update(salt + ':' + passwort)
+    .update(salt + ':' + password)
     .digest('hex');
 }
 
 /**
- * Erzeugt einen zufaelligen Salt.
- * @returns {string} 32 Byte Salt als Hex-String
+ * Creates a random salt.
+ * @returns {string} 32-byte salt as hex string
  */
-function erzeugeSalt() {
+function generateSalt() {
   return crypto.randomBytes(32).toString('hex');
 }
 
 /**
- * Prueft ein Passwort gegen Hash und Salt.
- * @param {string} passwort - Eingegebenes Passwort
- * @param {string} hash - Gespeicherter Hash
- * @param {string} salt - Gespeicherter Salt
- * @returns {boolean} true wenn korrekt
+ * Verifies a password against the stored hash and salt.
+ * @param {string} password - Submitted password
+ * @param {string} hash - Stored hash
+ * @param {string} salt - Stored salt
+ * @returns {boolean} True if the password matches
  */
-function pruefePasswort(passwort, hash, salt) {
-  const berechnet = hashPasswort(passwort, salt);
-  // Timing-sicherer Vergleich
+function verifyPassword(password, hash, salt) {
+  const computedHash = hashPassword(password, salt);
+  // Use a timing-safe comparison to avoid leaking information.
   return crypto.timingSafeEqual(
-    Buffer.from(berechnet, 'hex'),
+    Buffer.from(computedHash, 'hex'),
     Buffer.from(hash, 'hex')
   );
 }
 
 /**
- * Erstellt eine neue Sitzung.
- * @returns {string} Sitzungs-Token
+ * Creates a new session token.
+ * @returns {string} Session token
  */
-function erstelleSitzung() {
+function createSession() {
   const token = crypto.randomUUID();
-  sitzungen.set(token, { erstelltAm: Date.now() });
+  sessions.set(token, { createdAt: Date.now() });
   return token;
 }
 
 /**
- * Prueft ob ein Sitzungs-Token gueltig ist.
- * @param {string} token - Zu pruefender Token
- * @param {number} maxDauerMs - Maximale Sitzungsdauer in Millisekunden
- * @returns {boolean} true wenn gueltig
+ * Verifies whether a session token is still valid.
+ * @param {string} token - Session token to check
+ * @param {number} maxDurationMs - Maximum session duration in milliseconds
+ * @returns {boolean} True if the session is valid
  */
-function pruefeSitzung(token, maxDauerMs) {
-  if (!token || !sitzungen.has(token)) {
+function verifySession(token, maxDurationMs) {
+  if (!token || !sessions.has(token)) {
     return false;
   }
-  const sitzung = sitzungen.get(token);
-  const abgelaufen = (Date.now() - sitzung.erstelltAm) > maxDauerMs;
-  if (abgelaufen) {
-    sitzungen.delete(token);
+  const session = sessions.get(token);
+  const isExpired = (Date.now() - session.createdAt) > maxDurationMs;
+  if (isExpired) {
+    sessions.delete(token);
     return false;
   }
   return true;
 }
 
 /**
- * Beendet eine Sitzung.
- * @param {string} token - Zu entfernender Token
+ * Ends a session.
+ * @param {string} token - Session token to remove
  */
-function beendeSitzung(token) {
-  sitzungen.delete(token);
+function endSession(token) {
+  sessions.delete(token);
 }
 
 /**
- * Entfernt alle abgelaufenen Sitzungen.
- * @param {number} maxDauerMs - Maximale Sitzungsdauer in Millisekunden
+ * Removes all expired sessions.
+ * @param {number} maxDurationMs - Maximum session duration in milliseconds
  */
-function bereinigeSitzungen(maxDauerMs) {
-  const jetzt = Date.now();
-  for (const [token, sitzung] of sitzungen) {
-    if ((jetzt - sitzung.erstelltAm) > maxDauerMs) {
-      sitzungen.delete(token);
+function cleanupSessions(maxDurationMs) {
+  const now = Date.now();
+  for (const [token, session] of sessions) {
+    if ((now - session.createdAt) > maxDurationMs) {
+      sessions.delete(token);
     }
   }
 }
 
 module.exports = {
-  hashPasswort,
-  erzeugeSalt,
-  pruefePasswort,
-  erstelleSitzung,
-  pruefeSitzung,
-  beendeSitzung,
-  bereinigeSitzungen
+  hashPassword,
+  generateSalt,
+  verifyPassword,
+  createSession,
+  verifySession,
+  endSession,
+  cleanupSessions
 };

@@ -1,5 +1,5 @@
 /* ===========================================
-   KI-Mentor Hub - Design-System (GFOS)
+   KI-Hub - Design-System (GFOS)
    Reduziert, praezise, corporate-clean.
    =========================================== */
 
@@ -600,12 +600,12 @@ body {
   max-width: 360px;
 }
 
-.toast-erfolg {
+.toast-success {
   background: var(--farbe-erfolg);
   color: var(--farbe-text-invers);
 }
 
-.toast-fehler {
+.toast-error {
   background: var(--farbe-fehler);
   color: var(--farbe-text-invers);
 }
@@ -678,17 +678,17 @@ body {
   line-height: 1.4;
 }
 
-.status-offen {
+.status-open {
   background: #fef3c7;
   color: #92400e;
 }
 
-.status-in-bearbeitung {
+.status-in-progress {
   background: #dbeafe;
   color: #1e40af;
 }
 
-.status-erledigt {
+.status-done {
   background: #d1fae5;
   color: #065f46;
 }

@@ -1,67 +1,63 @@
 'use strict';
 
-// Anfragen-Zaehler pro IP: Map<ip, { anzahl: number, fensterStart: number }>
-const zaehler = new Map();
+const counters = new Map();
 
-// Konfiguration
-const MAX_ANFRAGEN = 30;
-const FENSTER_MS = 60000; // 1 Minute
+const MAX_REQUESTS = 30;
+const WINDOW_MS = 60000;
 
 /**
- * Prueft ob eine IP das Rate-Limit ueberschritten hat.
- * @param {string} ip - Client-IP-Adresse
- * @returns {boolean} true wenn die Anfrage erlaubt ist, false wenn blockiert
+ * Checks whether an IP is still allowed to make requests.
+ * @param {string} ip - Client IP address
+ * @returns {boolean} True if the request is allowed
  */
-function istErlaubt(ip) {
-  const jetzt = Date.now();
-  const eintrag = zaehler.get(ip);
+function isAllowed(ip) {
+  const now = Date.now();
+  const entry = counters.get(ip);
 
-  if (!eintrag || (jetzt - eintrag.fensterStart) > FENSTER_MS) {
-    // Neues Zeitfenster starten
-    zaehler.set(ip, { anzahl: 1, fensterStart: jetzt });
+  if (!entry || (now - entry.windowStart) > WINDOW_MS) {
+    counters.set(ip, { count: 1, windowStart: now });
     return true;
   }
 
-  if (eintrag.anzahl >= MAX_ANFRAGEN) {
+  if (entry.count >= MAX_REQUESTS) {
     return false;
   }
 
-  eintrag.anzahl++;
+  entry.count++;
   return true;
 }
 
 /**
- * Gibt die verbleibenden Anfragen fuer eine IP zurueck.
- * @param {string} ip - Client-IP-Adresse
- * @returns {number} Verbleibende Anfragen im aktuellen Fenster
+ * Returns remaining requests for the current window.
+ * @param {string} ip - Client IP address
+ * @returns {number} Remaining requests
  */
-function verbleibendeAnfragen(ip) {
-  const jetzt = Date.now();
-  const eintrag = zaehler.get(ip);
+function getRemainingRequests(ip) {
+  const now = Date.now();
+  const entry = counters.get(ip);
 
-  if (!eintrag || (jetzt - eintrag.fensterStart) > FENSTER_MS) {
-    return MAX_ANFRAGEN;
+  if (!entry || (now - entry.windowStart) > WINDOW_MS) {
+    return MAX_REQUESTS;
   }
 
-  return Math.max(0, MAX_ANFRAGEN - eintrag.anzahl);
+  return Math.max(0, MAX_REQUESTS - entry.count);
 }
 
 /**
- * Bereinigt alte Eintraege (aufraeumen).
+ * Removes expired window entries.
  */
-function bereinigen() {
-  const jetzt = Date.now();
-  for (const [ip, eintrag] of zaehler) {
-    if ((jetzt - eintrag.fensterStart) > FENSTER_MS) {
-      zaehler.delete(ip);
+function cleanup() {
+  const now = Date.now();
+  for (const [ip, entry] of counters) {
+    if ((now - entry.windowStart) > WINDOW_MS) {
+      counters.delete(ip);
     }
   }
 }
 
-// Alle 5 Minuten alte Eintraege bereinigen
-setInterval(bereinigen, 300000).unref();
+setInterval(cleanup, 300000).unref();
 
 module.exports = {
-  istErlaubt,
-  verbleibendeAnfragen
+  isAllowed,
+  getRemainingRequests
 };

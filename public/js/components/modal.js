@@ -1,102 +1,95 @@
-// ===========================================
-// Modal-Komponente - Dialog
-// ===========================================
-
 /**
- * Oeffnet einen Modal-Dialog.
- * @param {Object} optionen - Modal-Konfiguration
- * @param {string} optionen.titel - Modal-Titel
- * @param {string} optionen.inhalt - HTML-Inhalt des Modals
- * @param {Function} [optionen.beiBestaetigung] - Callback bei Bestaetigung
- * @param {string} [optionen.bestaetigenText] - Text des Bestaetigen-Buttons
- * @param {string} [optionen.abbrechenText] - Text des Abbrechen-Buttons
- * @returns {HTMLElement} Modal-Element
+ * Opens a modal dialog.
+ * @param {Object} options - Modal configuration
+ * @param {string} options.title - Modal title
+ * @param {string} options.content - Modal body HTML
+ * @param {Function} [options.onConfirm] - Confirmation callback
+ * @param {string} [options.confirmText] - Confirm button label
+ * @param {string} [options.cancelText] - Cancel button label
+ * @returns {HTMLElement} Modal element
  */
-function oeffne(optionen) {
+function openModal(options) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
 
-  const inhaltHtml = `
+  const contentHtml = `
     <div class="modal-inhalt">
-      <h2 class="modal-titel">${escapeHtml(optionen.titel)}</h2>
-      <div class="modal-body">${optionen.inhalt}</div>
+      <h2 class="modal-titel">${escapeHtml(options.title)}</h2>
+      <div class="modal-body">${options.content}</div>
       <div class="modal-aktionen">
         <button class="btn btn-sekundaer modal-abbrechen">
-          ${escapeHtml(optionen.abbrechenText || 'Abbrechen')}
+          ${escapeHtml(options.cancelText || 'Cancel')}
         </button>
-        ${optionen.beiBestaetigung ? `
+        ${options.onConfirm ? `
           <button class="btn btn-primaer modal-bestaetigen">
-            ${escapeHtml(optionen.bestaetigenText || 'OK')}
+            ${escapeHtml(options.confirmText || 'OK')}
           </button>
         ` : ''}
       </div>
     </div>
   `;
 
-  overlay.innerHTML = inhaltHtml;
+  overlay.innerHTML = contentHtml;
   document.body.appendChild(overlay);
 
-  // Event-Listener
-  const abbrechenBtn = overlay.querySelector('.modal-abbrechen');
-  abbrechenBtn.addEventListener('click', () => schliesse(overlay));
+  const cancelButton = overlay.querySelector('.modal-abbrechen');
+  cancelButton.addEventListener('click', () => closeModal(overlay));
 
-  const bestaetigenBtn = overlay.querySelector('.modal-bestaetigen');
-  if (bestaetigenBtn && optionen.beiBestaetigung) {
-    bestaetigenBtn.addEventListener('click', () => {
-      optionen.beiBestaetigung(overlay);
-      schliesse(overlay);
+  const confirmButton = overlay.querySelector('.modal-bestaetigen');
+  if (confirmButton && options.onConfirm) {
+    confirmButton.addEventListener('click', () => {
+      options.onConfirm(overlay);
+      closeModal(overlay);
     });
   }
 
-  // Schliessen bei Klick auf Overlay
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) {
-      schliesse(overlay);
+      closeModal(overlay);
     }
   });
 
-  // Schliessen mit Escape
-  const escHandler = (e) => {
+  const escapeHandler = (e) => {
     if (e.key === 'Escape') {
-      schliesse(overlay);
-      document.removeEventListener('keydown', escHandler);
+      closeModal(overlay);
+      document.removeEventListener('keydown', escapeHandler);
     }
   };
-  document.addEventListener('keydown', escHandler);
+  document.addEventListener('keydown', escapeHandler);
 
   return overlay;
 }
 
 /**
- * Schliesst einen Modal-Dialog.
- * @param {HTMLElement} overlay - Modal-Overlay-Element
+ * Closes a modal dialog.
+ * @param {HTMLElement} overlay - Modal overlay element
  */
-function schliesse(overlay) {
+function closeModal(overlay) {
   if (overlay && overlay.parentNode) {
     overlay.parentNode.removeChild(overlay);
   }
 }
 
 /**
- * Zeigt einen Bestaetigungs-Dialog.
- * @param {string} nachricht - Bestaetigungsfrage
- * @param {Function} beiJa - Callback bei Bestaetigung
- * @param {string} [jaText] - Text fuer Ja-Button
+ * Shows a confirmation dialog.
+ * @param {string} message - Confirmation message
+ * @param {Function} onConfirm - Confirmation callback
+ * @param {string} [confirmText] - Confirm button label
  */
-function bestaetigung(nachricht, beiJa, jaText) {
-  oeffne({
-    titel: 'Bestaetigung',
-    inhalt: '<p>' + escapeHtml(nachricht) + '</p>',
-    bestaetigenText: jaText || 'Ja',
-    abbrechenText: 'Abbrechen',
-    beiBestaetigung: beiJa
+function confirmDialog(message, onConfirm, confirmText) {
+  openModal({
+    title: 'Confirm',
+    content: '<p>' + escapeHtml(message) + '</p>',
+    confirmText: confirmText || 'OK',
+    cancelText: 'Cancel',
+    onConfirm
   });
 }
 
 /**
- * Escaped HTML-Sonderzeichen zur XSS-Praevention.
- * @param {string} text - Roher Text
- * @returns {string} Escapeter Text
+ * Escapes HTML special characters to reduce XSS risk.
+ * @param {string} text - Raw text
+ * @returns {string} Escaped text
  */
 function escapeHtml(text) {
   const div = document.createElement('div');
@@ -104,4 +97,4 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-export { oeffne, schliesse, bestaetigung, escapeHtml };
+export { openModal, closeModal, confirmDialog, escapeHtml };

@@ -1,191 +1,193 @@
-// ===========================================
-// App Entry-Point - Oeffentliche Seite
-// ===========================================
-
-import { initialisiere as initI18n, t, beiSprachwechsel, wechsleSprache, holeSprache } from './services/i18n.js';
+import { initI18n, t, onLanguageChange, toggleLanguage, getLanguage } from './services/i18n.js';
 import { icon } from './components/icons.js';
 import * as newsFeed from './components/news-feed.js';
-import * as feedbackSektion from './components/feedback-sektion.js';
+import * as feedbackSection from './components/feedback-section.js';
 import * as resourceGrid from './components/resource-grid.js';
 
-/** @type {string} Aktuell aktiver Tab */
-let aktiverTab = 'neuigkeiten';
+let activeTab = 'news';
+let isRendering = false;
 
-/** @type {boolean} Verhindert doppeltes Rendern */
-let rendertGerade = false;
-
-/** @type {Object} Tab-Konfiguration mit Icon-Zuordnung */
 const TABS = {
-  neuigkeiten: { rendere: newsFeed.rendere, icon: 'megaphone' },
-  feedback: { rendere: feedbackSektion.rendere, icon: 'messageSquare' },
-  ressourcen: { rendere: resourceGrid.rendere, icon: 'bookOpen' }
+  news: { render: newsFeed.render, icon: 'megaphone' },
+  feedback: { render: feedbackSection.render, icon: 'messageSquare' },
+  resources: { render: resourceGrid.render, icon: 'bookOpen' }
 };
 
-/** @type {Object} Cache fuer bereits geladene Tab-Inhalte */
-const tabInhaltCache = {};
+const tabContentCache = {};
 
-/**
- * Initialisiert die Anwendung.
- */
-async function starte() {
+async function start() {
   try {
     await initI18n();
-  } catch (e) {
-    console.error('i18n Initialisierung fehlgeschlagen:', e);
+  } catch (error) {
+    console.error('i18n initialization failed:', error);
   }
 
-  erstelleTabContainer();
-  rendereNavigation();
-  await ladeTab(aktiverTab);
+  updatePageChrome();
+  createTabContainers();
+  renderNavigation();
+  await loadTab(activeTab);
 
-  // Bei Sprachwechsel Labels aktualisieren, Inhalt neu laden
-  beiSprachwechsel(async () => {
-    aktualisiereNavLabels();
-    // Tab-Cache invalidieren und aktuellen Tab neu laden
-    Object.keys(tabInhaltCache).forEach(k => { tabInhaltCache[k] = false; });
-    await ladeTab(aktiverTab);
+  onLanguageChange(async () => {
+    updatePageChrome();
+    updateNavigationLabels();
+    Object.keys(tabContentCache).forEach((key) => {
+      tabContentCache[key] = false;
+    });
+    await loadTab(activeTab);
   });
 }
 
-/**
- * Erstellt die Tab-Container-Elemente (einmalig).
- * Verwendet display:none/block statt innerHTML-Ersatz.
- */
-function erstelleTabContainer() {
-  const hauptinhalt = document.getElementById('hauptinhalt');
-  if (!hauptinhalt) return;
+function updatePageChrome() {
+  document.documentElement.lang = getLanguage();
+  document.title = t('app.title');
 
-  hauptinhalt.innerHTML = '';
+  document.querySelectorAll('.logo-text').forEach((element) => {
+    element.textContent = t('app.title');
+  });
 
-  Object.keys(TABS).forEach(key => {
-    const sektion = document.createElement('section');
-    sektion.id = 'tab-' + key;
-    sektion.className = 'sektion';
-    if (key === aktiverTab) sektion.classList.add('aktiv');
-    hauptinhalt.appendChild(sektion);
+  document.querySelectorAll('.logo-bild').forEach((element) => {
+    element.alt = t('app.logoAlt');
   });
 }
 
-/**
- * Rendert die Tab-Navigation (einmalig, dann nur Labels aktualisieren).
- */
-function rendereNavigation() {
-  const navContainer = document.getElementById('tab-navigation');
-  if (!navContainer) return;
+function createTabContainers() {
+  const mainContent = document.getElementById('hauptinhalt');
+  if (!mainContent) {
+    return;
+  }
 
-  const tabKeys = Object.keys(TABS);
-  const html = tabKeys.map(key => `
-    <button class="tab-link ${key === aktiverTab ? 'aktiv' : ''}"
-      data-tab="${key}" aria-selected="${key === aktiverTab}">
+  mainContent.innerHTML = '';
+
+  Object.keys(TABS).forEach((key) => {
+    const section = document.createElement('section');
+    section.id = 'tab-' + key;
+    section.className = 'sektion';
+    if (key === activeTab) {
+      section.classList.add('aktiv');
+    }
+    mainContent.appendChild(section);
+  });
+}
+
+function renderNavigation() {
+  const navigation = document.getElementById('tab-navigation');
+  if (!navigation) {
+    return;
+  }
+
+  const html = Object.keys(TABS).map((key) => `
+    <button class="tab-link ${key === activeTab ? 'aktiv' : ''}"
+      data-tab="${key}" aria-selected="${key === activeTab}">
       <span class="tab-icon">${icon(TABS[key].icon, 18)}</span>
       <span class="tab-label">${t('nav.' + key)}</span>
     </button>
   `).join('');
 
-  const sprachwechselHtml = `
-    <button class="sprach-wechsel" id="sprach-btn" title="${t('nav.sprache')}">
+  const languageSwitcherHtml = `
+    <button class="sprach-wechsel" id="language-button" title="${t('nav.language')}">
       ${icon('globe', 16)}
-      <span>${holeSprache() === 'de' ? 'EN' : 'DE'}</span>
+      <span>${getLanguage() === 'de' ? 'EN' : 'DE'}</span>
     </button>
   `;
 
-  navContainer.innerHTML = html + sprachwechselHtml;
+  navigation.innerHTML = html + languageSwitcherHtml;
 
-  // Tab-Click Events
-  navContainer.querySelectorAll('.tab-link').forEach(btn => {
-    btn.addEventListener('click', () => {
-      if (btn.dataset.tab === aktiverTab) return;
-      wechsleTab(btn.dataset.tab);
+  navigation.querySelectorAll('.tab-link').forEach((button) => {
+    button.addEventListener('click', () => {
+      if (button.dataset.tab === activeTab) {
+        return;
+      }
+      switchTab(button.dataset.tab);
     });
   });
 
-  // Sprachwechsel
-  const sprachBtn = document.getElementById('sprach-btn');
-  if (sprachBtn) {
-    sprachBtn.addEventListener('click', async () => {
-      sprachBtn.disabled = true;
-      await wechsleSprache();
-      sprachBtn.disabled = false;
+  const languageButton = document.getElementById('language-button');
+  if (languageButton) {
+    languageButton.addEventListener('click', async () => {
+      languageButton.disabled = true;
+      await toggleLanguage();
+      languageButton.disabled = false;
     });
   }
 }
 
-/**
- * Aktualisiert nur die Tab-Labels (bei Sprachwechsel).
- */
-function aktualisiereNavLabels() {
-  const navContainer = document.getElementById('tab-navigation');
-  if (!navContainer) return;
+function updateNavigationLabels() {
+  const navigation = document.getElementById('tab-navigation');
+  if (!navigation) {
+    return;
+  }
 
-  navContainer.querySelectorAll('.tab-link').forEach(btn => {
-    const key = btn.dataset.tab;
-    const label = btn.querySelector('.tab-label');
-    if (label) label.textContent = t('nav.' + key);
+  navigation.querySelectorAll('.tab-link').forEach((button) => {
+    const key = button.dataset.tab;
+    const label = button.querySelector('.tab-label');
+    if (label) {
+      label.textContent = t('nav.' + key);
+    }
   });
 
-  const sprachBtn = document.getElementById('sprach-btn');
-  if (sprachBtn) {
-    const span = sprachBtn.querySelector('span');
-    if (span) span.textContent = holeSprache() === 'de' ? 'EN' : 'DE';
+  const languageButton = document.getElementById('language-button');
+  if (languageButton) {
+    languageButton.title = t('nav.language');
+    const label = languageButton.querySelector('span');
+    if (label) {
+      label.textContent = getLanguage() === 'de' ? 'EN' : 'DE';
+    }
   }
 }
 
-/**
- * Wechselt den aktiven Tab (sofortige CSS-Klassen-Umschaltung).
- * @param {string} neuerTab - Tab-Key
- */
-async function wechsleTab(neuerTab) {
-  if (neuerTab === aktiverTab) return;
+async function switchTab(nextTab) {
+  if (nextTab === activeTab) {
+    return;
+  }
 
-  // Alten Tab ausblenden
-  const alterContainer = document.getElementById('tab-' + aktiverTab);
-  if (alterContainer) alterContainer.classList.remove('aktiv');
+  const currentContainer = document.getElementById('tab-' + activeTab);
+  if (currentContainer) {
+    currentContainer.classList.remove('aktiv');
+  }
 
-  // Navigation aktualisieren
-  const navContainer = document.getElementById('tab-navigation');
-  if (navContainer) {
-    navContainer.querySelectorAll('.tab-link').forEach(btn => {
-      const istAktiv = btn.dataset.tab === neuerTab;
-      btn.classList.toggle('aktiv', istAktiv);
-      btn.setAttribute('aria-selected', istAktiv);
+  const navigation = document.getElementById('tab-navigation');
+  if (navigation) {
+    navigation.querySelectorAll('.tab-link').forEach((button) => {
+      const isActive = button.dataset.tab === nextTab;
+      button.classList.toggle('aktiv', isActive);
+      button.setAttribute('aria-selected', isActive);
     });
   }
 
-  aktiverTab = neuerTab;
+  activeTab = nextTab;
 
-  // Neuen Tab einblenden
-  const neuerContainer = document.getElementById('tab-' + neuerTab);
-  if (neuerContainer) neuerContainer.classList.add('aktiv');
+  const nextContainer = document.getElementById('tab-' + nextTab);
+  if (nextContainer) {
+    nextContainer.classList.add('aktiv');
+  }
 
-  // Inhalt laden falls noch nicht gecacht
-  await ladeTab(neuerTab);
+  await loadTab(nextTab);
 }
 
-/**
- * Laedt den Inhalt eines Tabs (einmal, dann gecacht).
- * @param {string} tabKey - Tab-Key
- */
-async function ladeTab(tabKey) {
-  if (rendertGerade) return;
-  rendertGerade = true;
+async function loadTab(tabKey) {
+  if (isRendering) {
+    return;
+  }
 
+  isRendering = true;
   try {
     const container = document.getElementById('tab-' + tabKey);
     const tab = TABS[tabKey];
-    if (!container || !tab) return;
+    if (!container || !tab) {
+      return;
+    }
 
-    if (!tabInhaltCache[tabKey]) {
-      await tab.rendere(container);
-      tabInhaltCache[tabKey] = true;
+    if (!tabContentCache[tabKey]) {
+      await tab.render(container);
+      tabContentCache[tabKey] = true;
     }
   } finally {
-    rendertGerade = false;
+    isRendering = false;
   }
 }
 
-// App starten wenn DOM bereit
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', starte);
+  document.addEventListener('DOMContentLoaded', start);
 } else {
-  starte();
+  start();
 }

@@ -1,92 +1,72 @@
-// ===========================================
-// Ressourcen-Grid Komponente
-// ===========================================
-
 import * as api from '../services/api-client.js';
 import { t } from '../services/i18n.js';
 import { escapeHtml } from './modal.js';
 import { icon } from './icons.js';
 
-/** @type {string} Aktueller Kategorie-Filter */
-let aktuellerFilter = 'alle';
+let currentFilter = 'all';
 
-/**
- * Rendert die Ressourcen-Sektion.
- * @param {HTMLElement} container - Ziel-Container
- */
-async function rendere(container) {
-  const antwort = await api.get('/api/resources');
+async function render(container) {
+  const response = await api.get('/api/resources');
 
-  if (!antwort.ok || !antwort.daten || antwort.daten.length === 0) {
+  if (!response.ok || !response.data || response.data.length === 0) {
     container.innerHTML = `
       <div class="leer-zustand">
         <div class="leer-zustand-icon">${icon('bookOpen', 48)}</div>
-        <p class="leer-zustand-text">${t('resource.leer')}</p>
+        <p class="leer-zustand-text">${t('resource.empty')}</p>
       </div>
     `;
     return;
   }
 
-  aktuellerFilter = 'alle';
-  rendereInhalt(container, antwort.daten);
+  currentFilter = 'all';
+  renderContent(container, response.data);
 }
 
-/**
- * Rendert Filter-Leiste und Karten-Grid.
- * @param {HTMLElement} container - Ziel-Container
- * @param {Array} ressourcen - Alle Ressourcen
- */
-function rendereInhalt(container, ressourcen) {
-  const kategorien = ['alle', 'tool', 'artikel', 'video', 'tutorial'];
+function renderContent(container, resources) {
+  const categories = ['all', 'tool', 'article', 'video', 'tutorial'];
 
-  const gefiltert = aktuellerFilter === 'alle'
-    ? ressourcen
-    : ressourcen.filter(r => r.kategorie === aktuellerFilter);
+  const filteredResources = currentFilter === 'all'
+    ? resources
+    : resources.filter((resource) => resource.category === currentFilter);
 
   const html = `
-    <h1 class="sektion-titel">${t('resource.titel')}</h1>
+    <h1 class="sektion-titel">${t('resource.title')}</h1>
     <div class="filter-leiste">
-      ${kategorien.map(kat => `
-        <button class="filter-btn ${kat === aktuellerFilter ? 'aktiv' : ''}"
-          data-kategorie="${kat}">
-          ${t('resource.' + kat)}
+      ${categories.map((category) => `
+        <button class="filter-btn ${category === currentFilter ? 'aktiv' : ''}"
+          data-category="${category}">
+          ${t('resource.' + category)}
         </button>
       `).join('')}
     </div>
     <div class="karten-grid">
-      ${gefiltert.map(r => rendereKarte(r)).join('')}
+      ${filteredResources.map((resource) => renderCard(resource)).join('')}
     </div>
   `;
 
   container.innerHTML = html;
 
-  // Filter-Events registrieren
-  container.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      aktuellerFilter = btn.dataset.kategorie;
-      rendereInhalt(container, ressourcen);
+  container.querySelectorAll('.filter-btn').forEach((button) => {
+    button.addEventListener('click', () => {
+      currentFilter = button.dataset.category;
+      renderContent(container, resources);
     });
   });
 }
 
-/**
- * Rendert eine einzelne Ressourcen-Karte.
- * @param {Object} ressource - Ressource-Objekt
- * @returns {string} HTML-String
- */
-function rendereKarte(ressource) {
+function renderCard(resource) {
   return `
     <div class="karte">
       <div class="karte-meta">
-        <span class="karte-kategorie">${escapeHtml(t('resource.' + ressource.kategorie))}</span>
+        <span class="karte-kategorie">${escapeHtml(t('resource.' + resource.category))}</span>
       </div>
-      <h3 class="karte-titel">${escapeHtml(ressource.titel)}</h3>
-      ${ressource.beschreibung ? `<p class="karte-text">${escapeHtml(ressource.beschreibung)}</p>` : ''}
-      <a href="${escapeHtml(ressource.url)}" target="_blank" rel="noopener noreferrer" class="karte-link">
-        ${icon('externalLink', 14)} ${t('resource.oeffnen')}
+      <h3 class="karte-titel">${escapeHtml(resource.title)}</h3>
+      ${resource.description ? `<p class="karte-text">${escapeHtml(resource.description)}</p>` : ''}
+      <a href="${escapeHtml(resource.url)}" target="_blank" rel="noopener noreferrer" class="karte-link">
+        ${icon('externalLink', 14)} ${t('resource.open')}
       </a>
     </div>
   `;
 }
 
-export { rendere };
+export { render };

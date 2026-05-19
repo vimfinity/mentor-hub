@@ -2,153 +2,144 @@
 
 const path = require('path');
 const fs = require('fs');
-const umfragen = require('../data/surveys');
-const ressourcen = require('../data/resources');
-const painpoints = require('../data/painpoints');
-const neuigkeiten = require('../data/news');
+const surveys = require('../data/surveys');
+const resources = require('../data/resources');
+const concerns = require('../data/concerns');
+const newsItems = require('../data/news');
 
-const localesVerzeichnis = path.join(__dirname, '..', '..', 'locales');
+const localesDirectory = path.join(__dirname, '..', '..', 'locales');
 
 /**
- * Registriert oeffentliche API-Routen.
- * @param {Object} router - Router-Instanz
+ * Registers public API routes.
+ * @param {Object} router - Router instance
  */
-function registriere(router) {
-
-  // --- i18n ---
+function registerRoutes(router) {
   router.get('/api/i18n/:locale', (req, res, params) => {
     const locale = params.locale;
-    // Nur erlaubte Locales (Sicherheit: kein Path-Traversal)
     if (!/^[a-z]{2}$/.test(locale)) {
-      sendeJson(res, 400, { fehler: 'Ungueltiger Sprach-Code' });
+      sendJson(res, 400, { error: 'Invalid locale code' });
       return;
     }
 
-    const pfad = path.join(localesVerzeichnis, locale + '.json');
+    const filePath = path.join(localesDirectory, locale + '.json');
     try {
-      const inhalt = fs.readFileSync(pfad, 'utf-8');
-      sendeJson(res, 200, JSON.parse(inhalt));
-    } catch (fehler) {
-      sendeJson(res, 404, { fehler: 'Sprache nicht verfuegbar' });
+      const fileContents = fs.readFileSync(filePath, 'utf-8');
+      sendJson(res, 200, JSON.parse(fileContents));
+    } catch (error) {
+      sendJson(res, 404, { error: 'Locale not available' });
     }
   });
 
-  // --- Umfragen (oeffentlich) ---
   router.get('/api/surveys', (req, res) => {
-    const aktive = umfragen.holeAktive();
-    sendeJson(res, 200, aktive);
+    sendJson(res, 200, surveys.getActive());
   });
 
   router.post('/api/surveys/:id/responses', (req, res, params) => {
-    leseBody(req, res, (body) => {
-      if (!body || !body.antworten || !Array.isArray(body.antworten)) {
-        sendeJson(res, 400, { fehler: 'Antworten-Array erforderlich' });
+    readBody(req, res, (body) => {
+      const responses = body?.responses || body?.antworten;
+
+      if (!body || !Array.isArray(responses)) {
+        sendJson(res, 400, { error: 'Responses array is required' });
         return;
       }
 
-      // Eingabe-Validierung
       if (body.name && body.name.length > 100) {
-        sendeJson(res, 400, { fehler: 'Name zu lang (max 100 Zeichen)' });
+        sendJson(res, 400, { error: 'Name is too long (max 100 characters)' });
         return;
       }
 
-      const erfolg = umfragen.fuegeAntwortHinzu(params.id, {
+      const success = surveys.addResponse(params.id, {
         name: body.name || null,
-        antworten: body.antworten
+        responses
       });
 
-      if (erfolg) {
-        sendeJson(res, 201, { erfolg: true });
+      if (success) {
+        sendJson(res, 201, { success: true });
       } else {
-        sendeJson(res, 404, { fehler: 'Umfrage nicht gefunden oder inaktiv' });
+        sendJson(res, 404, { error: 'Survey not found or inactive' });
       }
     });
   });
 
-  // --- Ressourcen (oeffentlich) ---
   router.get('/api/resources', (req, res) => {
-    const alle = ressourcen.holeAlle();
-    sendeJson(res, 200, alle);
+    sendJson(res, 200, resources.getAll());
   });
 
-  // --- Painpoints (oeffentlich: Einreichen) ---
-  router.post('/api/painpoints', (req, res) => {
-    leseBody(req, res, (body) => {
-      if (!body || !body.titel || body.titel.trim().length === 0) {
-        sendeJson(res, 400, { fehler: 'Titel erforderlich' });
+  router.post('/api/concerns', (req, res) => {
+    readBody(req, res, (body) => {
+      const title = body?.title || body?.titel;
+      const description = body?.description || body?.beschreibung || '';
+
+      if (!title || title.trim().length === 0) {
+        sendJson(res, 400, { error: 'Title is required' });
         return;
       }
 
-      // Eingabe-Validierung
-      if (body.titel.length > 200) {
-        sendeJson(res, 400, { fehler: 'Titel zu lang (max 200 Zeichen)' });
+      if (title.length > 200) {
+        sendJson(res, 400, { error: 'Title is too long (max 200 characters)' });
         return;
       }
-      if (body.beschreibung && body.beschreibung.length > 2000) {
-        sendeJson(res, 400, { fehler: 'Beschreibung zu lang (max 2000 Zeichen)' });
+      if (description.length > 2000) {
+        sendJson(res, 400, { error: 'Description is too long (max 2000 characters)' });
         return;
       }
       if (body.name && body.name.length > 100) {
-        sendeJson(res, 400, { fehler: 'Name zu lang (max 100 Zeichen)' });
+        sendJson(res, 400, { error: 'Name is too long (max 100 characters)' });
         return;
       }
 
-      const erstellt = painpoints.erstelle({
-        titel: body.titel.trim(),
-        beschreibung: (body.beschreibung || '').trim(),
+      const created = concerns.create({
+        title: title.trim(),
+        description: description.trim(),
         name: body.name || null
       });
 
-      sendeJson(res, 201, erstellt);
+      sendJson(res, 201, created);
     });
   });
 
-  // --- Neuigkeiten (oeffentlich: Lesen) ---
   router.get('/api/news', (req, res) => {
-    const alle = neuigkeiten.holeAlle();
-    sendeJson(res, 200, alle);
+    sendJson(res, 200, newsItems.getAll());
   });
 }
 
-// --- Hilfsfunktionen ---
-
 /**
- * Sendet eine JSON-Antwort.
- * @param {Object} res - HTTP Response
- * @param {number} statusCode - HTTP Status-Code
- * @param {Object} daten - Zu sendende Daten
+ * Sends a JSON response.
+ * @param {Object} res - HTTP response
+ * @param {number} statusCode - HTTP status code
+ * @param {Object} data - Response payload
  */
-function sendeJson(res, statusCode, daten) {
+function sendJson(res, statusCode, data) {
   res.writeHead(statusCode, { 'Content-Type': 'application/json; charset=utf-8' });
-  res.end(JSON.stringify(daten));
+  res.end(JSON.stringify(data));
 }
 
 /**
- * Liest den Request-Body als JSON.
- * @param {Object} req - HTTP Request
- * @param {Object} res - HTTP Response (fuer Fehler-Antwort)
- * @param {Function} callback - Wird mit geparsten Daten aufgerufen
+ * Reads a request body as JSON.
+ * @param {Object} req - HTTP request
+ * @param {Object} res - HTTP response
+ * @param {Function} callback - Callback receiving parsed data
  */
-function leseBody(req, res, callback) {
+function readBody(req, res, callback) {
   let body = '';
-  const maxGroesse = 1024 * 100; // 100 KB Maximum
+  const maxSize = 1024 * 100;
 
   req.on('data', (chunk) => {
     body += chunk;
-    if (body.length > maxGroesse) {
+    if (body.length > maxSize) {
       req.destroy();
-      sendeJson(res, 413, { fehler: 'Anfrage zu gross' });
+      sendJson(res, 413, { error: 'Request entity too large' });
     }
   });
 
   req.on('end', () => {
     try {
-      const geparst = JSON.parse(body);
-      callback(geparst);
-    } catch (fehler) {
-      sendeJson(res, 400, { fehler: 'Ungueltiges JSON' });
+      const parsedBody = JSON.parse(body);
+      callback(parsedBody);
+    } catch (error) {
+      sendJson(res, 400, { error: 'Invalid JSON payload' });
     }
   });
 }
 
-module.exports = { registriere, sendeJson, leseBody };
+module.exports = { registerRoutes, sendJson, readBody };

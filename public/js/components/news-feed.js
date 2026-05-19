@@ -1,46 +1,34 @@
-// ===========================================
-// News-Feed Komponente
-// ===========================================
-
 import * as api from '../services/api-client.js';
 import { t } from '../services/i18n.js';
 import { escapeHtml } from './modal.js';
 import { icon } from './icons.js';
 
-/**
- * Rendert die News-Sektion.
- * @param {HTMLElement} container - Ziel-Container
- */
-async function rendere(container) {
-  const antwort = await api.get('/api/news');
+async function render(container) {
+  const response = await api.get('/api/news');
 
-  if (!antwort.ok || !antwort.daten || antwort.daten.length === 0) {
+  if (!response.ok || !response.data || response.data.length === 0) {
     container.innerHTML = `
       <div class="leer-zustand">
         <div class="leer-zustand-icon">${icon('newspaper', 48)}</div>
-        <p class="leer-zustand-text">${t('news.leer')}</p>
+        <p class="leer-zustand-text">${t('news.empty')}</p>
       </div>
     `;
     return;
   }
 
   const html = `
-    <h1 class="sektion-titel">${t('news.titel')}</h1>
+    <h1 class="sektion-titel">${t('news.title')}</h1>
     <div class="news-liste">
-      ${antwort.daten.map(eintrag => rendereEintrag(eintrag)).join('')}
+      ${response.data.map((entry) => renderEntry(entry)).join('')}
     </div>
   `;
 
   container.innerHTML = html;
 }
 
-/**
- * Rendert einen einzelnen News-Eintrag.
- * @param {Object} eintrag - News-Objekt
- * @returns {string} HTML-String
- */
-function rendereEintrag(eintrag) {
-  const datum = new Date(eintrag.erstelltAm).toLocaleDateString('de-DE', {
+function renderEntry(entry) {
+  const locale = document.documentElement.lang === 'de' ? 'de-DE' : 'en-US';
+  const date = new Date(entry.createdAt).toLocaleDateString(locale, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric'
@@ -48,11 +36,11 @@ function rendereEintrag(eintrag) {
 
   return `
     <article class="news-eintrag">
-      <time class="news-datum">${datum}</time>
-      <h2 class="news-titel">${escapeHtml(eintrag.titel)}</h2>
-      <p class="news-inhalt">${escapeHtml(eintrag.inhalt)}</p>
+      <time class="news-datum">${date}</time>
+      <h2 class="news-titel">${escapeHtml(entry.title)}</h2>
+      <p class="news-inhalt">${escapeHtml(entry.content)}</p>
     </article>
   `;
 }
 
-export { rendere };
+export { render };

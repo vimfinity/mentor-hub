@@ -1,131 +1,83 @@
-// ===========================================
-// API Client - Fetch-Wrapper
-// ===========================================
+const BASE_URL = '';
 
-const BASIS_URL = '';
-
-/**
- * Fuehrt einen GET-Request aus.
- * @param {string} pfad - API-Pfad (z.B. "/api/news")
- * @returns {Promise<Object>} Geparste Antwort
- */
-async function get(pfad) {
-  const antwort = await fetch(BASIS_URL + pfad, {
+async function get(path) {
+  const response = await fetch(BASE_URL + path, {
     method: 'GET',
-    headers: erzeugeHeader()
+    headers: createHeaders()
   });
-  return verarbeiteAntwort(antwort);
+  return parseResponse(response);
 }
 
-/**
- * Fuehrt einen POST-Request aus.
- * @param {string} pfad - API-Pfad
- * @param {Object} daten - Zu sendende Daten
- * @returns {Promise<Object>} Geparste Antwort
- */
-async function post(pfad, daten) {
-  const antwort = await fetch(BASIS_URL + pfad, {
+async function post(path, data) {
+  const response = await fetch(BASE_URL + path, {
     method: 'POST',
-    headers: erzeugeHeader(),
-    body: JSON.stringify(daten)
+    headers: createHeaders(),
+    body: JSON.stringify(data)
   });
-  return verarbeiteAntwort(antwort);
+  return parseResponse(response);
 }
 
-/**
- * Fuehrt einen PUT-Request aus.
- * @param {string} pfad - API-Pfad
- * @param {Object} daten - Zu sendende Daten
- * @returns {Promise<Object>} Geparste Antwort
- */
-async function put(pfad, daten) {
-  const antwort = await fetch(BASIS_URL + pfad, {
+async function put(path, data) {
+  const response = await fetch(BASE_URL + path, {
     method: 'PUT',
-    headers: erzeugeHeader(),
-    body: JSON.stringify(daten)
+    headers: createHeaders(),
+    body: JSON.stringify(data)
   });
-  return verarbeiteAntwort(antwort);
+  return parseResponse(response);
 }
 
-/**
- * Fuehrt einen DELETE-Request aus.
- * @param {string} pfad - API-Pfad
- * @returns {Promise<Object>} Geparste Antwort
- */
-async function loeschen(pfad) {
-  const antwort = await fetch(BASIS_URL + pfad, {
+async function remove(path) {
+  const response = await fetch(BASE_URL + path, {
     method: 'DELETE',
-    headers: erzeugeHeader()
+    headers: createHeaders()
   });
-  return verarbeiteAntwort(antwort);
+  return parseResponse(response);
 }
 
-/**
- * Erzeugt Request-Header inkl. Auth-Token falls vorhanden.
- * @returns {Object} Headers
- */
-function erzeugeHeader() {
+function createHeaders() {
   const headers = {
     'Content-Type': 'application/json'
   };
 
-  const token = holeToken();
+  const token = getToken();
   if (token) {
-    headers['Authorization'] = 'Bearer ' + token;
+    headers.Authorization = 'Bearer ' + token;
   }
 
   return headers;
 }
 
-/**
- * Verarbeitet die Fetch-Antwort.
- * @param {Response} antwort - Fetch Response
- * @returns {Promise<Object>} Geparste Daten mit Statusinfo
- */
-async function verarbeiteAntwort(antwort) {
-  const daten = await antwort.json().catch(() => null);
-
+async function parseResponse(response) {
+  const data = await response.json().catch(() => null);
   return {
-    ok: antwort.ok,
-    status: antwort.status,
-    daten
+    ok: response.ok,
+    status: response.status,
+    data
   };
 }
 
-/**
- * Speichert den Auth-Token.
- * @param {string} token - Session-Token
- */
-function setzeToken(token) {
+function setToken(token) {
   try {
     sessionStorage.setItem('mentor-hub-token', token);
-  } catch (e) {
-    // Fallback: Im Speicher halten
+  } catch (error) {
     window.__mentorHubToken = token;
   }
 }
 
-/**
- * Gibt den gespeicherten Auth-Token zurueck.
- * @returns {string|null} Token oder null
- */
-function holeToken() {
+function getToken() {
   try {
     return sessionStorage.getItem('mentor-hub-token');
-  } catch (e) {
+  } catch (error) {
     return window.__mentorHubToken || null;
   }
 }
 
-/**
- * Entfernt den Auth-Token.
- */
-function entferneToken() {
+function removeToken() {
   try {
     sessionStorage.removeItem('mentor-hub-token');
-  } catch (e) {
+  } catch (error) {
     window.__mentorHubToken = null;
   }
 }
 
-export { get, post, put, loeschen, setzeToken, holeToken, entferneToken };
+export { get, post, put, remove, setToken, getToken, removeToken };

@@ -1,32 +1,30 @@
-// ===========================================
-// Toast-Komponente - Benachrichtigungen
-// ===========================================
-
 let container = null;
 
 /**
- * Erstellt den Toast-Container (einmalig).
+ * Creates the toast container once.
  */
-function initialisiereContainer() {
-  if (container) return;
+function initializeContainer() {
+  if (container) {
+    return;
+  }
   container = document.createElement('div');
   container.className = 'toast-container';
   document.body.appendChild(container);
 }
 
 /**
- * Zeigt eine Toast-Benachrichtigung an.
- * @param {string} nachricht - Anzuzeigende Nachricht
- * @param {string} typ - Typ: "erfolg", "fehler", "info"
- * @param {number} dauerMs - Anzeigedauer in ms (Standard: 4000)
+ * Shows a toast notification.
+ * @param {string} message - Message text
+ * @param {string} type - Toast type
+ * @param {number} durationMs - Display duration in milliseconds
  */
-function zeige(nachricht, typ, dauerMs) {
-  initialisiereContainer();
+function showToast(message, type, durationMs) {
+  initializeContainer();
 
-  const dauer = dauerMs || 4000;
+  const duration = durationMs || 4000;
   const toast = document.createElement('div');
-  toast.className = 'toast toast-' + typ;
-  toast.textContent = nachricht;
+  toast.className = 'toast toast-' + type;
+  toast.textContent = message;
 
   container.appendChild(toast);
 
@@ -39,31 +37,31 @@ function zeige(nachricht, typ, dauerMs) {
         toast.parentNode.removeChild(toast);
       }
     }, 300);
-  }, dauer);
+  }, duration);
 }
 
 /**
- * Zeigt eine Erfolgsmeldung.
- * @param {string} nachricht - Text
+ * Shows a success message.
+ * @param {string} message - Message text
  */
-function erfolg(nachricht) {
-  zeige(nachricht, 'erfolg', 4000);
+function showSuccess(message) {
+  showToast(message, 'success', 4000);
 }
 
 /**
- * Zeigt eine Fehlermeldung.
- * @param {string} nachricht - Text
+ * Shows an error message.
+ * @param {string} message - Message text
  */
-function fehler(nachricht) {
-  zeige(nachricht, 'fehler', 5000);
+function showError(message) {
+  showToast(message, 'error', 5000);
 }
 
 /**
- * Zeigt eine Infomeldung.
- * @param {string} nachricht - Text
+ * Shows an info message.
+ * @param {string} message - Message text
  */
-function info(nachricht) {
-  zeige(nachricht, 'info', 4000);
+function showInfo(message) {
+  showToast(message, 'info', 4000);
 }
 
-export { erfolg, fehler, info };
+export { showSuccess, showError, showInfo };

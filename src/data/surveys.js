@@ -1,113 +1,155 @@
 'use strict';
 
-const speicher = require('./store');
+const store = require('./store');
 
-const DATEI = 'surveys.json';
+const FILE_NAME = 'surveys.json';
+
+function normalizeQuestion(question) {
+  return {
+    text: question.text,
+    type: question.type || question.typ || 'free_text',
+    options: question.options || question.optionen || []
+  };
+}
+
+function normalizeResponse(response) {
+  return {
+    id: response.id,
+    name: response.name || null,
+    responses: response.responses || response.antworten || [],
+    submittedAt: response.submittedAt || response.eingereichtAm || new Date().toISOString()
+  };
+}
+
+function normalizeSurvey(survey) {
+  return {
+    id: survey.id,
+    title: survey.title || survey.titel || '',
+    description: survey.description || survey.beschreibung || '',
+    questions: (survey.questions || survey.fragen || []).map(normalizeQuestion),
+    active: survey.active !== undefined ? survey.active : !!survey.aktiv,
+    responses: (survey.responses || survey.antworten || []).map(normalizeResponse),
+    createdAt: survey.createdAt || survey.erstelltAm || new Date().toISOString(),
+    updatedAt: survey.updatedAt || survey.aktualisiertAm || null
+  };
+}
+
+function loadSurveys() {
+  return store.readDataFile(FILE_NAME).map(normalizeSurvey);
+}
 
 /**
- * Gibt alle aktiven Umfragen zurueck (ohne Antworten).
- * @returns {Array} Liste aktiver Umfragen
+ * Returns all active surveys without responses.
+ * @returns {Array} List of active surveys
  */
-function holeAktive() {
-  const alle = speicher.lesen(DATEI);
-  return alle
-    .filter(umfrage => umfrage.aktiv)
-    .map(umfrage => ({
-      id: umfrage.id,
-      titel: umfrage.titel,
-      beschreibung: umfrage.beschreibung,
-      fragen: umfrage.fragen,
-      erstelltAm: umfrage.erstelltAm
+function getActive() {
+  return loadSurveys()
+    .filter((survey) => survey.active)
+    .map((survey) => ({
+      id: survey.id,
+      title: survey.title,
+      description: survey.description,
+      questions: survey.questions,
+      createdAt: survey.createdAt
     }));
 }
 
 /**
- * Gibt alle Umfragen zurueck (mit Antworten, fuer Admin).
- * @returns {Array} Alle Umfragen mit Antworten
+ * Returns all surveys including responses.
+ * @returns {Array} All surveys
  */
-function holeAlle() {
-  return speicher.lesen(DATEI);
+function getAll() {
+  return loadSurveys();
 }
 
 /**
- * Erstellt eine neue Umfrage.
- * @param {Object} daten - Umfrage-Daten
- * @param {string} daten.titel - Titel der Umfrage
- * @param {string} daten.beschreibung - Beschreibung
- * @param {Array} daten.fragen - Array von Frage-Objekten
- * @returns {Object} Erstellte Umfrage
+ * Creates a new survey.
+ * @param {Object} data - Survey payload
+ * @returns {Object} Created survey
  */
-function erstelle(daten) {
-  const umfrage = {
-    titel: daten.titel,
-    beschreibung: daten.beschreibung || '',
-    fragen: daten.fragen || [],
-    aktiv: true,
-    antworten: []
+function create(data) {
+  const survey = {
+    title: data.title,
+    description: data.description || '',
+    questions: (data.questions || []).map(normalizeQuestion),
+    active: true,
+    responses: []
   };
-  return speicher.hinzufuegen(DATEI, umfrage);
+  return store.addItem(FILE_NAME, survey);
 }
 
 /**
- * Aktualisiert eine Umfrage.
- * @param {string} id - Umfrage-ID
- * @param {Object} aenderungen - Zu uebernehmende Felder
- * @returns {Object|null} Aktualisierte Umfrage oder null
+ * Updates a survey.
+ * @param {string} id - Survey id
+ * @param {Object} changes - Fields to update
+ * @returns {Object|null} Updated survey or null
  */
-function aktualisiere(id, aenderungen) {
-  // Antworten duerfen nicht ueberschrieben werden
-  const erlaubteFelder = ['titel', 'beschreibung', 'fragen', 'aktiv'];
-  const gefiltert = {};
-  for (const feld of erlaubteFelder) {
-    if (aenderungen[feld] !== undefined) {
-      gefiltert[feld] = aenderungen[feld];
+function update(id, changes) {
+  const allowedFields = ['title', 'description', 'questions', 'active'];
+  const filteredChanges = {};
+
+  if (changes.title !== undefined || changes.titel !== undefined) {
+    filteredChanges.title = changes.title !== undefined ? changes.title : changes.titel;
+  }
+  if (changes.description !== undefined || changes.beschreibung !== undefined) {
+    filteredChanges.description = changes.description !== undefined ? changes.description : changes.beschreibung;
+  }
+  if (changes.questions !== undefined || changes.fragen !== undefined) {
+    filteredChanges.questions = (changes.questions || changes.fragen || []).map(normalizeQuestion);
+  }
+  if (changes.active !== undefined || changes.aktiv !== undefined) {
+    filteredChanges.active = changes.active !== undefined ? changes.active : changes.aktiv;
+  }
+
+  for (const field of Object.keys(filteredChanges)) {
+    if (!allowedFields.includes(field)) {
+      delete filteredChanges[field];
     }
   }
-  return speicher.aktualisieren(DATEI, id, gefiltert);
+
+  return store.updateItem(FILE_NAME, id, filteredChanges);
 }
 
 /**
- * Fuegt eine Antwort zu einer Umfrage hinzu.
- * @param {string} umfrageId - ID der Umfrage
- * @param {Object} antwort - Antwort-Daten
- * @param {string} [antwort.name] - Optionaler Name des Antwortenden
- * @param {Array} antwort.antworten - Array von Antwort-Werten
- * @returns {boolean} true wenn erfolgreich
+ * Adds a response to a survey.
+ * @param {string} surveyId - Survey id
+ * @param {Object} response - Response payload
+ * @returns {boolean} True if successful
  */
-function fuegeAntwortHinzu(umfrageId, antwort) {
-  const alle = speicher.lesen(DATEI);
-  const index = alle.findIndex(u => u.id === umfrageId);
+function addResponse(surveyId, response) {
+  const surveys = loadSurveys();
+  const index = surveys.findIndex((survey) => survey.id === surveyId);
 
-  if (index === -1 || !alle[index].aktiv) {
+  if (index === -1 || !surveys[index].active) {
     return false;
   }
 
-  const neueAntwort = {
-    id: speicher.erzeugeId(),
-    name: antwort.name || null,
-    antworten: antwort.antworten,
-    eingereichtAm: new Date().toISOString()
+  const newResponse = {
+    id: store.createId(),
+    name: response.name || null,
+    responses: response.responses || response.antworten || [],
+    submittedAt: new Date().toISOString()
   };
 
-  alle[index].antworten.push(neueAntwort);
-  speicher.schreiben(DATEI, alle);
+  surveys[index].responses.push(newResponse);
+  store.writeDataFile(FILE_NAME, surveys);
   return true;
 }
 
 /**
- * Loescht eine Umfrage.
- * @param {string} id - Umfrage-ID
- * @returns {boolean} true wenn geloescht
+ * Deletes a survey.
+ * @param {string} id - Survey id
+ * @returns {boolean} True if deleted
  */
-function loesche(id) {
-  return speicher.loeschen(DATEI, id);
+function remove(id) {
+  return store.deleteItem(FILE_NAME, id);
 }
 
 module.exports = {
-  holeAktive,
-  holeAlle,
-  erstelle,
-  aktualisiere,
-  fuegeAntwortHinzu,
-  loesche
+  getActive,
+  getAll,
+  create,
+  update,
+  addResponse,
+  remove
 };

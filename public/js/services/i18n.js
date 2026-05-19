@@ -1,96 +1,62 @@
-// ===========================================
-// i18n Service - Sprachverwaltung
-// ===========================================
+let translations = {};
+let currentLanguage = 'de';
+const languageListeners = [];
 
-/** @type {Object} Geladene Uebersetzungen */
-let uebersetzungen = {};
-
-/** @type {string} Aktuelle Sprache */
-let aktuelleSprache = 'de';
-
-/** @type {Array<Function>} Listener fuer Sprachwechsel */
-const listener = [];
-
-/**
- * Laedt eine Locale-Datei vom Server.
- * @param {string} sprache - Sprach-Code (de/en)
- */
-async function ladeSprache(sprache) {
-  const antwort = await fetch('/api/i18n/' + sprache);
-  if (!antwort.ok) {
-    throw new Error('Sprache konnte nicht geladen werden: ' + sprache);
+async function loadLanguage(language) {
+  const response = await fetch('/api/i18n/' + language);
+  if (!response.ok) {
+    throw new Error('Failed to load locale: ' + language);
   }
-  uebersetzungen = await antwort.json();
-  aktuelleSprache = sprache;
 
-  // Sprache im localStorage speichern
+  translations = await response.json();
+  currentLanguage = language;
+
   try {
-    localStorage.setItem('mentor-hub-sprache', sprache);
-  } catch (e) {
-    // localStorage nicht verfuegbar - ignorieren
+    localStorage.setItem('mentor-hub-language', language);
+  } catch (error) {
+    // Ignore localStorage access failures.
   }
 
-  // Listener benachrichtigen
-  listener.forEach(fn => fn(sprache));
+  languageListeners.forEach((listener) => listener(language));
 }
 
-/**
- * Gibt die Uebersetzung fuer einen Schluessel zurueck.
- * Unterstuetzt verschachtelte Schluessel mit Punkt-Notation: "nav.neuigkeiten"
- * @param {string} schluessel - Uebersetzungs-Schluessel
- * @returns {string} Uebersetzer Text oder Schluessel als Fallback
- */
-function t(schluessel) {
-  const teile = schluessel.split('.');
-  let wert = uebersetzungen;
+function t(key) {
+  const parts = key.split('.');
+  let value = translations;
 
-  for (const teil of teile) {
-    if (wert && typeof wert === 'object' && teil in wert) {
-      wert = wert[teil];
+  for (const part of parts) {
+    if (value && typeof value === 'object' && part in value) {
+      value = value[part];
     } else {
-      return schluessel;
+      return key;
     }
   }
 
-  return typeof wert === 'string' ? wert : schluessel;
+  return typeof value === 'string' ? value : key;
 }
 
-/**
- * Wechselt zur naechsten verfuegbaren Sprache.
- */
-async function wechsleSprache() {
-  const neueSprache = aktuelleSprache === 'de' ? 'en' : 'de';
-  await ladeSprache(neueSprache);
+async function toggleLanguage() {
+  const nextLanguage = currentLanguage === 'de' ? 'en' : 'de';
+  await loadLanguage(nextLanguage);
 }
 
-/**
- * Gibt die aktuelle Sprache zurueck.
- * @returns {string} Aktueller Sprach-Code
- */
-function holeSprache() {
-  return aktuelleSprache;
+function getLanguage() {
+  return currentLanguage;
 }
 
-/**
- * Registriert einen Listener fuer Sprachwechsel.
- * @param {Function} fn - Callback-Funktion
- */
-function beiSprachwechsel(fn) {
-  listener.push(fn);
+function onLanguageChange(listener) {
+  languageListeners.push(listener);
 }
 
-/**
- * Initialisiert den i18n-Service.
- * Laedt die gespeicherte oder Standard-Sprache.
- */
-async function initialisiere() {
-  let gespeichert = 'de';
+async function initI18n() {
+  let storedLanguage = 'de';
   try {
-    gespeichert = localStorage.getItem('mentor-hub-sprache') || 'de';
-  } catch (e) {
-    // localStorage nicht verfuegbar
+    storedLanguage = localStorage.getItem('mentor-hub-language') || 'de';
+  } catch (error) {
+    // Ignore localStorage access failures.
   }
-  await ladeSprache(gespeichert);
+
+  await loadLanguage(storedLanguage);
 }
 
-export { t, wechsleSprache, holeSprache, beiSprachwechsel, initialisiere };
+export { t, toggleLanguage, getLanguage, onLanguageChange, initI18n };

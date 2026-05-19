@@ -3,140 +3,140 @@
 const fs = require('fs');
 const path = require('path');
 
-// Basis-Pfad fuer Datendateien
-const datenVerzeichnis = path.join(__dirname, '..', '..', 'data');
+// Base path for persisted JSON data files.
+const dataDirectory = path.join(__dirname, '..', '..', 'data');
 
-// Schreibsperre pro Datei (verhindert gleichzeitige Schreibvorgaenge)
-const schreibSperren = new Map();
+// Simple per-file write locks to avoid concurrent writes.
+const writeLocks = new Map();
 
 /**
- * Liest eine JSON-Datei und gibt den geparsten Inhalt zurueck.
- * @param {string} dateiName - Name der JSON-Datei (z.B. "surveys.json")
- * @returns {Array|Object} Geparster Inhalt
+ * Reads and parses a JSON data file.
+ * @param {string} fileName - JSON file name, for example "surveys.json"
+ * @returns {Array|Object} Parsed JSON contents
  */
-function lesen(dateiName) {
-  const pfad = path.join(datenVerzeichnis, dateiName);
+function readDataFile(fileName) {
+  const filePath = path.join(dataDirectory, fileName);
   try {
-    const inhalt = fs.readFileSync(pfad, 'utf-8');
-    return JSON.parse(inhalt);
-  } catch (fehler) {
-    if (fehler.code === 'ENOENT') {
+    const contents = fs.readFileSync(filePath, 'utf-8');
+    return JSON.parse(contents);
+  } catch (error) {
+    if (error.code === 'ENOENT') {
       return [];
     }
-    throw fehler;
+    throw error;
   }
 }
 
 /**
- * Schreibt Daten atomar in eine JSON-Datei.
- * Schreibt zuerst in .tmp, benennt dann um (crash-sicher).
- * @param {string} dateiName - Name der JSON-Datei
- * @param {Array|Object} daten - Zu schreibende Daten
+ * Writes JSON data atomically to disk.
+ * @param {string} fileName - JSON file name
+ * @param {Array|Object} data - Data to persist
  */
-function schreiben(dateiName, daten) {
-  const pfad = path.join(datenVerzeichnis, dateiName);
-  const tmpPfad = pfad + '.tmp';
+function writeDataFile(fileName, data) {
+  const filePath = path.join(dataDirectory, fileName);
+  const tempFilePath = filePath + '.tmp';
 
-  // Einfache Schreibsperre (synchron, fuer Single-Threaded Node ausreichend)
-  if (schreibSperren.get(dateiName)) {
-    throw new Error(`Schreibvorgang fuer ${dateiName} bereits aktiv`);
+  if (writeLocks.get(fileName)) {
+    throw new Error(`Write operation for ${fileName} is already active`);
   }
 
-  schreibSperren.set(dateiName, true);
+  writeLocks.set(fileName, true);
   try {
-    const json = JSON.stringify(daten, null, 2);
-    fs.writeFileSync(tmpPfad, json, 'utf-8');
-    fs.renameSync(tmpPfad, pfad);
+    const json = JSON.stringify(data, null, 2);
+    fs.writeFileSync(tempFilePath, json, 'utf-8');
+    fs.renameSync(tempFilePath, filePath);
   } finally {
-    schreibSperren.set(dateiName, false);
+    writeLocks.set(fileName, false);
   }
 }
 
 /**
- * Sucht einen Eintrag anhand der ID.
- * @param {string} dateiName - Name der JSON-Datei
- * @param {string} id - Gesuchte ID
- * @returns {Object|null} Gefundener Eintrag oder null
+ * Finds a record by id in a JSON data file.
+ * @param {string} fileName - JSON file name
+ * @param {string} id - Record id
+ * @returns {Object|null} Found record or null
  */
-function sucheNachId(dateiName, id) {
-  const daten = lesen(dateiName);
-  return daten.find(eintrag => eintrag.id === id) || null;
+function findById(fileName, id) {
+  const records = readDataFile(fileName);
+  return records.find((record) => record.id === id) || null;
 }
 
 /**
- * Fuegt einen neuen Eintrag hinzu.
- * @param {string} dateiName - Name der JSON-Datei
- * @param {Object} eintrag - Neuer Eintrag (bekommt automatisch ID + Zeitstempel)
- * @returns {Object} Der erstellte Eintrag mit ID
+ * Adds a new record to a JSON data file.
+ * @param {string} fileName - JSON file name
+ * @param {Object} entry - Record payload
+ * @returns {Object} Persisted record
  */
-function hinzufuegen(dateiName, eintrag) {
-  const daten = lesen(dateiName);
-  const neuerEintrag = {
-    id: erzeugeId(),
-    erstelltAm: new Date().toISOString(),
-    ...eintrag
+function addItem(fileName, entry) {
+  const records = readDataFile(fileName);
+  const createdItem = {
+    id: createId(),
+    createdAt: new Date().toISOString(),
+    ...entry
   };
-  daten.push(neuerEintrag);
-  schreiben(dateiName, daten);
-  return neuerEintrag;
+  records.push(createdItem);
+  writeDataFile(fileName, records);
+  return createdItem;
 }
 
 /**
- * Aktualisiert einen Eintrag anhand der ID.
- * @param {string} dateiName - Name der JSON-Datei
- * @param {string} id - ID des zu aktualisierenden Eintrags
- * @param {Object} aenderungen - Zu uebernehmende Aenderungen
- * @returns {Object|null} Aktualisierter Eintrag oder null
+ * Updates a record by id.
+ * @param {string} fileName - JSON file name
+ * @param {string} id - Record id
+ * @param {Object} changes - Fields to update
+ * @returns {Object|null} Updated record or null
  */
-function aktualisieren(dateiName, id, aenderungen) {
-  const daten = lesen(dateiName);
-  const index = daten.findIndex(eintrag => eintrag.id === id);
+function updateItem(fileName, id, changes) {
+  const records = readDataFile(fileName);
+  const index = records.findIndex((record) => record.id === id);
   if (index === -1) {
     return null;
   }
-  daten[index] = {
-    ...daten[index],
-    ...aenderungen,
-    id: daten[index].id,
-    erstelltAm: daten[index].erstelltAm,
-    aktualisiertAm: new Date().toISOString()
+  records[index] = {
+    ...records[index],
+    ...changes,
+    id: records[index].id,
+    createdAt: records[index].createdAt || records[index].erstelltAm || new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   };
-  schreiben(dateiName, daten);
-  return daten[index];
+  delete records[index].erstelltAm;
+  delete records[index].aktualisiertAm;
+  writeDataFile(fileName, records);
+  return records[index];
 }
 
 /**
- * Loescht einen Eintrag anhand der ID.
- * @param {string} dateiName - Name der JSON-Datei
- * @param {string} id - ID des zu loeschenden Eintrags
- * @returns {boolean} true wenn geloescht, false wenn nicht gefunden
+ * Deletes a record by id.
+ * @param {string} fileName - JSON file name
+ * @param {string} id - Record id
+ * @returns {boolean} True if deleted, otherwise false
  */
-function loeschen(dateiName, id) {
-  const daten = lesen(dateiName);
-  const vorherLaenge = daten.length;
-  const gefiltert = daten.filter(eintrag => eintrag.id !== id);
-  if (gefiltert.length === vorherLaenge) {
+function deleteItem(fileName, id) {
+  const records = readDataFile(fileName);
+  const originalLength = records.length;
+  const filteredRecords = records.filter((record) => record.id !== id);
+  if (filteredRecords.length === originalLength) {
     return false;
   }
-  schreiben(dateiName, gefiltert);
+  writeDataFile(fileName, filteredRecords);
   return true;
 }
 
 /**
- * Erzeugt eine eindeutige ID (UUID v4 via crypto).
+ * Creates a UUID v4 identifier.
  * @returns {string} UUID
  */
-function erzeugeId() {
+function createId() {
   const crypto = require('crypto');
   return crypto.randomUUID();
 }
 
 module.exports = {
-  lesen,
-  schreiben,
-  sucheNachId,
-  hinzufuegen,
-  aktualisieren,
-  loeschen,
-  erzeugeId
+  readDataFile,
+  writeDataFile,
+  findById,
+  addItem,
+  updateItem,
+  deleteItem,
+  createId
 };

@@ -1,242 +1,274 @@
-// ===========================================
-// Admin Entry-Point
-// ===========================================
-
-import { initialisiere as initI18n, t, beiSprachwechsel, wechsleSprache } from './services/i18n.js';
+import { initI18n, t, onLanguageChange, toggleLanguage, getLanguage } from './services/i18n.js';
 import * as api from './services/api-client.js';
-import * as toast from './components/toast.js';
-import { escapeHtml } from './components/modal.js';
-import * as modal from './components/modal.js';
+import { showError, showSuccess } from './components/toast.js';
+import { icon } from './components/icons.js';
+import {
+  escapeHtml,
+  openModal,
+  confirmDialog
+} from './components/modal.js';
 
-/** @type {string} Aktiver Admin-Bereich */
-let aktiverBereich = 'umfragen';
+let activeSection = 'surveys';
+let isLoggedIn = false;
 
-/** @type {boolean} Eingeloggt? */
-let eingeloggt = false;
+function formatDate(value) {
+  const locale = getLanguage() === 'de' ? 'de-DE' : 'en-US';
+  return new Date(value).toLocaleDateString(locale);
+}
 
-/**
- * Initialisiert die Admin-Seite.
- */
-async function starte() {
-  try {
-    await initI18n();
-  } catch (e) {
-    console.error('i18n fehlgeschlagen:', e);
+function initializePageChrome() {
+  const languageButton = document.getElementById('admin-language-button');
+  if (languageButton) {
+    languageButton.innerHTML = `${icon('globe', 16)}<span></span>`;
+    languageButton.addEventListener('click', async () => {
+      languageButton.disabled = true;
+      await toggleLanguage();
+      languageButton.disabled = false;
+    });
   }
 
-  // Pruefen ob bereits ein Token vorhanden
-  const token = api.holeToken();
+  updatePageChrome();
+}
+
+function updatePageChrome() {
+  document.documentElement.lang = getLanguage();
+  document.title = t('admin.pageTitle') + ' - ' + t('app.title');
+
+  document.querySelectorAll('.logo-text').forEach((element) => {
+    element.textContent = t('app.title');
+  });
+
+  document.querySelectorAll('.logo-bild').forEach((element) => {
+    element.alt = t('app.logoAlt');
+  });
+
+  const backLink = document.getElementById('admin-back-link');
+  if (backLink) {
+    backLink.textContent = '\u2190 ' + t('admin.backToHome');
+  }
+
+  const loadingText = document.getElementById('admin-loading-text');
+  if (loadingText) {
+    loadingText.textContent = t('admin.loading');
+  }
+
+  const languageButton = document.getElementById('admin-language-button');
+  if (languageButton) {
+    languageButton.title = t('nav.language');
+    const label = languageButton.querySelector('span');
+    if (label) {
+      label.textContent = getLanguage() === 'de' ? 'EN' : 'DE';
+    }
+  }
+}
+
+async function start() {
+  try {
+    await initI18n();
+  } catch (error) {
+    console.error('i18n initialization failed:', error);
+  }
+
+  initializePageChrome();
+
+  const token = api.getToken();
   if (token) {
-    // Token validieren mit einem Test-Request
-    const test = await api.get('/api/admin/surveys');
-    if (test.ok) {
-      eingeloggt = true;
+    const healthCheck = await api.get('/api/admin/surveys');
+    if (healthCheck.ok) {
+      isLoggedIn = true;
     } else {
-      api.entferneToken();
+      api.removeToken();
     }
   }
 
-  rendere();
-
-  beiSprachwechsel(() => {
-    rendere();
+  await render();
+  onLanguageChange(() => {
+    updatePageChrome();
+    render();
   });
 }
 
-/**
- * Haupt-Render-Funktion.
- */
-async function rendere() {
+async function render() {
   const app = document.getElementById('admin-app');
-  if (!app) return;
+  if (!app) {
+    return;
+  }
 
-  // Status pruefen (Ersteinrichtung noetig?)
   const status = await api.get('/api/admin/status');
-  const eingerichtet = status.daten && status.daten.eingerichtet;
+  const configured = status.data && status.data.configured;
 
-  if (!eingerichtet) {
-    rendereSetup(app);
+  if (!configured) {
+    renderSetup(app);
     return;
   }
 
-  if (!eingeloggt) {
-    rendereLogin(app);
+  if (!isLoggedIn) {
+    renderLogin(app);
     return;
   }
 
-  rendereAdmin(app);
+  renderAdmin(app);
 }
 
-/**
- * Rendert die Ersteinrichtungs-Seite.
- * @param {HTMLElement} container
- */
-function rendereSetup(container) {
+function renderSetup(container) {
   container.innerHTML = `
     <div class="login-container">
       <div class="login-karte">
         <h1 class="login-titel">${t('admin.setup')}</h1>
         <p style="margin-bottom: 1.5rem; color: var(--farbe-text-sekundaer);">
-          ${t('admin.setupBeschreibung')}
+          ${t('admin.setupDescription')}
         </p>
-        <form id="setup-formular">
+        <form id="setup-form">
           <div class="formular-gruppe">
-            <label class="formular-label" for="setup-passwort">${t('admin.passwort')}</label>
-            <input type="password" id="setup-passwort" class="formular-eingabe"
+            <label class="formular-label" for="setup-password">${t('admin.password')}</label>
+            <input type="password" id="setup-password" class="formular-eingabe"
               minlength="8" required autocomplete="new-password">
           </div>
           <button type="submit" class="btn btn-primaer" style="width:100%">
-            ${t('admin.speichern')}
+            ${t('admin.save')}
           </button>
         </form>
       </div>
     </div>
   `;
 
-  container.querySelector('#setup-formular').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const passwort = container.querySelector('#setup-passwort').value;
+  container.querySelector('#setup-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const password = container.querySelector('#setup-password').value;
+    const result = await api.post('/api/admin/setup', { password });
 
-    const ergebnis = await api.post('/api/admin/setup', { passwort });
-    if (ergebnis.ok) {
-      toast.erfolg(t('admin.setupErfolg'));
-      rendere();
-    } else {
-      toast.fehler(ergebnis.daten ? ergebnis.daten.fehler : t('allgemein.fehler'));
+    if (result.ok) {
+      showSuccess(t('admin.setupSuccess'));
+      render();
+      return;
     }
+
+    showError(result.data ? result.data.error : t('general.error'));
   });
 }
 
-/**
- * Rendert die Login-Seite.
- * @param {HTMLElement} container
- */
-function rendereLogin(container) {
+function renderLogin(container) {
   container.innerHTML = `
     <div class="login-container">
       <div class="login-karte">
         <h1 class="login-titel">${t('admin.login')}</h1>
-        <form id="login-formular">
+        <form id="login-form">
           <div class="formular-gruppe">
-            <label class="formular-label" for="login-passwort">${t('admin.passwort')}</label>
-            <input type="password" id="login-passwort" class="formular-eingabe"
+            <label class="formular-label" for="login-password">${t('admin.password')}</label>
+            <input type="password" id="login-password" class="formular-eingabe"
               required autocomplete="current-password">
           </div>
           <button type="submit" class="btn btn-primaer" style="width:100%">
-            ${t('admin.anmelden')}
+            ${t('admin.signIn')}
           </button>
         </form>
       </div>
     </div>
   `;
 
-  container.querySelector('#login-formular').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const passwort = container.querySelector('#login-passwort').value;
+  container.querySelector('#login-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const password = container.querySelector('#login-password').value;
+    const result = await api.post('/api/admin/login', { password });
 
-    const ergebnis = await api.post('/api/admin/login', { passwort });
-    if (ergebnis.ok && ergebnis.daten.token) {
-      api.setzeToken(ergebnis.daten.token);
-      eingeloggt = true;
-      rendere();
-    } else {
-      toast.fehler(t('admin.fehler'));
+    if (result.ok && result.data?.token) {
+      api.setToken(result.data.token);
+      isLoggedIn = true;
+      render();
+      return;
     }
+
+    showError(result.data?.error || t('admin.error'));
   });
 }
 
-/**
- * Rendert das Admin-Dashboard.
- * @param {HTMLElement} container
- */
-function rendereAdmin(container) {
+function renderAdmin(container) {
   container.innerHTML = `
     <div class="admin-layout">
       <aside class="admin-sidebar">
-        <button class="admin-nav-link ${aktiverBereich === 'umfragen' ? 'aktiv' : ''}"
-          data-bereich="umfragen">${t('admin.umfragen')}</button>
-        <button class="admin-nav-link ${aktiverBereich === 'ressourcen' ? 'aktiv' : ''}"
-          data-bereich="ressourcen">${t('admin.ressourcen')}</button>
-        <button class="admin-nav-link ${aktiverBereich === 'painpoints' ? 'aktiv' : ''}"
-          data-bereich="painpoints">${t('admin.painpoints')}</button>
-        <button class="admin-nav-link ${aktiverBereich === 'neuigkeiten' ? 'aktiv' : ''}"
-          data-bereich="neuigkeiten">${t('admin.neuigkeiten')}</button>
+        <button class="admin-nav-link ${activeSection === 'surveys' ? 'aktiv' : ''}"
+          data-section="surveys">${t('admin.surveys')}</button>
+        <button class="admin-nav-link ${activeSection === 'resources' ? 'aktiv' : ''}"
+          data-section="resources">${t('admin.resources')}</button>
+        <button class="admin-nav-link ${activeSection === 'concerns' ? 'aktiv' : ''}"
+          data-section="concerns">${t('admin.concerns')}</button>
+        <button class="admin-nav-link ${activeSection === 'news' ? 'aktiv' : ''}"
+          data-section="news">${t('admin.news')}</button>
         <hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--farbe-grau-200);">
-        <button class="admin-nav-link" id="abmelden-btn">${t('admin.abmelden')}</button>
+        <button class="admin-nav-link" id="sign-out-button">${t('admin.signOut')}</button>
       </aside>
-      <div class="admin-inhalt" id="admin-inhalt">
-        <!-- Wird dynamisch gefuellt -->
-      </div>
+      <div class="admin-inhalt" id="admin-content"></div>
     </div>
   `;
 
-  // Sidebar-Navigation
-  container.querySelectorAll('.admin-nav-link[data-bereich]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      aktiverBereich = btn.dataset.bereich;
-      rendereAdmin(container);
+  container.querySelectorAll('.admin-nav-link[data-section]').forEach((button) => {
+    button.addEventListener('click', () => {
+      activeSection = button.dataset.section;
+      renderAdmin(container);
     });
   });
 
-  // Abmelden
-  container.querySelector('#abmelden-btn').addEventListener('click', async () => {
+  container.querySelector('#sign-out-button').addEventListener('click', async () => {
     await api.post('/api/admin/logout', {});
-    api.entferneToken();
-    eingeloggt = false;
-    rendere();
+    api.removeToken();
+    isLoggedIn = false;
+    render();
   });
 
-  // Aktiven Bereich rendern
-  const inhalt = container.querySelector('#admin-inhalt');
-  switch (aktiverBereich) {
-    case 'umfragen': rendereUmfragenAdmin(inhalt); break;
-    case 'ressourcen': rendereRessourcenAdmin(inhalt); break;
-    case 'painpoints': renderePainpointsAdmin(inhalt); break;
-    case 'neuigkeiten': rendereNeuigkeitenAdmin(inhalt); break;
+  const adminContent = container.querySelector('#admin-content');
+  switch (activeSection) {
+    case 'surveys':
+      renderSurveysAdmin(adminContent);
+      break;
+    case 'resources':
+      renderResourcesAdmin(adminContent);
+      break;
+    case 'concerns':
+      renderConcernsAdmin(adminContent);
+      break;
+    case 'news':
+      renderNewsAdmin(adminContent);
+      break;
   }
 }
 
-// ===========================================
-// Admin: Umfragen
-// ===========================================
-
-async function rendereUmfragenAdmin(container) {
-  const antwort = await api.get('/api/admin/surveys');
-  const umfragen = antwort.ok ? antwort.daten : [];
+async function renderSurveysAdmin(container) {
+  const response = await api.get('/api/admin/surveys');
+  const surveys = response.ok ? response.data : [];
 
   container.innerHTML = `
     <div class="admin-kopfzeile">
-      <h2>${t('admin.umfragen')}</h2>
-      <button class="btn btn-primaer" id="umfrage-erstellen">${t('admin.erstellen')}</button>
+      <h2>${t('admin.surveys')}</h2>
+      <button class="btn btn-primaer" id="create-survey-button">${t('admin.create')}</button>
     </div>
-    ${umfragen.length === 0 ? '<p class="leer-zustand-text">' + t('survey.leer') + '</p>' : ''}
-    <table class="tabelle" ${umfragen.length === 0 ? 'style="display:none"' : ''}>
+    ${surveys.length === 0 ? '<p class="leer-zustand-text">' + t('survey.empty') + '</p>' : ''}
+    <table class="tabelle" ${surveys.length === 0 ? 'style="display:none"' : ''}>
       <thead>
         <tr>
-          <th>Titel</th>
+          <th>${t('admin.title')}</th>
           <th>${t('admin.status')}</th>
-          <th>${t('admin.antworten')}</th>
+          <th>${t('admin.responses')}</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
-        ${umfragen.map(u => `
+        ${surveys.map((survey) => `
           <tr>
-            <td>${escapeHtml(u.titel)}</td>
+            <td>${escapeHtml(survey.title)}</td>
             <td>
-              <span class="status-badge ${u.aktiv ? 'status-offen' : 'status-erledigt'}">
-                ${u.aktiv ? t('admin.aktiv') : t('admin.inaktiv')}
+              <span class="status-badge ${survey.active ? 'status-open' : 'status-done'}">
+                ${survey.active ? t('admin.active') : t('admin.inactive')}
               </span>
             </td>
-            <td>${(u.antworten || []).length}</td>
+            <td>${(survey.responses || []).length}</td>
             <td class="tabelle-aktionen">
-              <button class="btn btn-klein btn-sekundaer" data-aktion="toggle" data-id="${u.id}">
-                ${u.aktiv ? '&#10074;&#10074;' : '&#9654;'}
+              <button class="btn btn-klein btn-sekundaer" data-action="toggle" data-id="${survey.id}">
+                ${survey.active ? '&#10074;&#10074;' : '&#9654;'}
               </button>
-              <button class="btn btn-klein btn-sekundaer" data-aktion="details" data-id="${u.id}">
+              <button class="btn btn-klein btn-sekundaer" data-action="details" data-id="${survey.id}">
                 &#128065;
               </button>
-              <button class="btn btn-klein btn-gefahr" data-aktion="loeschen" data-id="${u.id}">
+              <button class="btn btn-klein btn-gefahr" data-action="delete" data-id="${survey.id}">
                 &#128465;
               </button>
             </td>
@@ -246,172 +278,174 @@ async function rendereUmfragenAdmin(container) {
     </table>
   `;
 
-  // Erstellen-Button
-  container.querySelector('#umfrage-erstellen').addEventListener('click', () => {
-    zeigeUmfrageFormular(container);
+  container.querySelector('#create-survey-button').addEventListener('click', () => {
+    openSurveyForm(container);
   });
 
-  // Aktions-Buttons
-  container.querySelectorAll('[data-aktion]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const id = btn.dataset.id;
-      const aktion = btn.dataset.aktion;
+  container.querySelectorAll('[data-action]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const id = button.dataset.id;
+      const action = button.dataset.action;
+      const survey = surveys.find((item) => item.id === id);
 
-      if (aktion === 'toggle') {
-        const umfrage = umfragen.find(u => u.id === id);
-        await api.put('/api/admin/surveys/' + id, { aktiv: !umfrage.aktiv });
-        rendereUmfragenAdmin(container);
-      } else if (aktion === 'loeschen') {
-        modal.bestaetigung(t('admin.bestaetigung'), async () => {
-          await api.loeschen('/api/admin/surveys/' + id);
-          rendereUmfragenAdmin(container);
+      if (action === 'toggle' && survey) {
+        await api.put('/api/admin/surveys/' + id, { active: !survey.active });
+        renderSurveysAdmin(container);
+        return;
+      }
+
+      if (action === 'delete') {
+        confirmDialog(t('admin.confirmation'), async () => {
+          await api.remove('/api/admin/surveys/' + id);
+          renderSurveysAdmin(container);
         });
-      } else if (aktion === 'details') {
-        zeigeUmfrageDetails(umfragen.find(u => u.id === id));
+        return;
+      }
+
+      if (action === 'details' && survey) {
+        openSurveyDetails(survey);
       }
     });
   });
 }
 
-function zeigeUmfrageFormular(container) {
-  modal.oeffne({
-    titel: t('admin.erstellen') + ': ' + t('admin.umfragen'),
-    inhalt: `
-      <form id="neue-umfrage-form">
+function openSurveyForm(container) {
+  openModal({
+    title: t('admin.create') + ': ' + t('admin.surveys'),
+    content: `
+      <form id="new-survey-form">
         <div class="formular-gruppe">
-          <label class="formular-label">Titel *</label>
-          <input type="text" class="formular-eingabe" id="nf-titel" required maxlength="200">
+          <label class="formular-label">${t('admin.title')} *</label>
+          <input type="text" class="formular-eingabe" id="new-survey-title" required maxlength="200">
         </div>
         <div class="formular-gruppe">
-          <label class="formular-label">Beschreibung</label>
-          <textarea class="formular-textarea" id="nf-beschreibung"></textarea>
+          <label class="formular-label">${t('admin.description')}</label>
+          <textarea class="formular-textarea" id="new-survey-description"></textarea>
         </div>
         <div class="formular-gruppe">
-          <label class="formular-label">Fragen</label>
-          <div id="fragen-liste"></div>
-          <button type="button" class="btn btn-sekundaer btn-klein" id="frage-hinzufuegen">+ Frage</button>
+          <label class="formular-label">${t('admin.questions')}</label>
+          <div id="question-list"></div>
+          <button type="button" class="btn btn-sekundaer btn-klein" id="add-question-button">+ ${t('admin.add')}</button>
         </div>
       </form>
     `,
-    bestaetigenText: t('admin.speichern'),
-    abbrechenText: t('admin.abbrechen'),
-    beiBestaetigung: async (overlay) => {
-      const titel = overlay.querySelector('#nf-titel').value.trim();
-      if (!titel) return;
-
-      const fragen = sammleFragenAusFormular(overlay);
-      if (fragen.length === 0) {
-        toast.fehler('Mindestens eine Frage erforderlich');
+    confirmText: t('admin.save'),
+    cancelText: t('admin.cancel'),
+    onConfirm: async (overlay) => {
+      const title = overlay.querySelector('#new-survey-title').value.trim();
+      if (!title) {
         return;
       }
 
-      const beschreibung = overlay.querySelector('#nf-beschreibung').value.trim();
-      await api.post('/api/admin/surveys', { titel, beschreibung, fragen });
-      toast.erfolg('Umfrage erstellt');
-      rendereUmfragenAdmin(container);
+      const questions = collectQuestionsFromForm(overlay);
+      if (questions.length === 0) {
+        showError(t('admin.atLeastOneQuestion'));
+        return;
+      }
+
+      const description = overlay.querySelector('#new-survey-description').value.trim();
+      await api.post('/api/admin/surveys', { title, description, questions });
+      showSuccess(t('admin.surveyCreated'));
+      renderSurveysAdmin(container);
     }
   });
 
-  // Fragen-Builder
-  const fragenListe = document.querySelector('#fragen-liste');
-  const fragenBtn = document.querySelector('#frage-hinzufuegen');
-  let fragenZaehler = 0;
+  const questionList = document.querySelector('#question-list');
+  const addQuestionButton = document.querySelector('#add-question-button');
+  let questionCounter = 0;
 
-  fragenBtn.addEventListener('click', () => {
-    fragenZaehler++;
-    const div = document.createElement('div');
-    div.className = 'formular-gruppe';
-    div.style.padding = '0.5rem';
-    div.style.border = '1px solid var(--farbe-grau-200)';
-    div.style.borderRadius = '8px';
-    div.style.marginBottom = '0.5rem';
-    div.innerHTML = `
-      <input type="text" class="formular-eingabe frage-text-input"
-        placeholder="Frage ${fragenZaehler}" style="margin-bottom:0.5rem">
-      <select class="formular-select frage-typ-select">
-        <option value="freitext">Freitext</option>
-        <option value="bewertung">Sterne-Bewertung (1-5)</option>
-        <option value="ja_nein">Ja / Nein</option>
+  addQuestionButton.addEventListener('click', () => {
+    questionCounter += 1;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'formular-gruppe';
+    wrapper.style.padding = '0.5rem';
+    wrapper.style.border = '1px solid var(--farbe-grau-200)';
+    wrapper.style.borderRadius = '8px';
+    wrapper.style.marginBottom = '0.5rem';
+    wrapper.innerHTML = `
+      <input type="text" class="formular-eingabe question-text-input"
+        placeholder="${t('admin.question')} ${questionCounter}" style="margin-bottom:0.5rem">
+      <select class="formular-select question-type-select">
+        <option value="free_text">${t('admin.freeText')}</option>
+        <option value="rating">${t('admin.rating')}</option>
+        <option value="yes_no">${t('admin.yesNo')}</option>
       </select>
     `;
-    fragenListe.appendChild(div);
+    questionList.appendChild(wrapper);
   });
 
-  // Eine Frage direkt hinzufuegen
-  fragenBtn.click();
+  addQuestionButton.click();
 }
 
-function sammleFragenAusFormular(overlay) {
-  const fragen = [];
-  const texte = overlay.querySelectorAll('.frage-text-input');
-  const typen = overlay.querySelectorAll('.frage-typ-select');
+function collectQuestionsFromForm(overlay) {
+  const questions = [];
+  const textInputs = overlay.querySelectorAll('.question-text-input');
+  const typeInputs = overlay.querySelectorAll('.question-type-select');
 
-  texte.forEach((input, index) => {
+  textInputs.forEach((input, index) => {
     const text = input.value.trim();
-    if (text) {
-      fragen.push({
-        text,
-        typ: typen[index] ? typen[index].value : 'freitext'
-      });
+    if (!text) {
+      return;
     }
+
+    questions.push({
+      text,
+      type: typeInputs[index] ? typeInputs[index].value : 'free_text'
+    });
   });
 
-  return fragen;
+  return questions;
 }
 
-function zeigeUmfrageDetails(umfrage) {
-  if (!umfrage) return;
-
-  const antwortHtml = (umfrage.antworten || []).map(a => {
-    const datum = new Date(a.eingereichtAm).toLocaleDateString('de-DE');
+function openSurveyDetails(survey) {
+  const responseHtml = (survey.responses || []).map((response) => {
+    const submittedAt = formatDate(response.submittedAt);
     return `
       <div style="padding:0.5rem; border-bottom: 1px solid var(--farbe-grau-100); margin-bottom:0.5rem">
-        <small style="color:var(--farbe-text-gedaempft)">${datum} ${a.name ? '- ' + escapeHtml(a.name) : '(Anonym)'}</small>
-        <div>${a.antworten.map((ant, i) => `
-          <p><strong>${escapeHtml(umfrage.fragen[i] ? umfrage.fragen[i].text : 'Frage ' + (i+1))}:</strong> ${escapeHtml(String(ant))}</p>
+        <small style="color:var(--farbe-text-gedaempft)">
+          ${submittedAt} ${response.name ? '- ' + escapeHtml(response.name) : '(' + escapeHtml(t('admin.anonymous')) + ')'}
+        </small>
+        <div>${response.responses.map((answer, index) => `
+          <p><strong>${escapeHtml(survey.questions[index] ? survey.questions[index].text : t('admin.question') + ' ' + (index + 1))}:</strong> ${escapeHtml(String(answer))}</p>
         `).join('')}</div>
       </div>
     `;
   }).join('');
 
-  modal.oeffne({
-    titel: escapeHtml(umfrage.titel) + ' - ' + t('admin.antworten'),
-    inhalt: antwortHtml || '<p>Noch keine Antworten.</p>',
-    abbrechenText: t('allgemein.schliessen')
+  openModal({
+    title: escapeHtml(survey.title) + ' - ' + t('admin.responses'),
+    content: responseHtml || '<p>' + escapeHtml(t('admin.noResponses')) + '</p>',
+    cancelText: t('general.close')
   });
 }
 
-// ===========================================
-// Admin: Ressourcen
-// ===========================================
-
-async function rendereRessourcenAdmin(container) {
-  const antwort = await api.get('/api/resources');
-  const ressourcen = antwort.ok ? antwort.daten : [];
+async function renderResourcesAdmin(container) {
+  const response = await api.get('/api/resources');
+  const resources = response.ok ? response.data : [];
 
   container.innerHTML = `
     <div class="admin-kopfzeile">
-      <h2>${t('admin.ressourcen')}</h2>
-      <button class="btn btn-primaer" id="ressource-erstellen">${t('admin.erstellen')}</button>
+      <h2>${t('admin.resources')}</h2>
+      <button class="btn btn-primaer" id="create-resource-button">${t('admin.create')}</button>
     </div>
-    ${ressourcen.length === 0 ? '<p class="leer-zustand-text">' + t('resource.leer') + '</p>' : ''}
-    <table class="tabelle" ${ressourcen.length === 0 ? 'style="display:none"' : ''}>
+    ${resources.length === 0 ? '<p class="leer-zustand-text">' + t('resource.empty') + '</p>' : ''}
+    <table class="tabelle" ${resources.length === 0 ? 'style="display:none"' : ''}>
       <thead>
         <tr>
-          <th>Titel</th>
-          <th>Kategorie</th>
-          <th>URL</th>
+          <th>${t('admin.title')}</th>
+          <th>${t('admin.category')}</th>
+          <th>${t('admin.url')}</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
-        ${ressourcen.map(r => `
+        ${resources.map((resource) => `
           <tr>
-            <td>${escapeHtml(r.titel)}</td>
-            <td><span class="karte-kategorie">${escapeHtml(r.kategorie)}</span></td>
-            <td><a href="${escapeHtml(r.url)}" target="_blank" rel="noopener">&#128279;</a></td>
+            <td>${escapeHtml(resource.title)}</td>
+            <td><span class="karte-kategorie">${escapeHtml(t('resource.' + resource.category))}</span></td>
+            <td><a href="${escapeHtml(resource.url)}" target="_blank" rel="noopener">&#128279;</a></td>
             <td class="tabelle-aktionen">
-              <button class="btn btn-klein btn-gefahr" data-aktion="loeschen" data-id="${r.id}">
+              <button class="btn btn-klein btn-gefahr" data-id="${resource.id}">
                 &#128465;
               </button>
             </td>
@@ -421,99 +455,97 @@ async function rendereRessourcenAdmin(container) {
     </table>
   `;
 
-  container.querySelector('#ressource-erstellen').addEventListener('click', () => {
-    modal.oeffne({
-      titel: t('admin.erstellen') + ': ' + t('admin.ressourcen'),
-      inhalt: `
+  container.querySelector('#create-resource-button').addEventListener('click', () => {
+    openModal({
+      title: t('admin.create') + ': ' + t('admin.resources'),
+      content: `
         <div class="formular-gruppe">
-          <label class="formular-label">Titel *</label>
-          <input type="text" class="formular-eingabe" id="nr-titel" maxlength="200" required>
+          <label class="formular-label">${t('admin.title')} *</label>
+          <input type="text" class="formular-eingabe" id="new-resource-title" maxlength="200" required>
         </div>
         <div class="formular-gruppe">
-          <label class="formular-label">URL *</label>
-          <input type="url" class="formular-eingabe" id="nr-url" required>
+          <label class="formular-label">${t('admin.url')} *</label>
+          <input type="url" class="formular-eingabe" id="new-resource-url" required>
         </div>
         <div class="formular-gruppe">
-          <label class="formular-label">Beschreibung</label>
-          <textarea class="formular-textarea" id="nr-beschreibung"></textarea>
+          <label class="formular-label">${t('admin.description')}</label>
+          <textarea class="formular-textarea" id="new-resource-description"></textarea>
         </div>
         <div class="formular-gruppe">
-          <label class="formular-label">Kategorie</label>
-          <select class="formular-select" id="nr-kategorie">
-            <option value="artikel">Artikel</option>
-            <option value="tool">Tool</option>
-            <option value="video">Video</option>
-            <option value="tutorial">Tutorial</option>
+          <label class="formular-label">${t('admin.category')}</label>
+          <select class="formular-select" id="new-resource-category">
+            <option value="article">${t('resource.article')}</option>
+            <option value="tool">${t('resource.tool')}</option>
+            <option value="video">${t('resource.video')}</option>
+            <option value="tutorial">${t('resource.tutorial')}</option>
           </select>
         </div>
       `,
-      bestaetigenText: t('admin.speichern'),
-      abbrechenText: t('admin.abbrechen'),
-      beiBestaetigung: async (overlay) => {
-        const titel = overlay.querySelector('#nr-titel').value.trim();
-        const url = overlay.querySelector('#nr-url').value.trim();
-        if (!titel || !url) return;
+      confirmText: t('admin.save'),
+      cancelText: t('admin.cancel'),
+      onConfirm: async (overlay) => {
+        const title = overlay.querySelector('#new-resource-title').value.trim();
+        const url = overlay.querySelector('#new-resource-url').value.trim();
+        if (!title || !url) {
+          return;
+        }
 
         await api.post('/api/admin/resources', {
-          titel,
+          title,
           url,
-          beschreibung: overlay.querySelector('#nr-beschreibung').value.trim(),
-          kategorie: overlay.querySelector('#nr-kategorie').value
+          description: overlay.querySelector('#new-resource-description').value.trim(),
+          category: overlay.querySelector('#new-resource-category').value
         });
-        toast.erfolg('Ressource erstellt');
-        rendereRessourcenAdmin(container);
+        showSuccess(t('admin.resourceCreated'));
+        renderResourcesAdmin(container);
       }
     });
   });
 
-  container.querySelectorAll('[data-aktion="loeschen"]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      modal.bestaetigung(t('admin.bestaetigung'), async () => {
-        await api.loeschen('/api/admin/resources/' + btn.dataset.id);
-        rendereRessourcenAdmin(container);
+  container.querySelectorAll('[data-id]').forEach((button) => {
+    button.addEventListener('click', () => {
+      confirmDialog(t('admin.confirmation'), async () => {
+        await api.remove('/api/admin/resources/' + button.dataset.id);
+        renderResourcesAdmin(container);
       });
     });
   });
 }
 
-// ===========================================
-// Admin: Painpoints
-// ===========================================
-
-async function renderePainpointsAdmin(container) {
-  const antwort = await api.get('/api/admin/painpoints');
-  const punkte = antwort.ok ? antwort.daten : [];
+async function renderConcernsAdmin(container) {
+  const response = await api.get('/api/admin/concerns');
+  const concerns = response.ok ? response.data : [];
 
   container.innerHTML = `
     <div class="admin-kopfzeile">
-      <h2>${t('admin.painpoints')}</h2>
+      <h2>${t('admin.concerns')}</h2>
     </div>
-    ${punkte.length === 0 ? '<p class="leer-zustand-text">Keine Painpoints vorhanden.</p>' : ''}
-    <table class="tabelle" ${punkte.length === 0 ? 'style="display:none"' : ''}>
+    ${concerns.length === 0 ? '<p class="leer-zustand-text">' + t('admin.noConcerns') + '</p>' : ''}
+    <table class="tabelle" ${concerns.length === 0 ? 'style="display:none"' : ''}>
       <thead>
         <tr>
-          <th>Titel</th>
-          <th>Name</th>
+          <th>${t('admin.title')}</th>
+          <th>${t('admin.name')}</th>
           <th>${t('admin.status')}</th>
-          <th>Datum</th>
+          <th>${t('admin.date')}</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
-        ${punkte.map(p => `
+        ${concerns.map((concern) => `
           <tr>
-            <td title="${escapeHtml(p.beschreibung || '')}">${escapeHtml(p.titel)}</td>
-            <td>${p.name ? escapeHtml(p.name) : '<em>Anonym</em>'}</td>
+            <td title="${escapeHtml(concern.description || '')}">${escapeHtml(concern.title)}</td>
+            <td>${concern.name ? escapeHtml(concern.name) : '<em>' + escapeHtml(t('admin.anonymous')) + '</em>'}</td>
             <td>
-              <select class="formular-select status-select" data-id="${p.id}" style="width:auto;padding:0.25rem">
-                <option value="offen" ${p.status === 'offen' ? 'selected' : ''}>${t('admin.offen')}</option>
-                <option value="in_bearbeitung" ${p.status === 'in_bearbeitung' ? 'selected' : ''}>${t('admin.inBearbeitung')}</option>
-                <option value="erledigt" ${p.status === 'erledigt' ? 'selected' : ''}>${t('admin.erledigt')}</option>
+              <select class="formular-select concern-status-select" data-id="${concern.id}" style="width:auto;padding:0.25rem">
+                <option value="open" ${concern.status === 'open' ? 'selected' : ''}>${t('admin.open')}</option>
+                <option value="in_progress" ${concern.status === 'in_progress' ? 'selected' : ''}>${t('admin.inProgress')}</option>
+                <option value="done" ${concern.status === 'done' ? 'selected' : ''}>${t('admin.done')}</option>
               </select>
             </td>
-            <td>${new Date(p.erstelltAm).toLocaleDateString('de-DE')}</td>
+            <td>${formatDate(concern.createdAt)}</td>
             <td class="tabelle-aktionen">
-              <button class="btn btn-klein btn-gefahr" data-aktion="loeschen" data-id="${p.id}">
+              <button class="btn btn-klein btn-gefahr concern-delete-button" data-id="${concern.id}">
                 &#128465;
               </button>
             </td>
@@ -523,56 +555,50 @@ async function renderePainpointsAdmin(container) {
     </table>
   `;
 
-  // Status-Aenderung
-  container.querySelectorAll('.status-select').forEach(select => {
+  container.querySelectorAll('.concern-status-select').forEach((select) => {
     select.addEventListener('change', async () => {
-      await api.put('/api/admin/painpoints/' + select.dataset.id, {
+      await api.put('/api/admin/concerns/' + select.dataset.id, {
         status: select.value
       });
-      toast.erfolg('Status aktualisiert');
+      showSuccess(t('admin.statusUpdated'));
     });
   });
 
-  // Loeschen
-  container.querySelectorAll('[data-aktion="loeschen"]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      modal.bestaetigung(t('admin.bestaetigung'), async () => {
-        await api.loeschen('/api/admin/painpoints/' + btn.dataset.id);
-        renderePainpointsAdmin(container);
+  container.querySelectorAll('.concern-delete-button').forEach((button) => {
+    button.addEventListener('click', () => {
+      confirmDialog(t('admin.confirmation'), async () => {
+        await api.remove('/api/admin/concerns/' + button.dataset.id);
+        renderConcernsAdmin(container);
       });
     });
   });
 }
 
-// ===========================================
-// Admin: Neuigkeiten
-// ===========================================
-
-async function rendereNeuigkeitenAdmin(container) {
-  const antwort = await api.get('/api/news');
-  const news = antwort.ok ? antwort.daten : [];
+async function renderNewsAdmin(container) {
+  const response = await api.get('/api/news');
+  const newsItems = response.ok ? response.data : [];
 
   container.innerHTML = `
     <div class="admin-kopfzeile">
-      <h2>${t('admin.neuigkeiten')}</h2>
-      <button class="btn btn-primaer" id="news-erstellen">${t('admin.erstellen')}</button>
+      <h2>${t('admin.news')}</h2>
+      <button class="btn btn-primaer" id="create-news-button">${t('admin.create')}</button>
     </div>
-    ${news.length === 0 ? '<p class="leer-zustand-text">' + t('news.leer') + '</p>' : ''}
-    <table class="tabelle" ${news.length === 0 ? 'style="display:none"' : ''}>
+    ${newsItems.length === 0 ? '<p class="leer-zustand-text">' + t('news.empty') + '</p>' : ''}
+    <table class="tabelle" ${newsItems.length === 0 ? 'style="display:none"' : ''}>
       <thead>
         <tr>
-          <th>Titel</th>
-          <th>Datum</th>
+          <th>${t('admin.title')}</th>
+          <th>${t('admin.date')}</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
-        ${news.map(n => `
+        ${newsItems.map((item) => `
           <tr>
-            <td>${escapeHtml(n.titel)}</td>
-            <td>${new Date(n.erstelltAm).toLocaleDateString('de-DE')}</td>
+            <td>${escapeHtml(item.title)}</td>
+            <td>${formatDate(item.createdAt)}</td>
             <td class="tabelle-aktionen">
-              <button class="btn btn-klein btn-gefahr" data-aktion="loeschen" data-id="${n.id}">
+              <button class="btn btn-klein btn-gefahr news-delete-button" data-id="${item.id}">
                 &#128465;
               </button>
             </td>
@@ -582,48 +608,49 @@ async function rendereNeuigkeitenAdmin(container) {
     </table>
   `;
 
-  container.querySelector('#news-erstellen').addEventListener('click', () => {
-    modal.oeffne({
-      titel: t('admin.erstellen') + ': ' + t('admin.neuigkeiten'),
-      inhalt: `
+  container.querySelector('#create-news-button').addEventListener('click', () => {
+    openModal({
+      title: t('admin.create') + ': ' + t('admin.news'),
+      content: `
         <div class="formular-gruppe">
-          <label class="formular-label">Titel *</label>
-          <input type="text" class="formular-eingabe" id="nn-titel" maxlength="200" required>
+          <label class="formular-label">${t('admin.title')} *</label>
+          <input type="text" class="formular-eingabe" id="new-news-title" maxlength="200" required>
         </div>
         <div class="formular-gruppe">
-          <label class="formular-label">Inhalt</label>
-          <textarea class="formular-textarea" id="nn-inhalt" maxlength="5000" rows="6"></textarea>
+          <label class="formular-label">${t('admin.content')}</label>
+          <textarea class="formular-textarea" id="new-news-content" maxlength="5000" rows="6"></textarea>
         </div>
       `,
-      bestaetigenText: t('admin.speichern'),
-      abbrechenText: t('admin.abbrechen'),
-      beiBestaetigung: async (overlay) => {
-        const titel = overlay.querySelector('#nn-titel').value.trim();
-        if (!titel) return;
+      confirmText: t('admin.save'),
+      cancelText: t('admin.cancel'),
+      onConfirm: async (overlay) => {
+        const title = overlay.querySelector('#new-news-title').value.trim();
+        if (!title) {
+          return;
+        }
 
         await api.post('/api/admin/news', {
-          titel,
-          inhalt: overlay.querySelector('#nn-inhalt').value.trim()
+          title,
+          content: overlay.querySelector('#new-news-content').value.trim()
         });
-        toast.erfolg('Neuigkeit erstellt');
-        rendereNeuigkeitenAdmin(container);
+        showSuccess(t('admin.newsCreated'));
+        renderNewsAdmin(container);
       }
     });
   });
 
-  container.querySelectorAll('[data-aktion="loeschen"]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      modal.bestaetigung(t('admin.bestaetigung'), async () => {
-        await api.loeschen('/api/admin/news/' + btn.dataset.id);
-        rendereNeuigkeitenAdmin(container);
+  container.querySelectorAll('.news-delete-button').forEach((button) => {
+    button.addEventListener('click', () => {
+      confirmDialog(t('admin.confirmation'), async () => {
+        await api.remove('/api/admin/news/' + button.dataset.id);
+        renderNewsAdmin(container);
       });
     });
   });
 }
 
-// Starten
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', starte);
+  document.addEventListener('DOMContentLoaded', start);
 } else {
-  starte();
+  start();
 }

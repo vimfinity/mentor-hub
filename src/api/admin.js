@@ -1,356 +1,382 @@
 'use strict';
 
-const path = require('path');
-const fs = require('fs');
 const auth = require('../auth');
-const umfragen = require('../data/surveys');
-const ressourcen = require('../data/resources');
-const painpoints = require('../data/painpoints');
-const neuigkeiten = require('../data/news');
-const { sendeJson, leseBody } = require('./public');
-
-const configPfad = path.join(__dirname, '..', '..', 'config.json');
-
-/**
- * Liest die aktuelle Konfiguration.
- * @returns {Object} Konfiguration
- */
-function ladeConfig() {
-  const inhalt = fs.readFileSync(configPfad, 'utf-8');
-  return JSON.parse(inhalt);
-}
+const { loadConfig, saveLocalConfig } = require('../config');
+const surveys = require('../data/surveys');
+const resources = require('../data/resources');
+const concerns = require('../data/concerns');
+const newsItems = require('../data/news');
+const { sendJson, readBody } = require('./public');
 
 /**
- * Speichert die Konfiguration.
- * @param {Object} config - Konfigurationsobjekt
+ * Checks the Authorization header and validates the session token.
+ * @param {Object} req - HTTP request
+ * @param {Object} res - HTTP response
+ * @returns {boolean} True if authorized
  */
-function speichereConfig(config) {
-  fs.writeFileSync(configPfad, JSON.stringify(config, null, 2), 'utf-8');
-}
-
-/**
- * Prueft den Authorization-Header und gibt true zurueck wenn gueltig.
- * @param {Object} req - HTTP Request
- * @param {Object} res - HTTP Response
- * @returns {boolean} true wenn autorisiert
- */
-function pruefeAuth(req, res) {
-  const config = ladeConfig();
-  const authHeader = req.headers['authorization'] || '';
+function requireAuth(req, res) {
+  const config = loadConfig();
+  const authHeader = req.headers.authorization || '';
   const token = authHeader.replace('Bearer ', '');
 
-  if (!auth.pruefeSitzung(token, config.sitzungsDauerMs)) {
-    sendeJson(res, 401, { fehler: 'Nicht autorisiert' });
+  if (!auth.verifySession(token, config.sessionDurationMs)) {
+    sendJson(res, 401, { error: 'Unauthorized' });
     return false;
   }
+
   return true;
 }
 
 /**
- * Registriert Admin-API-Routen.
- * @param {Object} router - Router-Instanz
+ * Registers admin API routes.
+ * @param {Object} router - Router instance
  */
-function registriere(router) {
-
-  // --- Ersteinrichtung Status (GET) ---
+function registerRoutes(router) {
   router.get('/api/admin/setup', (req, res) => {
-    const config = ladeConfig();
-    sendeJson(res, 200, {
-      eingerichtet: !!(config.adminPasswortHash && config.adminPasswortHash.length > 0)
+    const config = loadConfig();
+    sendJson(res, 200, {
+      configured: !!(config.adminPasswordHash && config.adminPasswordHash.length > 0)
     });
   });
 
-  // --- Ersteinrichtung (nur wenn kein Passwort gesetzt) ---
   router.post('/api/admin/setup', (req, res) => {
-    const config = ladeConfig();
+    const config = loadConfig();
 
-    if (config.adminPasswortHash && config.adminPasswortHash.length > 0) {
-      sendeJson(res, 403, { fehler: 'Einrichtung bereits abgeschlossen' });
+    if (config.adminPasswordHash && config.adminPasswordHash.length > 0) {
+      sendJson(res, 403, { error: 'Setup has already been completed' });
       return;
     }
 
-    leseBody(req, res, (body) => {
-      if (!body || !body.passwort || body.passwort.length < 8) {
-        sendeJson(res, 400, { fehler: 'Passwort erforderlich (min. 8 Zeichen)' });
+    readBody(req, res, (body) => {
+      const password = body?.password || body?.passwort;
+
+      if (!password || password.length < 8) {
+        sendJson(res, 400, { error: 'Password is required (minimum 8 characters)' });
         return;
       }
 
-      const salt = auth.erzeugeSalt();
-      const hash = auth.hashPasswort(body.passwort, salt);
+      const salt = auth.generateSalt();
+      const hash = auth.hashPassword(password, salt);
 
-      config.adminPasswortHash = hash;
-      config.adminPasswortSalt = salt;
-      speichereConfig(config);
+      saveLocalConfig({
+        adminPasswordHash: hash,
+        adminPasswordSalt: salt
+      });
 
-      sendeJson(res, 200, { erfolg: true, nachricht: 'Admin-Passwort gesetzt' });
+      sendJson(res, 200, { success: true, message: 'Admin password saved' });
     });
   });
 
-  // --- Login ---
   router.post('/api/admin/login', (req, res) => {
-    const config = ladeConfig();
+    const config = loadConfig();
 
-    if (!config.adminPasswortHash || config.adminPasswortHash.length === 0) {
-      sendeJson(res, 503, { fehler: 'Ersteinrichtung erforderlich (POST /api/admin/setup)' });
+    if (!config.adminPasswordHash || config.adminPasswordHash.length === 0) {
+      sendJson(res, 503, { error: 'Initial setup required (POST /api/admin/setup)' });
       return;
     }
 
-    leseBody(req, res, (body) => {
-      if (!body || !body.passwort) {
-        sendeJson(res, 400, { fehler: 'Passwort erforderlich' });
+    readBody(req, res, (body) => {
+      const password = body?.password || body?.passwort;
+
+      if (!password) {
+        sendJson(res, 400, { error: 'Password is required' });
         return;
       }
 
-      const gueltig = auth.pruefePasswort(
-        body.passwort,
-        config.adminPasswortHash,
-        config.adminPasswortSalt
+      const isValid = auth.verifyPassword(
+        password,
+        config.adminPasswordHash,
+        config.adminPasswordSalt
       );
 
-      if (!gueltig) {
-        sendeJson(res, 401, { fehler: 'Falsches Passwort' });
+      if (!isValid) {
+        sendJson(res, 401, { error: 'Invalid password' });
         return;
       }
 
-      const token = auth.erstelleSitzung();
-      sendeJson(res, 200, { token });
+      const token = auth.createSession();
+      sendJson(res, 200, { token });
     });
   });
 
-  // --- Logout ---
   router.post('/api/admin/logout', (req, res) => {
-    const authHeader = req.headers['authorization'] || '';
+    const authHeader = req.headers.authorization || '';
     const token = authHeader.replace('Bearer ', '');
-    auth.beendeSitzung(token);
-    sendeJson(res, 200, { erfolg: true });
+    auth.endSession(token);
+    sendJson(res, 200, { success: true });
   });
 
-  // --- Passwort aendern ---
   router.post('/api/admin/password', (req, res) => {
-    if (!pruefeAuth(req, res)) return;
+    if (!requireAuth(req, res)) {
+      return;
+    }
 
-    leseBody(req, res, (body) => {
-      if (!body || !body.neuesPasswort || body.neuesPasswort.length < 8) {
-        sendeJson(res, 400, { fehler: 'Neues Passwort erforderlich (min. 8 Zeichen)' });
+    readBody(req, res, (body) => {
+      const newPassword = body?.newPassword || body?.neuesPasswort;
+
+      if (!newPassword || newPassword.length < 8) {
+        sendJson(res, 400, { error: 'New password is required (minimum 8 characters)' });
         return;
       }
 
-      const config = ladeConfig();
-      const salt = auth.erzeugeSalt();
-      const hash = auth.hashPasswort(body.neuesPasswort, salt);
+      const salt = auth.generateSalt();
+      const hash = auth.hashPassword(newPassword, salt);
 
-      config.adminPasswortHash = hash;
-      config.adminPasswortSalt = salt;
-      speichereConfig(config);
+      saveLocalConfig({
+        adminPasswordHash: hash,
+        adminPasswordSalt: salt
+      });
 
-      sendeJson(res, 200, { erfolg: true });
+      sendJson(res, 200, { success: true });
     });
   });
 
-  // --- Umfragen (Admin) ---
   router.get('/api/admin/surveys', (req, res) => {
-    if (!pruefeAuth(req, res)) return;
-    sendeJson(res, 200, umfragen.holeAlle());
+    if (!requireAuth(req, res)) {
+      return;
+    }
+
+    sendJson(res, 200, surveys.getAll());
   });
 
   router.post('/api/admin/surveys', (req, res) => {
-    if (!pruefeAuth(req, res)) return;
+    if (!requireAuth(req, res)) {
+      return;
+    }
 
-    leseBody(req, res, (body) => {
-      if (!body || !body.titel || body.titel.trim().length === 0) {
-        sendeJson(res, 400, { fehler: 'Titel erforderlich' });
+    readBody(req, res, (body) => {
+      const title = body?.title || body?.titel;
+      const description = body?.description || body?.beschreibung || '';
+      const questions = body?.questions || body?.fragen;
+
+      if (!title || title.trim().length === 0) {
+        sendJson(res, 400, { error: 'Title is required' });
         return;
       }
-      if (body.titel.length > 200) {
-        sendeJson(res, 400, { fehler: 'Titel zu lang (max 200 Zeichen)' });
+      if (title.length > 200) {
+        sendJson(res, 400, { error: 'Title is too long (max 200 characters)' });
         return;
       }
-      if (!body.fragen || !Array.isArray(body.fragen) || body.fragen.length === 0) {
-        sendeJson(res, 400, { fehler: 'Mindestens eine Frage erforderlich' });
+      if (!Array.isArray(questions) || questions.length === 0) {
+        sendJson(res, 400, { error: 'At least one question is required' });
         return;
       }
 
-      const erstellt = umfragen.erstelle({
-        titel: body.titel.trim(),
-        beschreibung: (body.beschreibung || '').trim(),
-        fragen: body.fragen
+      const created = surveys.create({
+        title: title.trim(),
+        description: description.trim(),
+        questions
       });
 
-      sendeJson(res, 201, erstellt);
+      sendJson(res, 201, created);
     });
   });
 
   router.put('/api/admin/surveys/:id', (req, res, params) => {
-    if (!pruefeAuth(req, res)) return;
+    if (!requireAuth(req, res)) {
+      return;
+    }
 
-    leseBody(req, res, (body) => {
-      const aktualisiert = umfragen.aktualisiere(params.id, body);
-      if (aktualisiert) {
-        sendeJson(res, 200, aktualisiert);
-      } else {
-        sendeJson(res, 404, { fehler: 'Umfrage nicht gefunden' });
+    readBody(req, res, (body) => {
+      const updated = surveys.update(params.id, body);
+      if (!updated) {
+        sendJson(res, 404, { error: 'Survey not found' });
+        return;
       }
+
+      sendJson(res, 200, updated);
     });
   });
 
   router.delete('/api/admin/surveys/:id', (req, res, params) => {
-    if (!pruefeAuth(req, res)) return;
-
-    if (umfragen.loesche(params.id)) {
-      sendeJson(res, 200, { erfolg: true });
-    } else {
-      sendeJson(res, 404, { fehler: 'Umfrage nicht gefunden' });
+    if (!requireAuth(req, res)) {
+      return;
     }
+
+    if (!surveys.remove(params.id)) {
+      sendJson(res, 404, { error: 'Survey not found' });
+      return;
+    }
+
+    sendJson(res, 200, { success: true });
   });
 
-  // --- Ressourcen (Admin) ---
   router.post('/api/admin/resources', (req, res) => {
-    if (!pruefeAuth(req, res)) return;
+    if (!requireAuth(req, res)) {
+      return;
+    }
 
-    leseBody(req, res, (body) => {
-      if (!body || !body.titel || body.titel.trim().length === 0) {
-        sendeJson(res, 400, { fehler: 'Titel erforderlich' });
+    readBody(req, res, (body) => {
+      const title = body?.title || body?.titel;
+      const description = body?.description || body?.beschreibung || '';
+      const category = body?.category || body?.kategorie || 'article';
+
+      if (!title || title.trim().length === 0) {
+        sendJson(res, 400, { error: 'Title is required' });
         return;
       }
       if (!body.url || body.url.trim().length === 0) {
-        sendeJson(res, 400, { fehler: 'URL erforderlich' });
+        sendJson(res, 400, { error: 'URL is required' });
         return;
       }
-      if (body.titel.length > 200) {
-        sendeJson(res, 400, { fehler: 'Titel zu lang (max 200 Zeichen)' });
+      if (title.length > 200) {
+        sendJson(res, 400, { error: 'Title is too long (max 200 characters)' });
         return;
       }
       if (body.url.length > 2000) {
-        sendeJson(res, 400, { fehler: 'URL zu lang (max 2000 Zeichen)' });
+        sendJson(res, 400, { error: 'URL is too long (max 2000 characters)' });
         return;
       }
 
-      const gueltigeKategorien = ['tool', 'artikel', 'video', 'tutorial'];
-      if (body.kategorie && !gueltigeKategorien.includes(body.kategorie)) {
-        sendeJson(res, 400, { fehler: 'Ungueltige Kategorie' });
+      const validCategories = ['tool', 'article', 'video', 'tutorial', 'artikel'];
+      if (category && !validCategories.includes(category)) {
+        sendJson(res, 400, { error: 'Invalid category' });
         return;
       }
 
-      const erstellt = ressourcen.erstelle({
-        titel: body.titel.trim(),
+      const created = resources.create({
+        title: title.trim(),
         url: body.url.trim(),
-        beschreibung: (body.beschreibung || '').trim(),
-        kategorie: body.kategorie || 'artikel'
+        description: description.trim(),
+        category
       });
 
-      sendeJson(res, 201, erstellt);
+      sendJson(res, 201, created);
     });
   });
 
   router.put('/api/admin/resources/:id', (req, res, params) => {
-    if (!pruefeAuth(req, res)) return;
+    if (!requireAuth(req, res)) {
+      return;
+    }
 
-    leseBody(req, res, (body) => {
-      const aktualisiert = ressourcen.aktualisiere(params.id, body);
-      if (aktualisiert) {
-        sendeJson(res, 200, aktualisiert);
-      } else {
-        sendeJson(res, 404, { fehler: 'Ressource nicht gefunden' });
+    readBody(req, res, (body) => {
+      const updated = resources.update(params.id, body);
+      if (!updated) {
+        sendJson(res, 404, { error: 'Resource not found' });
+        return;
       }
+
+      sendJson(res, 200, updated);
     });
   });
 
   router.delete('/api/admin/resources/:id', (req, res, params) => {
-    if (!pruefeAuth(req, res)) return;
-
-    if (ressourcen.loesche(params.id)) {
-      sendeJson(res, 200, { erfolg: true });
-    } else {
-      sendeJson(res, 404, { fehler: 'Ressource nicht gefunden' });
+    if (!requireAuth(req, res)) {
+      return;
     }
+
+    if (!resources.remove(params.id)) {
+      sendJson(res, 404, { error: 'Resource not found' });
+      return;
+    }
+
+    sendJson(res, 200, { success: true });
   });
 
-  // --- Painpoints (Admin) ---
-  router.get('/api/admin/painpoints', (req, res) => {
-    if (!pruefeAuth(req, res)) return;
-    sendeJson(res, 200, painpoints.holeAlle());
+  router.get('/api/admin/concerns', (req, res) => {
+    if (!requireAuth(req, res)) {
+      return;
+    }
+
+    sendJson(res, 200, concerns.getAll());
   });
 
-  router.put('/api/admin/painpoints/:id', (req, res, params) => {
-    if (!pruefeAuth(req, res)) return;
+  router.put('/api/admin/concerns/:id', (req, res, params) => {
+    if (!requireAuth(req, res)) {
+      return;
+    }
 
-    leseBody(req, res, (body) => {
-      const aktualisiert = painpoints.aktualisiere(params.id, body);
-      if (aktualisiert) {
-        sendeJson(res, 200, aktualisiert);
-      } else {
-        sendeJson(res, 404, { fehler: 'Painpoint nicht gefunden' });
+    readBody(req, res, (body) => {
+      const updated = concerns.update(params.id, body);
+      if (!updated) {
+        sendJson(res, 404, { error: 'Concern not found' });
+        return;
       }
+
+      sendJson(res, 200, updated);
     });
   });
 
-  router.delete('/api/admin/painpoints/:id', (req, res, params) => {
-    if (!pruefeAuth(req, res)) return;
-
-    if (painpoints.loesche(params.id)) {
-      sendeJson(res, 200, { erfolg: true });
-    } else {
-      sendeJson(res, 404, { fehler: 'Painpoint nicht gefunden' });
+  router.delete('/api/admin/concerns/:id', (req, res, params) => {
+    if (!requireAuth(req, res)) {
+      return;
     }
+
+    if (!concerns.remove(params.id)) {
+      sendJson(res, 404, { error: 'Concern not found' });
+      return;
+    }
+
+    sendJson(res, 200, { success: true });
   });
 
-  // --- Neuigkeiten (Admin) ---
   router.post('/api/admin/news', (req, res) => {
-    if (!pruefeAuth(req, res)) return;
+    if (!requireAuth(req, res)) {
+      return;
+    }
 
-    leseBody(req, res, (body) => {
-      if (!body || !body.titel || body.titel.trim().length === 0) {
-        sendeJson(res, 400, { fehler: 'Titel erforderlich' });
+    readBody(req, res, (body) => {
+      const title = body?.title || body?.titel;
+      const content = body?.content || body?.inhalt || '';
+
+      if (!title || title.trim().length === 0) {
+        sendJson(res, 400, { error: 'Title is required' });
         return;
       }
-      if (body.titel.length > 200) {
-        sendeJson(res, 400, { fehler: 'Titel zu lang (max 200 Zeichen)' });
+      if (title.length > 200) {
+        sendJson(res, 400, { error: 'Title is too long (max 200 characters)' });
         return;
       }
-      if (body.inhalt && body.inhalt.length > 5000) {
-        sendeJson(res, 400, { fehler: 'Inhalt zu lang (max 5000 Zeichen)' });
+      if (content.length > 5000) {
+        sendJson(res, 400, { error: 'Content is too long (max 5000 characters)' });
         return;
       }
 
-      const erstellt = neuigkeiten.erstelle({
-        titel: body.titel.trim(),
-        inhalt: (body.inhalt || '').trim()
+      const created = newsItems.create({
+        title: title.trim(),
+        content: content.trim()
       });
 
-      sendeJson(res, 201, erstellt);
+      sendJson(res, 201, created);
     });
   });
 
   router.put('/api/admin/news/:id', (req, res, params) => {
-    if (!pruefeAuth(req, res)) return;
+    if (!requireAuth(req, res)) {
+      return;
+    }
 
-    leseBody(req, res, (body) => {
-      const aktualisiert = neuigkeiten.aktualisiere(params.id, body);
-      if (aktualisiert) {
-        sendeJson(res, 200, aktualisiert);
-      } else {
-        sendeJson(res, 404, { fehler: 'Neuigkeit nicht gefunden' });
+    readBody(req, res, (body) => {
+      const updated = newsItems.update(params.id, body);
+      if (!updated) {
+        sendJson(res, 404, { error: 'News item not found' });
+        return;
       }
+
+      sendJson(res, 200, updated);
     });
   });
 
   router.delete('/api/admin/news/:id', (req, res, params) => {
-    if (!pruefeAuth(req, res)) return;
-
-    if (neuigkeiten.loesche(params.id)) {
-      sendeJson(res, 200, { erfolg: true });
-    } else {
-      sendeJson(res, 404, { fehler: 'Neuigkeit nicht gefunden' });
+    if (!requireAuth(req, res)) {
+      return;
     }
+
+    if (!newsItems.remove(params.id)) {
+      sendJson(res, 404, { error: 'News item not found' });
+      return;
+    }
+
+    sendJson(res, 200, { success: true });
   });
 
-  // --- Status ---
   router.get('/api/admin/status', (req, res) => {
-    const config = ladeConfig();
-    sendeJson(res, 200, {
-      eingerichtet: !!(config.adminPasswortHash && config.adminPasswortHash.length > 0)
+    const config = loadConfig();
+    sendJson(res, 200, {
+      configured: !!(config.adminPasswordHash && config.adminPasswordHash.length > 0)
     });
   });
 }
 
-module.exports = { registriere };
+module.exports = { registerRoutes };

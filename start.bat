@@ -1,19 +1,49 @@
 @echo off
 REM ============================================
-REM  KI-Mentor Hub - Startskript
+REM  KI-Hub - Startskript
 REM ============================================
+setlocal
 
-set NODE_PATH=J:\dev\quellen\2025\gfosweb\xtimeweb\pep\ewbe12\ewbe12-war\node_installation\node
-set PATH=%NODE_PATH%;%PATH%
+set "NODE_BIN="
 
-echo Starte KI-Mentor Hub...
+if defined NODEJS_HOME (
+    if exist "%NODEJS_HOME%\node.exe" (
+        set "NODE_BIN=%NODEJS_HOME%\node.exe"
+    )
+)
+
+if not defined NODE_BIN (
+    if defined NODE_HOME (
+        if exist "%NODE_HOME%\node.exe" (
+            set "NODE_BIN=%NODE_HOME%\node.exe"
+        )
+    )
+)
+
+if not defined NODE_BIN (
+    where node >nul 2>nul
+    if %ERRORLEVEL% equ 0 (
+        set "NODE_BIN=node"
+    )
+)
+
+if not defined NODE_BIN (
+    echo.
+    echo FEHLER: Node.js wurde weder ueber PATH noch ueber NODE_HOME/NODEJS_HOME gefunden.
+    echo Bitte pruefen Sie Ihre Benutzerumgebungsvariablen.
+    pause
+    exit /b 1
+)
+
+echo Starte KI-Hub...
 echo.
 
-node "%~dp0src\server.js"
+"%NODE_BIN%" "%~dp0src\server.js"
 
 if %ERRORLEVEL% neq 0 (
     echo.
     echo FEHLER: Server konnte nicht gestartet werden.
-    echo Bitte pruefen Sie, ob Node.js unter %NODE_PATH% verfuegbar ist.
     pause
 )
+
+endlocal

@@ -3,20 +3,16 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { erstelleRouter } = require('./router');
+const { createRouter } = require('./router');
+const { loadConfig } = require('./config');
 const rateLimiter = require('./rate-limit');
-const oeffentlicheApi = require('./api/public');
+const publicApi = require('./api/public');
 const adminApi = require('./api/admin');
 
-// Konfiguration laden
-const configPfad = path.join(__dirname, '..', 'config.json');
-const config = JSON.parse(fs.readFileSync(configPfad, 'utf-8'));
+const config = loadConfig();
+const publicDirectory = path.join(__dirname, '..', 'public');
 
-// Verzeichnis fuer statische Dateien
-const publicVerzeichnis = path.join(__dirname, '..', 'public');
-
-// MIME-Typen fuer Static-Serving
-const MIME_TYPEN = {
+const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.js': 'application/javascript; charset=utf-8',
@@ -29,191 +25,173 @@ const MIME_TYPEN = {
   '.woff2': 'font/woff2'
 };
 
-// Router erstellen und Routen registrieren
-const router = erstelleRouter();
-oeffentlicheApi.registriere(router);
-adminApi.registriere(router);
+const router = createRouter();
+publicApi.registerRoutes(router);
+adminApi.registerRoutes(router);
 
 /**
- * Sicherheits-Header fuer alle Antworten.
- * @param {Object} res - HTTP Response
+ * Sets security headers on every response.
+ * @param {Object} res - HTTP response
  */
-function setzeSicherheitsHeader(res) {
+function setSecurityHeaders(res) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Content-Security-Policy',
+  res.setHeader(
+    'Content-Security-Policy',
     "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'"
   );
 }
 
 /**
- * Prueft den Origin-Header bei zustandsveraendernden Requests (CSRF-Schutz).
- * @param {Object} req - HTTP Request
- * @returns {boolean} true wenn erlaubt
+ * Validates the Origin header for state-changing requests.
+ * @param {Object} req - HTTP request
+ * @returns {boolean} True if the origin is allowed
  */
-function pruefeOrigin(req) {
-  const methode = req.method.toUpperCase();
-  if (methode === 'GET' || methode === 'HEAD' || methode === 'OPTIONS') {
+function isOriginAllowed(req) {
+  const method = req.method.toUpperCase();
+  if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
     return true;
   }
 
-  const origin = req.headers['origin'];
-  const host = req.headers['host'];
+  const origin = req.headers.origin;
+  const host = req.headers.host;
 
-  // Wenn kein Origin-Header (z.B. curl, Postman) - erlauben (internes Tool)
   if (!origin) {
     return true;
   }
 
-  // Origin muss zum Host passen
   try {
     const originHost = new URL(origin).host;
     return originHost === host;
-  } catch (fehler) {
+  } catch (error) {
     return false;
   }
 }
 
 /**
- * Liefert statische Dateien aus dem public-Verzeichnis.
- * @param {Object} req - HTTP Request
- * @param {Object} res - HTTP Response
- * @returns {boolean} true wenn Datei geliefert wurde
+ * Serves static files from the public directory.
+ * @param {Object} req - HTTP request
+ * @param {Object} res - HTTP response
+ * @returns {boolean} True if a file was served
  */
-function liefereStatischeDatei(req, res) {
-  let angefragterPfad = req.url.split('?')[0];
+function serveStaticFile(req, res) {
+  let requestedPath = req.url.split('?')[0];
 
-  // Standardseite
-  if (angefragterPfad === '/' || angefragterPfad === '') {
-    angefragterPfad = '/index.html';
+  if (requestedPath === '/' || requestedPath === '') {
+    requestedPath = '/index.html';
   }
 
-  // Sicherheit: Path-Traversal verhindern
-  const sichererPfad = path.normalize(angefragterPfad).replace(/^(\.\.[\/\\])+/, '');
-  const vollstaendigerPfad = path.join(publicVerzeichnis, sichererPfad);
+  const safePath = path.normalize(requestedPath).replace(/^(\.\.[/\\])+/, '');
+  const absolutePath = path.join(publicDirectory, safePath);
 
-  // Sicherstellen, dass Pfad innerhalb von public/ liegt
-  if (!vollstaendigerPfad.startsWith(publicVerzeichnis)) {
+  if (!absolutePath.startsWith(publicDirectory)) {
     res.writeHead(403);
-    res.end('Zugriff verweigert');
+    res.end('Access denied');
     return true;
   }
 
   try {
-    const stat = fs.statSync(vollstaendigerPfad);
-    if (!stat.isFile()) {
+    const fileStats = fs.statSync(absolutePath);
+    if (!fileStats.isFile()) {
       return false;
     }
 
-    const erweiterung = path.extname(vollstaendigerPfad).toLowerCase();
-    const mimeTyp = MIME_TYPEN[erweiterung] || 'application/octet-stream';
+    const extension = path.extname(absolutePath).toLowerCase();
+    const mimeType = MIME_TYPES[extension] || 'application/octet-stream';
 
-    res.writeHead(200, { 'Content-Type': mimeTyp });
-    const stream = fs.createReadStream(vollstaendigerPfad);
+    res.writeHead(200, { 'Content-Type': mimeType });
+    const stream = fs.createReadStream(absolutePath);
     stream.pipe(res);
     return true;
-  } catch (fehler) {
+  } catch (error) {
     return false;
   }
 }
 
 /**
- * Extrahiert die Client-IP aus dem Request.
- * @param {Object} req - HTTP Request
- * @returns {string} IP-Adresse
+ * Extracts the client IP address from the request.
+ * @param {Object} req - HTTP request
+ * @returns {string} Client IP address
  */
-function holeClientIp(req) {
-  return req.headers['x-forwarded-for'] ||
-    req.socket.remoteAddress ||
-    '0.0.0.0';
+function getClientIp(req) {
+  return req.headers['x-forwarded-for'] || req.socket.remoteAddress || '0.0.0.0';
 }
 
-// HTTP-Server erstellen
 const server = http.createServer((req, res) => {
-  // Sicherheits-Header setzen
-  setzeSicherheitsHeader(res);
+  setSecurityHeaders(res);
 
-  // Rate-Limiting pruefen
-  const clientIp = holeClientIp(req);
-  if (!rateLimiter.istErlaubt(clientIp)) {
+  const clientIp = getClientIp(req);
+  if (!rateLimiter.isAllowed(clientIp)) {
     res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({ fehler: 'Zu viele Anfragen. Bitte spaeter erneut versuchen.' }));
+    res.end(JSON.stringify({ error: 'Too many requests. Please try again later.' }));
     return;
   }
 
-  // CSRF-Schutz
-  if (!pruefeOrigin(req)) {
+  if (!isOriginAllowed(req)) {
     res.writeHead(403, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({ fehler: 'Origin nicht erlaubt' }));
+    res.end(JSON.stringify({ error: 'Origin not allowed' }));
     return;
   }
 
-  // CORS fuer lokales Netzwerk
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-  // Preflight-Requests
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
     res.end();
     return;
   }
 
-  // API-Routen versuchen
   if (req.url.startsWith('/api/')) {
-    const gefunden = router.verarbeite(req, res);
-    if (!gefunden) {
+    const routeFound = router.handle(req, res);
+    if (!routeFound) {
       res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ fehler: 'Endpunkt nicht gefunden' }));
+      res.end(JSON.stringify({ error: 'Endpoint not found' }));
     }
     return;
   }
 
-  // Statische Dateien versuchen
-  if (!liefereStatischeDatei(req, res)) {
-    // Fallback: index.html fuer Client-Side-Routing
-    const indexPfad = path.join(publicVerzeichnis, 'index.html');
+  if (!serveStaticFile(req, res)) {
+    const indexPath = path.join(publicDirectory, 'index.html');
     try {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      const stream = fs.createReadStream(indexPfad);
+      const stream = fs.createReadStream(indexPath);
       stream.pipe(res);
-    } catch (fehler) {
+    } catch (error) {
       res.writeHead(404);
-      res.end('Seite nicht gefunden');
+      res.end('Page not found');
     }
   }
 });
 
-// Server starten
 server.listen(config.port, config.host, () => {
   console.log('');
   console.log('===========================================');
-  console.log('  KI-Mentor Hub');
+  console.log('  KI-Hub');
   console.log('===========================================');
-  console.log(`  Server laeuft auf: http://localhost:${config.port}`);
-  console.log(`  Netzwerk:          http://${getLocalIp()}:${config.port}`);
-  console.log(`  Sprache:           ${config.standardSprache}`);
+  console.log(`  Server running on: http://localhost:${config.port}`);
+  console.log(`  Network:           http://${getLocalIp()}:${config.port}`);
+  console.log(`  Language:          ${config.defaultLanguage}`);
   console.log('-------------------------------------------');
 
-  // Pruefen ob Admin-Passwort gesetzt ist
-  if (!config.adminPasswortHash || config.adminPasswortHash.length === 0) {
+  if (!config.adminPasswordHash || config.adminPasswordHash.length === 0) {
     console.log('');
-    console.log('  ACHTUNG: Admin-Passwort noch nicht gesetzt!');
-    console.log('  Bitte POST /api/admin/setup aufrufen.');
+    console.log('  WARNING: Admin password has not been set yet.');
+    console.log('  Please call POST /api/admin/setup.');
     console.log('');
   }
 
-  console.log('  Beenden mit Strg+C');
+  console.log('  Stop with Ctrl+C');
   console.log('===========================================');
   console.log('');
 });
 
 /**
- * Ermittelt die lokale IP-Adresse.
- * @returns {string} Lokale IP oder "localhost"
+ * Resolves the local network IP address.
+ * @returns {string} Local IP address or localhost
  */
 function getLocalIp() {
   const os = require('os');
@@ -225,12 +203,12 @@ function getLocalIp() {
       }
     }
   }
+
   return 'localhost';
 }
 
-// Graceful Shutdown
 process.on('SIGINT', () => {
-  console.log('\nServer wird beendet...');
+  console.log('\nStopping server...');
   server.close(() => {
     process.exit(0);
   });

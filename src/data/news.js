@@ -1,64 +1,78 @@
 'use strict';
 
-const speicher = require('./store');
+const store = require('./store');
 
-const DATEI = 'news.json';
+const FILE_NAME = 'news.json';
+
+function normalizeNewsItem(item) {
+  return {
+    id: item.id,
+    title: item.title || item.titel || '',
+    content: item.content || item.inhalt || '',
+    createdAt: item.createdAt || item.erstelltAm || new Date().toISOString(),
+    updatedAt: item.updatedAt || item.aktualisiertAm || null
+  };
+}
+
+function loadNewsItems() {
+  return store.readDataFile(FILE_NAME).map(normalizeNewsItem);
+}
 
 /**
- * Gibt alle Neuigkeiten zurueck (neueste zuerst).
- * @returns {Array} Liste aller News-Eintraege
+ * Returns all news items sorted by newest first.
+ * @returns {Array} News list
  */
-function holeAlle() {
-  const alle = speicher.lesen(DATEI);
-  return alle.sort((a, b) =>
-    new Date(b.erstelltAm) - new Date(a.erstelltAm)
+function getAll() {
+  const newsItems = loadNewsItems();
+  return newsItems.sort((a, b) =>
+    new Date(b.createdAt) - new Date(a.createdAt)
   );
 }
 
 /**
- * Erstellt eine neue Neuigkeit.
- * @param {Object} daten - News-Daten
- * @param {string} daten.titel - Titel der Neuigkeit
- * @param {string} daten.inhalt - Textinhalt
- * @returns {Object} Erstellte Neuigkeit
+ * Creates a new news item.
+ * @param {Object} data - News payload
+ * @returns {Object} Created news item
  */
-function erstelle(daten) {
-  const nachricht = {
-    titel: daten.titel,
-    inhalt: daten.inhalt || ''
+function create(data) {
+  const newsItem = {
+    title: data.title,
+    content: data.content || ''
   };
-  return speicher.hinzufuegen(DATEI, nachricht);
+  return store.addItem(FILE_NAME, newsItem);
 }
 
 /**
- * Aktualisiert eine Neuigkeit.
- * @param {string} id - News-ID
- * @param {Object} aenderungen - Zu uebernehmende Felder
- * @returns {Object|null} Aktualisierte Neuigkeit oder null
+ * Updates a news item.
+ * @param {string} id - News id
+ * @param {Object} changes - Fields to update
+ * @returns {Object|null} Updated news item or null
  */
-function aktualisiere(id, aenderungen) {
-  const erlaubteFelder = ['titel', 'inhalt'];
-  const gefiltert = {};
-  for (const feld of erlaubteFelder) {
-    if (aenderungen[feld] !== undefined) {
-      gefiltert[feld] = aenderungen[feld];
-    }
+function update(id, changes) {
+  const filteredChanges = {};
+
+  if (changes.title !== undefined || changes.titel !== undefined) {
+    filteredChanges.title = changes.title !== undefined ? changes.title : changes.titel;
   }
-  return speicher.aktualisieren(DATEI, id, gefiltert);
+  if (changes.content !== undefined || changes.inhalt !== undefined) {
+    filteredChanges.content = changes.content !== undefined ? changes.content : changes.inhalt;
+  }
+
+  return store.updateItem(FILE_NAME, id, filteredChanges);
 }
 
 /**
- * Loescht eine Neuigkeit.
- * @param {string} id - News-ID
- * @returns {boolean} true wenn geloescht
+ * Deletes a news item.
+ * @param {string} id - News id
+ * @returns {boolean} True if deleted
  */
-function loesche(id) {
-  return speicher.loeschen(DATEI, id);
+function remove(id) {
+  return store.deleteItem(FILE_NAME, id);
 }
 
 module.exports = {
-  holeAlle,
-  erstelle,
-  aktualisiere,
-  loesche
+  getAll,
+  create,
+  update,
+  remove
 };
