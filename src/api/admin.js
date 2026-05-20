@@ -330,6 +330,9 @@ function registerRoutes(router) {
     readBody(req, res, (body) => {
       const title = body?.title || body?.titel;
       const content = body?.content || body?.inhalt || '';
+      const url = body?.url || '';
+      const type = body?.type || 'announcement';
+      const featured = body?.featured || false;
 
       if (!title || title.trim().length === 0) {
         sendJson(res, 400, { error: 'Title is required' });
@@ -346,7 +349,10 @@ function registerRoutes(router) {
 
       const created = newsItems.create({
         title: title.trim(),
-        content: content.trim()
+        content: content.trim(),
+        url: url.trim(),
+        type,
+        featured
       });
 
       sendJson(res, 201, created);

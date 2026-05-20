@@ -9,6 +9,9 @@ function normalizeNewsItem(item) {
     id: item.id,
     title: item.title || item.titel || '',
     content: item.content || item.inhalt || '',
+    url: item.url || '',
+    type: item.type || 'announcement',
+    featured: item.featured || false,
     createdAt: item.createdAt || item.erstelltAm || new Date().toISOString(),
     updatedAt: item.updatedAt || item.aktualisiertAm || null
   };
@@ -37,7 +40,10 @@ function getAll() {
 function create(data) {
   const newsItem = {
     title: data.title,
-    content: data.content || ''
+    content: data.content || '',
+    url: data.url || '',
+    type: data.type || 'announcement',
+    featured: data.featured || false
   };
   return store.addItem(FILE_NAME, newsItem);
 }
@@ -56,6 +62,15 @@ function update(id, changes) {
   }
   if (changes.content !== undefined || changes.inhalt !== undefined) {
     filteredChanges.content = changes.content !== undefined ? changes.content : changes.inhalt;
+  }
+  if (changes.url !== undefined) {
+    filteredChanges.url = changes.url;
+  }
+  if (changes.type !== undefined) {
+    filteredChanges.type = changes.type;
+  }
+  if (changes.featured !== undefined) {
+    filteredChanges.featured = changes.featured;
   }
 
   return store.updateItem(FILE_NAME, id, filteredChanges);
