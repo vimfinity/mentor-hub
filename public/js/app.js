@@ -18,11 +18,10 @@ const ROUTES = {
   news: { key: 'feed', path: '/', render: homepage.render, preload: homepage.preload, icon: 'megaphone', titleKey: 'feed.title', navigationKey: 'feed', skeleton: 'feed' },
   indexAlias: { key: 'feed', path: '/index.html', render: homepage.render, preload: homepage.preload, icon: 'megaphone', titleKey: 'feed.title', navigationKey: 'feed', skeleton: 'feed' },
   feedback: { key: 'feedback', path: '/feedback', render: feedbackSection.render, preload: feedbackSection.preload, icon: 'messageSquare', titleKey: 'nav.feedback', navigationKey: 'feedback', skeleton: 'feedback' },
-  adminLanding: { key: 'admin', path: '/admin', render: renderAdminRoute, preload: adminConsole.preload, icon: 'settings', titleKey: 'admin.pageTitle', navigationKey: 'admin', adminSection: 'surveys', skeleton: 'admin' },
+  adminLanding: { key: 'admin', path: '/admin', render: renderAdminRoute, preload: adminConsole.preload, icon: 'settings', titleKey: 'admin.pageTitle', navigationKey: 'admin', adminSection: 'feed', skeleton: 'admin' },
+  adminFeed: { key: 'admin', path: '/admin/feed', render: renderAdminRoute, preload: adminConsole.preload, icon: 'settings', titleKey: 'admin.feed', navigationKey: 'admin', adminSection: 'feed', skeleton: 'admin' },
   adminSurveys: { key: 'admin', path: '/admin/surveys', render: renderAdminRoute, preload: adminConsole.preload, icon: 'settings', titleKey: 'admin.surveys', navigationKey: 'admin', adminSection: 'surveys', skeleton: 'admin' },
-  adminResources: { key: 'admin', path: '/admin/resources', render: renderAdminRoute, preload: adminConsole.preload, icon: 'settings', titleKey: 'admin.resources', navigationKey: 'admin', adminSection: 'resources', skeleton: 'admin' },
-  adminConcerns: { key: 'admin', path: '/admin/concerns', render: renderAdminRoute, preload: adminConsole.preload, icon: 'settings', titleKey: 'admin.concerns', navigationKey: 'admin', adminSection: 'concerns', skeleton: 'admin' },
-  adminNews: { key: 'admin', path: '/admin/news', render: renderAdminRoute, preload: adminConsole.preload, icon: 'settings', titleKey: 'admin.news', navigationKey: 'admin', adminSection: 'news', skeleton: 'admin' }
+  adminConcerns: { key: 'admin', path: '/admin/concerns', render: renderAdminRoute, preload: adminConsole.preload, icon: 'settings', titleKey: 'admin.concerns', navigationKey: 'admin', adminSection: 'concerns', skeleton: 'admin' }
 };
 
 const NAVIGATION_ITEMS = [

@@ -1,11 +1,20 @@
 [
   {
-    "id": "8c21412e-4d30-4e5e-831b-64a310457c6a",
-    "createdAt": "2026-05-20T07:02:27.735Z",
+    "id": "e887a6ce-6cf5-4ee6-adf8-2c631cbe395e",
+    "createdAt": "2026-05-20T15:10:35.244Z",
+    "title": "Using Claude Code: The Unreasonable Effectiveness of HTML",
+    "content": "HTML als eine Alternative für den Output eines LLM's zu Markdown.",
+    "url": "https://x.com/trq212/status/2052809885763747935?s=20",
+    "type": "article",
+    "featured": false
+  },
+  {
+    "id": "da7dc7e9-c76e-439f-8e84-a8def5881041",
+    "createdAt": "2026-05-20T15:11:56.139Z",
     "title": "Gemini 3.5: frontier intelligence with action",
-    "content": "Google hat heute Gemini 3.5 vorgestellt - das neue Frontier-Modell mit erweiterten Agenten-Fähigkeiten und verbesserter Reasoning-Performance.",
-    "url": "https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-3-5/#gemini-3-5-flash",
+    "content": "Vorstellung von Gemini 3.5 Flash",
+    "url": "https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-3-5/",
     "type": "release",
-    "featured": true
+    "featured": false
   }
 ]

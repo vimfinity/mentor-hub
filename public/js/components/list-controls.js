@@ -29,18 +29,29 @@ function renderListensteuerung({
     `
     : '';
 
+  const aktuelleOption = sortierOptionen.find((o) => o.value === aktuelleSortierung);
+  const aktuellesLabel = aktuelleOption ? aktuelleOption.label : sortierOptionen[0]?.label || '';
+
   return `
     <div class="listensteuerung">
       <div class="listensteuerung-kopf">
         <p class="listensteuerung-meta">${ergebnisLabel || t('general.resultsCount').replace('{count}', String(gesamtElemente))}</p>
-        <label class="listensteuerung-sortierung">
+        <div class="listensteuerung-sortierung">
           <span>${t('general.sort')}</span>
-          <select class="formular-select listensteuerung-auswahl" data-list-sort>
-            ${sortierOptionen.map((option) => `
-              <option value="${option.value}" ${option.value === aktuelleSortierung ? 'selected' : ''}>${option.label}</option>
-            `).join('')}
-          </select>
-        </label>
+          <div class="dropdown" data-list-sort data-value="${aktuelleSortierung}">
+            <button type="button" class="dropdown-trigger" aria-haspopup="listbox" aria-expanded="false">
+              <span class="dropdown-label">${aktuellesLabel}</span>
+              <svg class="dropdown-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <ul class="dropdown-menu" role="listbox">
+              ${sortierOptionen.map((option) => `
+                <li class="dropdown-item ${option.value === aktuelleSortierung ? 'aktiv' : ''}" role="option" data-dropdown-value="${option.value}" aria-selected="${option.value === aktuelleSortierung}">
+                  ${option.label}
+                </li>
+              `).join('')}
+            </ul>
+          </div>
+        </div>
       </div>
       ${paginationHtml}
     </div>
@@ -48,10 +59,38 @@ function renderListensteuerung({
 }
 
 function verbindeListensteuerung(container, { onSortierung, onSeite }) {
-  const sortierung = container.querySelector('[data-list-sort]');
-  if (sortierung && onSortierung) {
-    sortierung.addEventListener('change', () => {
-      onSortierung(sortierung.value);
+  const dropdown = container.querySelector('[data-list-sort]');
+  if (dropdown && onSortierung) {
+    const trigger = dropdown.querySelector('.dropdown-trigger');
+    const menu = dropdown.querySelector('.dropdown-menu');
+    const label = dropdown.querySelector('.dropdown-label');
+
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = dropdown.classList.toggle('offen');
+      trigger.setAttribute('aria-expanded', String(isOpen));
+    });
+
+    menu.addEventListener('click', (e) => {
+      const item = e.target.closest('.dropdown-item');
+      if (!item) return;
+      const value = item.dataset.dropdownValue;
+      dropdown.dataset.value = value;
+      label.textContent = item.textContent.trim();
+      menu.querySelectorAll('.dropdown-item').forEach((i) => {
+        i.classList.remove('aktiv');
+        i.setAttribute('aria-selected', 'false');
+      });
+      item.classList.add('aktiv');
+      item.setAttribute('aria-selected', 'true');
+      dropdown.classList.remove('offen');
+      trigger.setAttribute('aria-expanded', 'false');
+      onSortierung(value);
+    });
+
+    document.addEventListener('click', () => {
+      dropdown.classList.remove('offen');
+      trigger.setAttribute('aria-expanded', 'false');
     });
   }
 

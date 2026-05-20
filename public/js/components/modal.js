@@ -37,9 +37,13 @@ function openModal(options) {
 
   const confirmButton = overlay.querySelector('.modal-bestaetigen');
   if (confirmButton && options.onConfirm) {
-    confirmButton.addEventListener('click', () => {
-      options.onConfirm(overlay);
-      closeModal(overlay);
+    confirmButton.addEventListener('click', async () => {
+      confirmButton.disabled = true;
+      try {
+        await options.onConfirm(overlay);
+      } finally {
+        closeModal(overlay);
+      }
     });
   }
 

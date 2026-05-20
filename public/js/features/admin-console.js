@@ -10,16 +10,14 @@ import { icon } from '../components/icons.js';
 
 const SESSION_CACHE_KEY = 'admin:session';
 const SURVEYS_CACHE_KEY = 'admin:surveys';
-const RESOURCES_CACHE_KEY = 'admin:resources';
+const FEED_ADMIN_CACHE_KEY = 'admin:feed';
 const CONCERNS_CACHE_KEY = 'admin:concerns';
-const NEWS_CACHE_KEY = 'admin:news';
 const ADMIN_PRO_SEITE = 8;
 
 const SECTION_META = {
-  surveys: { key: 'surveys', path: '/admin/surveys' },
-  resources: { key: 'resources', path: '/admin/resources' },
-  concerns: { key: 'concerns', path: '/admin/concerns' },
-  news: { key: 'news', path: '/admin/news' }
+  feed: { key: 'feed', path: '/admin/feed', icon: 'newspaper' },
+  surveys: { key: 'surveys', path: '/admin/surveys', icon: 'clipboardList' },
+  concerns: { key: 'concerns', path: '/admin/concerns', icon: 'messageSquare' }
 };
 
 function formatDate(value) {
@@ -48,20 +46,13 @@ function invalidiereAdminSurveys() {
   invalidiereAbfrage(['surveys']);
 }
 
-function invalidiereAdminResources() {
-  invalidiereAbfrage(RESOURCES_CACHE_KEY);
-  invalidiereAbfrage(['resources']);
+function invalidiereAdminFeed() {
+  invalidiereAbfrage(FEED_ADMIN_CACHE_KEY);
   invalidiereAbfrage(['feed']);
 }
 
 function invalidiereAdminConcerns() {
   invalidiereAbfrage(CONCERNS_CACHE_KEY);
-}
-
-function invalidiereAdminNews() {
-  invalidiereAbfrage(NEWS_CACHE_KEY);
-  invalidiereAbfrage(['news']);
-  invalidiereAbfrage(['feed']);
 }
 
 function behandleNichtAutorisierteAntwort(antwort, navigateTo) {
@@ -77,7 +68,7 @@ function behandleNichtAutorisierteAntwort(antwort, navigateTo) {
 }
 
 async function render(container, context) {
-  const section = SECTION_META[context.section] ? context.section : 'surveys';
+  const section = SECTION_META[context.section] ? context.section : 'feed';
   const sitzung = await holeAdminSitzung();
 
   if (behandleNichtAutorisierteAntwort(sitzung, context.navigateTo)) {
@@ -108,8 +99,9 @@ function renderAdminError(container) {
   container.innerHTML = `
     <div class="login-container">
       <div class="login-karte">
+        <div class="login-icon">${icon('alertCircle', 24)}</div>
         <h1 class="login-titel">${t('admin.pageTitle')}</h1>
-        <p class="leer-zustand-text">${t('general.error')}</p>
+        <p class="login-untertitel">${t('general.error')}</p>
       </div>
     </div>
   `;
@@ -119,10 +111,9 @@ function renderSetup(container, context) {
   container.innerHTML = `
     <div class="login-container">
       <div class="login-karte">
+        <div class="login-icon">${icon('settings', 24)}</div>
         <h1 class="login-titel">${t('admin.setup')}</h1>
-        <p style="margin-bottom: 1.5rem; color: var(--farbe-text-sekundaer);">
-          ${t('admin.setupDescription')}
-        </p>
+        <p class="login-untertitel">${t('admin.setupDescription')}</p>
         <form id="setup-form">
           <div class="formular-gruppe">
             <label class="formular-label" for="setup-password">${t('admin.password')}</label>
@@ -157,7 +148,9 @@ function renderLogin(container, context) {
   container.innerHTML = `
     <div class="login-container">
       <div class="login-karte">
+        <div class="login-icon">${icon('layoutDashboard', 24)}</div>
         <h1 class="login-titel">${t('admin.login')}</h1>
+        <p class="login-untertitel">${t('admin.pageTitle')}</p>
         <form id="login-form">
           <div class="formular-gruppe">
             <label class="formular-label" for="login-password">${t('admin.password')}</label>
@@ -181,7 +174,7 @@ function renderLogin(container, context) {
       api.setToken(result.data.token);
       invalidiereAdminSitzung();
       showSuccess(t('admin.signInSuccess'));
-      context.navigateTo(context.path || '/admin/surveys', { ersetzen: true, erzwingen: true });
+      context.navigateTo(context.path || '/admin/feed', { ersetzen: true, erzwingen: true });
       return;
     }
 
@@ -195,10 +188,16 @@ async function renderAdminShell(container, context, section) {
       <aside class="admin-sidebar">
         ${Object.keys(SECTION_META).map((key) => `
           <a class="admin-nav-link ${section === key ? 'aktiv' : ''}"
-            href="${SECTION_META[key].path}" data-admin-route="${key}">${t('admin.' + key)}</a>
+            href="${SECTION_META[key].path}" data-admin-route="${key}">
+            ${icon(SECTION_META[key].icon, 16)}
+            <span>${t('admin.' + key)}</span>
+          </a>
         `).join('')}
         <hr class="admin-trenner">
-        <button class="admin-nav-link" id="sign-out-button" type="button">${t('admin.signOut')}</button>
+        <button class="admin-nav-link" id="sign-out-button" type="button">
+          ${icon('logOut', 16)}
+          <span>${t('admin.signOut')}</span>
+        </button>
       </aside>
       <div class="admin-inhalt" id="admin-content">
         <p class="sektion-beschreibung">${t('general.loading')}</p>
@@ -218,27 +217,23 @@ async function renderAdminShell(container, context, section) {
     api.removeToken();
     invalidiereAdminSitzung();
     invalidiereAdminSurveys();
-    invalidiereAdminResources();
+    invalidiereAdminFeed();
     invalidiereAdminConcerns();
-    invalidiereAdminNews();
     context.navigateTo('/admin', { ersetzen: true, erzwingen: true });
   });
 
   const adminContent = container.querySelector('#admin-content');
 
   switch (section) {
-    case 'resources':
-      await renderResourcesAdmin(adminContent, context);
+    case 'surveys':
+      await renderSurveysAdmin(adminContent, context);
       break;
     case 'concerns':
       await renderConcernsAdmin(adminContent, context);
       break;
-    case 'news':
-      await renderNewsAdmin(adminContent, context);
-      break;
-    case 'surveys':
+    case 'feed':
     default:
-      await renderSurveysAdmin(adminContent, context);
+      await renderFeedAdmin(adminContent, context);
       break;
   }
 }
@@ -311,7 +306,8 @@ async function renderSurveysAdmin(container, context) {
   container.innerHTML = renderAdminSection({
     title: t('admin.surveys'),
     description: t('admin.surveysDescription'),
-    actions: `<button class="btn btn-primaer" id="create-survey-button">${t('admin.create')}</button>`,
+    iconName: 'clipboardList',
+    actions: `<button class="btn btn-primaer" id="create-survey-button">${icon('plus', 14)} ${t('admin.create')}</button>`,
     content: tabellenHtml
   });
 
@@ -427,11 +423,7 @@ function openSurveyForm(container, context) {
   addQuestionButton.addEventListener('click', () => {
     questionCounter += 1;
     const wrapper = document.createElement('div');
-    wrapper.className = 'formular-gruppe';
-    wrapper.style.padding = '0.5rem';
-    wrapper.style.border = '1px solid var(--farbe-grau-200)';
-    wrapper.style.borderRadius = '8px';
-    wrapper.style.marginBottom = '0.5rem';
+    wrapper.className = 'admin-question-item';
     wrapper.innerHTML = `
       <input type="text" class="formular-eingabe question-text-input"
         placeholder="${t('admin.question')} ${questionCounter}" style="margin-bottom:0.5rem">
@@ -471,11 +463,12 @@ function openSurveyDetails(survey) {
   const responseHtml = (survey.responses || []).map((response) => {
     const submittedAt = formatDate(response.submittedAt);
     return `
-      <div style="padding:0.5rem; border-bottom: 1px solid var(--farbe-grau-100); margin-bottom:0.5rem">
-        <small style="color:var(--farbe-text-gedaempft)">
-          ${submittedAt} ${response.name ? '- ' + escapeHtml(response.name) : '(' + escapeHtml(t('admin.anonymous')) + ')'}
-        </small>
-        <div>${response.responses.map((answer, index) => `
+      <div class="admin-detail-item">
+        <div class="admin-detail-meta">
+          ${response.name ? escapeHtml(response.name) : '<em>' + escapeHtml(t('admin.anonymous')) + '</em>'}
+          <span class="admin-detail-zeit">${submittedAt}</span>
+        </div>
+        <div class="admin-detail-body">${response.responses.map((answer, index) => `
           <p><strong>${escapeHtml(survey.questions[index] ? survey.questions[index].text : t('admin.question') + ' ' + (index + 1))}:</strong> ${escapeHtml(String(answer))}</p>
         `).join('')}</div>
       </div>
@@ -489,29 +482,46 @@ function openSurveyDetails(survey) {
   });
 }
 
-async function renderResourcesAdmin(container, context) {
+async function renderFeedAdmin(container, context) {
   const response = await holeAbfrage({
-    schluessel: RESOURCES_CACHE_KEY,
+    schluessel: FEED_ADMIN_CACHE_KEY,
     ttlMs: 30 * 1000,
-    abrufFunktion: () => api.get('/api/resources')
+    abrufFunktion: () => api.get('/api/feed')
   });
 
   if (behandleNichtAutorisierteAntwort(response, context.navigateTo)) {
     return;
   }
 
-  const resources = response.ok ? response.data : [];
-  const sortierung = normalisiereAuswahl(context.searchParams?.get('sort'), ['newest', 'oldest', 'title-asc', 'title-desc', 'category'], 'newest');
-  const sortierteRessourcen = sortiereAdminRessourcen(resources, sortierung);
-  const pagination = paginiereElemente(sortierteRessourcen, context.searchParams?.get('page'), ADMIN_PRO_SEITE);
-  const tabellenHtml = resources.length === 0 ? renderAdminEmptyState(t('resource.empty')) : renderAdminPanel(`
+  if (!response.ok) {
+    showError(t('general.error'));
+    return;
+  }
+
+  const feedItems = Array.isArray(response.data) ? response.data : [];
+  const typeFilter = normalisiereAuswahl(context.searchParams?.get('type'), ['all', 'announcement', 'release', 'article', 'tool', 'skill', 'video', 'tutorial'], 'all');
+  const filteredItems = typeFilter === 'all' ? feedItems : feedItems.filter((item) => item.type === typeFilter);
+  const sortierung = normalisiereAuswahl(context.searchParams?.get('sort'), ['newest', 'oldest', 'title-asc', 'title-desc'], 'newest');
+  const sortierteElemente = sortiereFeedElemente(filteredItems, sortierung);
+  const pagination = paginiereElemente(sortierteElemente, context.searchParams?.get('page'), ADMIN_PRO_SEITE);
+
+  const TYPE_LABELS = {
+    announcement: 'News',
+    release: 'Release',
+    article: t('feed.article'),
+    tool: t('feed.tool'),
+    skill: t('feed.skill'),
+    video: t('feed.video'),
+    tutorial: t('feed.tutorial')
+  };
+
+  const tabellenHtml = feedItems.length === 0 ? renderAdminEmptyState(t('feed.emptyTitle'), 'newspaper') : renderAdminPanel(`
     ${renderListensteuerung({
       sortierOptionen: [
         { value: 'newest', label: t('general.sortNewest') },
         { value: 'oldest', label: t('general.sortOldest') },
         { value: 'title-asc', label: t('general.sortTitleAsc') },
-        { value: 'title-desc', label: t('general.sortTitleDesc') },
-        { value: 'category', label: t('admin.sortCategory') }
+        { value: 'title-desc', label: t('general.sortTitleDesc') }
       ],
       aktuelleSortierung: sortierung,
       aktuelleSeite: pagination.aktuelleSeite,
@@ -524,18 +534,22 @@ async function renderResourcesAdmin(container, context) {
         <tr>
           <th>${t('admin.title')}</th>
           <th>${t('admin.category')}</th>
-          <th>${t('admin.url')}</th>
+          <th>${t('admin.date')}</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
-        ${pagination.elemente.map((resource) => `
+        ${pagination.elemente.map((item) => `
           <tr>
-            <td>${escapeHtml(resource.title)}</td>
-            <td><span class="karte-kategorie">${escapeHtml(t('resource.' + resource.category))}</span></td>
-            <td><a href="${escapeHtml(resource.url)}" target="_blank" rel="noopener">${icon('link', 16)}</a></td>
+            <td>
+              ${escapeHtml(item.title)}
+              ${item.featured ? `<span class="status-badge status-open">${t('admin.featured')}</span>` : ''}
+            </td>
+            <td><span class="karte-kategorie">${TYPE_LABELS[item.type] || item.type}</span></td>
+            <td>${formatDate(item.createdAt)}</td>
             <td class="tabelle-aktionen">
-              <button class="btn btn-klein btn-gefahr" data-id="${resource.id}">
+              ${item.url ? `<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener" class="btn btn-klein btn-sekundaer">${icon('externalLink', 14)}</a>` : ''}
+              <button class="btn btn-klein btn-gefahr feed-delete-button" data-id="${item.id}" data-source="${item.source}">
                 ${icon('trash', 16)}
               </button>
             </td>
@@ -545,11 +559,24 @@ async function renderResourcesAdmin(container, context) {
     </table>
   `, 'admin-panel-tabelle');
 
+  const filterChips = `
+    <div class="feed-filter-bar" style="margin-bottom: 0;">
+      ${['all', 'announcement', 'release', 'article', 'tool', 'skill', 'video', 'tutorial']
+        .filter((f) => f === 'all' || feedItems.some((item) => item.type === f))
+        .map((f) => `
+          <button class="feed-filter-chip ${f === typeFilter ? 'aktiv' : ''}" data-type-filter="${f}">
+            ${t('feed.filter_' + f)}
+          </button>
+        `).join('')}
+    </div>
+  `;
+
   container.innerHTML = renderAdminSection({
-    title: t('admin.resources'),
-    description: t('admin.resourcesDescription'),
-    actions: `<button class="btn btn-primaer" id="create-resource-button">${t('admin.create')}</button>`,
-    content: tabellenHtml
+    title: t('admin.feed'),
+    description: t('admin.feedDescription'),
+    iconName: 'newspaper',
+    actions: `<button class="btn btn-primaer" id="create-feed-button">${icon('plus', 14)} ${t('admin.create')}</button>`,
+    content: filterChips + tabellenHtml
   });
 
   verbindeListensteuerung(container, {
@@ -557,48 +584,54 @@ async function renderResourcesAdmin(container, context) {
     onSeite: (seite) => context.setSearchParams?.({ page: seite <= 1 ? null : seite })
   });
 
-  container.querySelector('#create-resource-button').addEventListener('click', () => {
+  container.querySelectorAll('[data-type-filter]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      context.setSearchParams?.({ type: btn.dataset.typeFilter === 'all' ? null : btn.dataset.typeFilter, page: null });
+    });
+  });
+
+  container.querySelector('#create-feed-button').addEventListener('click', () => {
     openModal({
-      title: t('admin.create') + ': ' + t('admin.resources'),
+      title: t('admin.create') + ': ' + t('admin.feed'),
       content: `
         <div class="formular-gruppe">
           <label class="formular-label">${t('admin.title')} *</label>
-          <input type="text" class="formular-eingabe" id="new-resource-title" maxlength="200" required>
-        </div>
-        <div class="formular-gruppe">
-          <label class="formular-label">${t('admin.url')} *</label>
-          <input type="url" class="formular-eingabe" id="new-resource-url" required>
-        </div>
-        <div class="formular-gruppe">
-          <label class="formular-label">${t('admin.description')}</label>
-          <textarea class="formular-textarea" id="new-resource-description"></textarea>
+          <input type="text" class="formular-eingabe" id="new-feed-title" maxlength="200" required>
         </div>
         <div class="formular-gruppe">
           <label class="formular-label">${t('admin.category')}</label>
-          <select class="formular-select" id="new-resource-category">
-            <option value="article">${t('resource.article')}</option>
-            <option value="tool">${t('resource.tool')}</option>
-            <option value="video">${t('resource.video')}</option>
-            <option value="tutorial">${t('resource.tutorial')}</option>
+          <select class="formular-select" id="new-feed-type">
+            <option value="announcement">News</option>
+            <option value="release">Release</option>
+            <option value="article">${t('feed.article')}</option>
+            <option value="tool">${t('feed.tool')}</option>
+            <option value="skill">${t('feed.skill')}</option>
+            <option value="video">${t('feed.video')}</option>
+            <option value="tutorial">${t('feed.tutorial')}</option>
           </select>
+        </div>
+        <div class="formular-gruppe">
+          <label class="formular-label">${t('admin.url')}</label>
+          <input type="url" class="formular-eingabe" id="new-feed-url" placeholder="https://...">
+        </div>
+        <div class="formular-gruppe">
+          <label class="formular-label">${t('admin.content')}</label>
+          <textarea class="formular-textarea" id="new-feed-content" maxlength="5000" rows="3"></textarea>
         </div>
       `,
       confirmText: t('admin.save'),
       cancelText: t('admin.cancel'),
       onConfirm: async (overlay) => {
-        const title = overlay.querySelector('#new-resource-title').value.trim();
-        const url = overlay.querySelector('#new-resource-url').value.trim();
-        if (!title || !url) {
+        const title = overlay.querySelector('#new-feed-title').value.trim();
+        if (!title) {
           return;
         }
 
-        const result = await api.post('/api/admin/resources', {
-          title,
-          url,
-          description: overlay.querySelector('#new-resource-description').value.trim(),
-          category: overlay.querySelector('#new-resource-category').value
-        });
+        const type = overlay.querySelector('#new-feed-type').value;
+        const url = overlay.querySelector('#new-feed-url').value.trim();
+        const content = overlay.querySelector('#new-feed-content').value.trim();
 
+        const result = await api.post('/api/admin/news', { title, content, url, type });
         if (behandleNichtAutorisierteAntwort(result, context.navigateTo)) {
           return;
         }
@@ -607,17 +640,21 @@ async function renderResourcesAdmin(container, context) {
           return;
         }
 
-        invalidiereAdminResources();
-        showSuccess(t('admin.resourceCreated'));
-        await renderResourcesAdmin(container, context);
+        invalidiereAdminFeed();
+        showSuccess(t('admin.feedCreated'));
+        context.navigateTo('/admin/feed');
       }
     });
   });
 
-  container.querySelectorAll('[data-id]').forEach((button) => {
+  container.querySelectorAll('.feed-delete-button').forEach((button) => {
     button.addEventListener('click', () => {
       confirmDialog(t('admin.confirmation'), async () => {
-        const result = await api.remove('/api/admin/resources/' + button.dataset.id);
+        const source = button.dataset.source;
+        const endpoint = source === 'resource'
+          ? '/api/admin/resources/' + button.dataset.id
+          : '/api/admin/news/' + button.dataset.id;
+        const result = await api.remove(endpoint);
         if (behandleNichtAutorisierteAntwort(result, context.navigateTo)) {
           return;
         }
@@ -626,9 +663,9 @@ async function renderResourcesAdmin(container, context) {
           return;
         }
 
-        invalidiereAdminResources();
+        invalidiereAdminFeed();
         showSuccess(t('admin.deleted'));
-        await renderResourcesAdmin(container, context);
+        context.navigateTo('/admin/feed');
       });
     });
   });
@@ -701,6 +738,7 @@ async function renderConcernsAdmin(container, context) {
   container.innerHTML = renderAdminSection({
     title: t('admin.concerns'),
     description: t('admin.concernsDescription'),
+    iconName: 'messageSquare',
     content: tabellenHtml
   });
 
@@ -747,149 +785,6 @@ async function renderConcernsAdmin(container, context) {
   });
 }
 
-async function renderNewsAdmin(container, context) {
-  const response = await holeAbfrage({
-    schluessel: NEWS_CACHE_KEY,
-    ttlMs: 30 * 1000,
-    abrufFunktion: () => api.get('/api/news')
-  });
-
-  if (behandleNichtAutorisierteAntwort(response, context.navigateTo)) {
-    return;
-  }
-
-  const newsItems = response.ok ? response.data : [];
-  const sortierung = normalisiereAuswahl(context.searchParams?.get('sort'), ['newest', 'oldest', 'title-asc', 'title-desc'], 'newest');
-  const sortierteNeuigkeiten = sortiereNeuigkeiten(newsItems, sortierung);
-  const pagination = paginiereElemente(sortierteNeuigkeiten, context.searchParams?.get('page'), ADMIN_PRO_SEITE);
-  const tabellenHtml = newsItems.length === 0 ? renderAdminEmptyState(t('news.empty')) : renderAdminPanel(`
-    ${renderListensteuerung({
-      sortierOptionen: [
-        { value: 'newest', label: t('general.sortNewest') },
-        { value: 'oldest', label: t('general.sortOldest') },
-        { value: 'title-asc', label: t('general.sortTitleAsc') },
-        { value: 'title-desc', label: t('general.sortTitleDesc') }
-      ],
-      aktuelleSortierung: sortierung,
-      aktuelleSeite: pagination.aktuelleSeite,
-      gesamtSeiten: pagination.gesamtSeiten,
-      gesamtElemente: pagination.gesamtElemente,
-      ergebnisLabel: t('general.resultsCount').replace('{count}', String(pagination.gesamtElemente))
-    })}
-    <table class="tabelle">
-      <thead>
-        <tr>
-          <th>${t('admin.title')}</th>
-          <th>${t('admin.date')}</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        ${pagination.elemente.map((item) => `
-          <tr>
-            <td>${escapeHtml(item.title)}</td>
-            <td>${formatDate(item.createdAt)}</td>
-            <td class="tabelle-aktionen">
-              <button class="btn btn-klein btn-gefahr news-delete-button" data-id="${item.id}">
-                ${icon('trash', 16)}
-              </button>
-            </td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
-  `, 'admin-panel-tabelle');
-
-  container.innerHTML = renderAdminSection({
-    title: t('admin.news'),
-    description: t('admin.newsDescription'),
-    actions: `<button class="btn btn-primaer" id="create-news-button">${t('admin.create')}</button>`,
-    content: tabellenHtml
-  });
-
-  verbindeListensteuerung(container, {
-    onSortierung: (wert) => context.setSearchParams?.({ sort: wert === 'newest' ? null : wert, page: null }),
-    onSeite: (seite) => context.setSearchParams?.({ page: seite <= 1 ? null : seite })
-  });
-
-  container.querySelector('#create-news-button').addEventListener('click', () => {
-    openModal({
-      title: t('admin.create') + ': ' + t('admin.news'),
-      content: `
-        <div class="formular-gruppe">
-          <label class="formular-label">${t('admin.title')} *</label>
-          <input type="text" class="formular-eingabe" id="new-news-title" maxlength="200" required>
-        </div>
-        <div class="formular-gruppe">
-          <label class="formular-label">${t('admin.url')}</label>
-          <input type="url" class="formular-eingabe" id="new-news-url" placeholder="https://...">
-        </div>
-        <div class="formular-gruppe">
-          <label class="formular-label">${t('admin.category')}</label>
-          <select class="formular-select" id="new-news-type">
-            <option value="announcement">News</option>
-            <option value="release">Release</option>
-            <option value="article">Artikel</option>
-            <option value="tool">Tool</option>
-            <option value="skill">Skill</option>
-            <option value="video">Video</option>
-            <option value="tutorial">Tutorial</option>
-          </select>
-        </div>
-        <div class="formular-gruppe">
-          <label class="formular-label">${t('admin.content')}</label>
-          <textarea class="formular-textarea" id="new-news-content" maxlength="5000" rows="4"></textarea>
-        </div>
-      `,
-      confirmText: t('admin.save'),
-      cancelText: t('admin.cancel'),
-      onConfirm: async (overlay) => {
-        const title = overlay.querySelector('#new-news-title').value.trim();
-        if (!title) {
-          return;
-        }
-
-        const result = await api.post('/api/admin/news', {
-          title,
-          content: overlay.querySelector('#new-news-content').value.trim(),
-          url: overlay.querySelector('#new-news-url').value.trim(),
-          type: overlay.querySelector('#new-news-type').value
-        });
-        if (behandleNichtAutorisierteAntwort(result, context.navigateTo)) {
-          return;
-        }
-        if (!result.ok) {
-          showError(result.data?.error || t('general.error'));
-          return;
-        }
-
-        invalidiereAdminNews();
-        showSuccess(t('admin.newsCreated'));
-        await renderNewsAdmin(container, context);
-      }
-    });
-  });
-
-  container.querySelectorAll('.news-delete-button').forEach((button) => {
-    button.addEventListener('click', () => {
-      confirmDialog(t('admin.confirmation'), async () => {
-        const result = await api.remove('/api/admin/news/' + button.dataset.id);
-        if (behandleNichtAutorisierteAntwort(result, context.navigateTo)) {
-          return;
-        }
-        if (!result.ok) {
-          showError(result.data?.error || t('general.error'));
-          return;
-        }
-
-        invalidiereAdminNews();
-        showSuccess(t('admin.deleted'));
-        await renderNewsAdmin(container, context);
-      });
-    });
-  });
-}
-
 function sortiereUmfragen(surveys, sortierung) {
   const kopie = [...surveys];
 
@@ -910,8 +805,8 @@ function sortiereUmfragen(surveys, sortierung) {
   return kopie;
 }
 
-function sortiereAdminRessourcen(resources, sortierung) {
-  const kopie = [...resources];
+function sortiereFeedElemente(items, sortierung) {
+  const kopie = [...items];
 
   kopie.sort((links, rechts) => {
     switch (sortierung) {
@@ -921,8 +816,6 @@ function sortiereAdminRessourcen(resources, sortierung) {
         return links.title.localeCompare(rechts.title, getLanguage());
       case 'title-desc':
         return rechts.title.localeCompare(links.title, getLanguage());
-      case 'category':
-        return links.category.localeCompare(rechts.category, getLanguage()) || links.title.localeCompare(rechts.title, getLanguage());
       case 'newest':
       default:
         return new Date(rechts.createdAt || 0) - new Date(links.createdAt || 0);
@@ -942,26 +835,6 @@ function sortiereAnliegen(concerns, sortierung) {
         return new Date(links.createdAt || 0) - new Date(rechts.createdAt || 0);
       case 'status':
         return (statusReihenfolge[links.status] ?? 99) - (statusReihenfolge[rechts.status] ?? 99);
-      case 'title-asc':
-        return links.title.localeCompare(rechts.title, getLanguage());
-      case 'title-desc':
-        return rechts.title.localeCompare(links.title, getLanguage());
-      case 'newest':
-      default:
-        return new Date(rechts.createdAt || 0) - new Date(links.createdAt || 0);
-    }
-  });
-
-  return kopie;
-}
-
-function sortiereNeuigkeiten(newsItems, sortierung) {
-  const kopie = [...newsItems];
-
-  kopie.sort((links, rechts) => {
-    switch (sortierung) {
-      case 'oldest':
-        return new Date(links.createdAt || 0) - new Date(rechts.createdAt || 0);
       case 'title-asc':
         return links.title.localeCompare(rechts.title, getLanguage());
       case 'title-desc':

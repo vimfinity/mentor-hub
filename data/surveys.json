@@ -1,26 +1,27 @@
-[ 
-	{
-		"id": "a8a749eb-bc44-4b99-b72f-f8b97682810f",
-		"createdAt": "2026-05-19T09:04:53.117Z",
-		"title": "Hub Feedback",
-		"description": "Feedback on the new hub",
-		"questions": [
-			{
-				"text": "What do you think about the new hub?",
-				"type": "rating"
-			}
-		],
-		"active": false,
-		"responses": [
-			{
-				"id": "9da6a1d8-ffd2-48de-aaf5-178711d99f33",
-				"name": "Simon",
-				"responses": [
-					5
-				],
-				"submittedAt": "2026-05-19T09:07:01.162Z"
-			}
-		],
-		"updatedAt": "2026-05-19T09:08:50.063Z"
-	}
+[
+  {
+    "id": "8f79ea4a-a856-4ff5-800f-b7c03f335311",
+    "title": "KI-Hub Bewertung",
+    "description": "Eine kleine Bewertung zu dem neuen KI-Hub",
+    "questions": [
+      {
+        "text": "Gefällt euch das neue KI-Hub?",
+        "type": "rating",
+        "options": []
+      }
+    ],
+    "active": true,
+    "responses": [
+      {
+        "id": "2b44252d-506b-46a2-b286-7156a0907486",
+        "name": "Vincent May",
+        "responses": [
+          5
+        ],
+        "submittedAt": "2026-05-20T14:39:04.074Z"
+      }
+    ],
+    "createdAt": "2026-05-20T14:38:47.408Z",
+    "updatedAt": null
+  }
 ]
