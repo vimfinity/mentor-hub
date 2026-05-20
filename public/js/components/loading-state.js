@@ -56,6 +56,19 @@ function renderRouteSkeleton(variant) {
           </div>
         </div>
       `;
+    case 'feed':
+      return `
+        <div class="skelett-seite">
+          ${renderSkeletonBlock('skelett-ueberschrift')}
+          ${renderSkeletonBlock('skelett-zeile skelett-zeile-mittel')}
+          <div class="feed-filter-bar" style="margin-top: 1.5rem">
+            ${Array.from({ length: 4 }).map(() => renderSkeletonBlock('skelett-pill')).join('')}
+          </div>
+          <div class="feed-grid" style="margin-top: 1.5rem">
+            ${renderListSkeleton(3, 'feed-card skelett-karte')}
+          </div>
+        </div>
+      `;
     case 'news':
     default:
       return `

@@ -6,20 +6,18 @@ import { renderRouteSkeleton } from './components/loading-state.js';
 import { icon } from './components/icons.js';
 import { renderThemeToggle, bindThemeToggle, initTheme } from './components/theme-toggle.js';
 import * as adminConsole from './features/admin-console.js';
-import * as newsFeed from './components/news-feed.js';
+import * as homepage from './components/homepage.js';
 import * as feedbackSection from './components/feedback-section.js';
-import * as resourceGrid from './components/resource-grid.js';
 
 const router = createRouter();
-let activeRoute = 'news';
+let activeRoute = 'feed';
 let pendingNavigation = 0;
 let prefetchCleanup = null;
 
 const ROUTES = {
-  news: { key: 'news', path: '/', render: newsFeed.render, preload: newsFeed.preload, icon: 'megaphone', titleKey: 'nav.news', navigationKey: 'news', skeleton: 'news' },
-  indexAlias: { key: 'news', path: '/index.html', render: newsFeed.render, preload: newsFeed.preload, icon: 'megaphone', titleKey: 'nav.news', navigationKey: 'news', skeleton: 'news' },
+  news: { key: 'feed', path: '/', render: homepage.render, preload: homepage.preload, icon: 'megaphone', titleKey: 'feed.title', navigationKey: 'feed', skeleton: 'feed' },
+  indexAlias: { key: 'feed', path: '/index.html', render: homepage.render, preload: homepage.preload, icon: 'megaphone', titleKey: 'feed.title', navigationKey: 'feed', skeleton: 'feed' },
   feedback: { key: 'feedback', path: '/feedback', render: feedbackSection.render, preload: feedbackSection.preload, icon: 'messageSquare', titleKey: 'nav.feedback', navigationKey: 'feedback', skeleton: 'feedback' },
-  resources: { key: 'resources', path: '/resources', render: resourceGrid.render, preload: resourceGrid.preload, icon: 'bookOpen', titleKey: 'nav.resources', navigationKey: 'resources', skeleton: 'resources' },
   adminLanding: { key: 'admin', path: '/admin', render: renderAdminRoute, preload: adminConsole.preload, icon: 'settings', titleKey: 'admin.pageTitle', navigationKey: 'admin', adminSection: 'surveys', skeleton: 'admin' },
   adminSurveys: { key: 'admin', path: '/admin/surveys', render: renderAdminRoute, preload: adminConsole.preload, icon: 'settings', titleKey: 'admin.surveys', navigationKey: 'admin', adminSection: 'surveys', skeleton: 'admin' },
   adminResources: { key: 'admin', path: '/admin/resources', render: renderAdminRoute, preload: adminConsole.preload, icon: 'settings', titleKey: 'admin.resources', navigationKey: 'admin', adminSection: 'resources', skeleton: 'admin' },
@@ -28,9 +26,8 @@ const ROUTES = {
 };
 
 const NAVIGATION_ITEMS = [
-  { key: 'news', path: '/', icon: 'megaphone' },
+  { key: 'feed', path: '/', icon: 'megaphone' },
   { key: 'feedback', path: '/feedback', icon: 'messageSquare' },
-  { key: 'resources', path: '/resources', icon: 'bookOpen' },
   { key: 'admin', path: '/admin', icon: 'settings' }
 ];
 
@@ -88,7 +85,7 @@ function updatePageChrome() {
   const currentPage = currentState.route;
   const title = currentPage && currentPage.titleKey
     ? t(currentPage.titleKey)
-    : activeRoute === 'news'
+    : activeRoute === 'feed'
       ? t('app.title')
       : t('nav.' + activeRoute);
 

@@ -111,6 +111,23 @@ function registerRoutes(router) {
   router.get('/api/news', (req, res) => {
     sendJson(res, 200, newsItems.getAll());
   });
+
+  router.get('/api/feed', (req, res) => {
+    const news = newsItems.getAll().map((item) => ({
+      ...item,
+      source: 'news',
+      type: item.type || 'announcement'
+    }));
+    const allResources = resources.getAll().map((item) => ({
+      ...item,
+      source: 'resource',
+      type: item.category || 'article'
+    }));
+    const merged = [...news, ...allResources].sort((a, b) =>
+      new Date(b.createdAt) - new Date(a.createdAt)
+    );
+    sendJson(res, 200, merged);
+  });
 }
 
 /**

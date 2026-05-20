@@ -1,15 +1,40 @@
 {
   "app": {
-    "title": "AI Mentor Hub",
-    "subtitle": "Share knowledge. Collect feedback. Grow together.",
+    "title": "KI-Hub",
+    "subtitle": "Your radar for AI development at GFOS.",
     "logoAlt": "GFOS logo"
   },
   "nav": {
-    "news": "News",
+    "feed": "Feed",
     "feedback": "Feedback",
-    "resources": "Resources",
     "admin": "Admin",
     "language": "DE"
+  },
+  "feed": {
+    "title": "KI-Hub",
+    "subtitle": "News, resources & knowledge around AI development.",
+    "emptyTitle": "Nothing here yet",
+    "emptyText": "News, articles and resources will appear here soon.",
+    "today": "Today",
+    "thisWeek": "This Week",
+    "earlier": "Earlier",
+    "latest": "Latest",
+    "noResults": "No entries for this filter.",
+    "filter_all": "All",
+    "filter_release": "Releases",
+    "filter_announcement": "News",
+    "filter_article": "Articles",
+    "filter_tool": "Tools",
+    "filter_skill": "Skills",
+    "filter_video": "Videos",
+    "filter_tutorial": "Tutorials",
+    "release": "Release",
+    "announcement": "News",
+    "article": "Article",
+    "tool": "Tool",
+    "skill": "Skill",
+    "video": "Video",
+    "tutorial": "Tutorial"
   },
   "news": {
     "title": "News",

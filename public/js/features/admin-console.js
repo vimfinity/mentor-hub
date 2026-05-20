@@ -51,6 +51,7 @@ function invalidiereAdminSurveys() {
 function invalidiereAdminResources() {
   invalidiereAbfrage(RESOURCES_CACHE_KEY);
   invalidiereAbfrage(['resources']);
+  invalidiereAbfrage(['feed']);
 }
 
 function invalidiereAdminConcerns() {
@@ -60,6 +61,7 @@ function invalidiereAdminConcerns() {
 function invalidiereAdminNews() {
   invalidiereAbfrage(NEWS_CACHE_KEY);
   invalidiereAbfrage(['news']);
+  invalidiereAbfrage(['feed']);
 }
 
 function behandleNichtAutorisierteAntwort(antwort, navigateTo) {
@@ -819,8 +821,24 @@ async function renderNewsAdmin(container, context) {
           <input type="text" class="formular-eingabe" id="new-news-title" maxlength="200" required>
         </div>
         <div class="formular-gruppe">
+          <label class="formular-label">${t('admin.url')}</label>
+          <input type="url" class="formular-eingabe" id="new-news-url" placeholder="https://...">
+        </div>
+        <div class="formular-gruppe">
+          <label class="formular-label">${t('admin.category')}</label>
+          <select class="formular-select" id="new-news-type">
+            <option value="announcement">News</option>
+            <option value="release">Release</option>
+            <option value="article">Artikel</option>
+            <option value="tool">Tool</option>
+            <option value="skill">Skill</option>
+            <option value="video">Video</option>
+            <option value="tutorial">Tutorial</option>
+          </select>
+        </div>
+        <div class="formular-gruppe">
           <label class="formular-label">${t('admin.content')}</label>
-          <textarea class="formular-textarea" id="new-news-content" maxlength="5000" rows="6"></textarea>
+          <textarea class="formular-textarea" id="new-news-content" maxlength="5000" rows="4"></textarea>
         </div>
       `,
       confirmText: t('admin.save'),
@@ -833,7 +851,9 @@ async function renderNewsAdmin(container, context) {
 
         const result = await api.post('/api/admin/news', {
           title,
-          content: overlay.querySelector('#new-news-content').value.trim()
+          content: overlay.querySelector('#new-news-content').value.trim(),
+          url: overlay.querySelector('#new-news-url').value.trim(),
+          type: overlay.querySelector('#new-news-type').value
         });
         if (behandleNichtAutorisierteAntwort(result, context.navigateTo)) {
           return;
