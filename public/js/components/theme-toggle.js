@@ -1,74 +1,72 @@
-// ===========================================
-// Theme Toggle - Light/Dark Mode Umschaltung
-// ===========================================
-
 import { icon } from './icons.js';
 
 /** @type {string} */
-const SPEICHER_KEY = 'theme-preference';
+const STORAGE_KEY = 'theme-preference';
 
 /**
- * Ermittelt die aktuelle Theme-Praeferenz.
+ * Returns the current theme preference.
  * @returns {'light'|'dark'}
  */
-function holeTheme() {
-  const gespeichert = localStorage.getItem(SPEICHER_KEY);
-  if (gespeichert === 'light' || gespeichert === 'dark') {
-    return gespeichert;
+function getTheme() {
+  const storedTheme = localStorage.getItem(STORAGE_KEY);
+  if (storedTheme === 'light' || storedTheme === 'dark') {
+    return storedTheme;
   }
+
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
 /**
- * Wendet das Theme auf das Dokument an.
+ * Applies the theme to the document.
  * @param {'light'|'dark'} theme
  */
-function wendeThemeAn(theme) {
+function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
 }
 
 /**
- * Wechselt zwischen Light und Dark Mode.
- * @returns {'light'|'dark'} Das neue Theme
+ * Toggles between light and dark mode.
+ * @returns {'light'|'dark'} The new theme
  */
-function wechsleTheme() {
-  const aktuell = holeTheme();
-  const neu = aktuell === 'dark' ? 'light' : 'dark';
-  localStorage.setItem(SPEICHER_KEY, neu);
-  wendeThemeAn(neu);
-  return neu;
+function toggleTheme() {
+  const currentTheme = getTheme();
+  const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  localStorage.setItem(STORAGE_KEY, nextTheme);
+  applyTheme(nextTheme);
+  return nextTheme;
 }
 
 /**
- * Gibt das HTML fuer den Theme-Toggle-Button zurueck.
+ * Returns the theme toggle button markup.
  * @returns {string}
  */
 function renderThemeToggle() {
-  const theme = holeTheme();
+  const theme = getTheme();
   const iconName = theme === 'dark' ? 'sun' : 'moon';
-  return `<button class="theme-toggle" id="theme-toggle" title="Theme wechseln">${icon(iconName, 16)}</button>`;
+  return `<button class="theme-toggle" id="theme-toggle" title="Toggle theme">${icon(iconName, 16)}</button>`;
 }
 
 /**
- * Initialisiert das Theme beim Seitenstart.
+ * Initializes the theme on page load.
  */
 function initTheme() {
-  wendeThemeAn(holeTheme());
+  applyTheme(getTheme());
 }
 
 /**
- * Bindet den Click-Handler an den Toggle-Button.
+ * Binds the click handler to the toggle button.
  */
-function bindeThemeToggle() {
-  const btn = document.getElementById('theme-toggle');
-  if (!btn) {
+function bindThemeToggle() {
+  const button = document.getElementById('theme-toggle');
+  if (!button) {
     return;
   }
-  btn.addEventListener('click', () => {
-    const neuesTheme = wechsleTheme();
-    const iconName = neuesTheme === 'dark' ? 'sun' : 'moon';
-    btn.innerHTML = icon(iconName, 16);
+
+  button.addEventListener('click', () => {
+    const nextTheme = toggleTheme();
+    const iconName = nextTheme === 'dark' ? 'sun' : 'moon';
+    button.innerHTML = icon(iconName, 16);
   });
 }
 
-export { renderThemeToggle, bindeThemeToggle, initTheme };
+export { renderThemeToggle, bindThemeToggle, initTheme };

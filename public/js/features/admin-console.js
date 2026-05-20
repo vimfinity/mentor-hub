@@ -4,7 +4,7 @@ import { t, getLanguage } from '../services/i18n.js';
 import { normalisiereAuswahl, paginiereElemente } from '../services/view-state.js';
 import { showError, showSuccess } from '../components/toast.js';
 import { escapeHtml, openModal, confirmDialog } from '../components/modal.js';
-import { renderAdminBereich, renderAdminPanel, renderAdminLeerzustand } from '../components/admin-ui.js';
+import { renderAdminSection, renderAdminPanel, renderAdminEmptyState } from '../components/admin-ui.js';
 import { renderListensteuerung, verbindeListensteuerung } from '../components/list-controls.js';
 import { icon } from '../components/icons.js';
 
@@ -253,10 +253,10 @@ async function renderSurveysAdmin(container, context) {
   }
 
   const surveys = response.ok ? response.data : [];
-  const sortierung = normalisiereAuswahl(context.suchparameter?.get('sort'), ['title-asc', 'title-desc', 'responses-desc', 'status'], 'responses-desc');
+  const sortierung = normalisiereAuswahl(context.searchParams?.get('sort'), ['title-asc', 'title-desc', 'responses-desc', 'status'], 'responses-desc');
   const sortierteUmfragen = sortiereUmfragen(surveys, sortierung);
-  const pagination = paginiereElemente(sortierteUmfragen, context.suchparameter?.get('page'), ADMIN_PRO_SEITE);
-  const tabellenHtml = surveys.length === 0 ? renderAdminLeerzustand(t('survey.empty')) : renderAdminPanel(`
+  const pagination = paginiereElemente(sortierteUmfragen, context.searchParams?.get('page'), ADMIN_PRO_SEITE);
+  const tabellenHtml = surveys.length === 0 ? renderAdminEmptyState(t('survey.empty')) : renderAdminPanel(`
     ${renderListensteuerung({
       sortierOptionen: [
         { value: 'responses-desc', label: t('admin.sortResponsesDesc') },
@@ -306,11 +306,11 @@ async function renderSurveysAdmin(container, context) {
     </table>
   `, 'admin-panel-tabelle');
 
-  container.innerHTML = renderAdminBereich({
-    titel: t('admin.surveys'),
-    beschreibung: t('admin.surveysDescription'),
-    aktionen: `<button class="btn btn-primaer" id="create-survey-button">${t('admin.create')}</button>`,
-    inhalt: tabellenHtml
+  container.innerHTML = renderAdminSection({
+    title: t('admin.surveys'),
+    description: t('admin.surveysDescription'),
+    actions: `<button class="btn btn-primaer" id="create-survey-button">${t('admin.create')}</button>`,
+    content: tabellenHtml
   });
 
   container.querySelector('#create-survey-button').addEventListener('click', () => {
@@ -499,10 +499,10 @@ async function renderResourcesAdmin(container, context) {
   }
 
   const resources = response.ok ? response.data : [];
-  const sortierung = normalisiereAuswahl(context.suchparameter?.get('sort'), ['newest', 'oldest', 'title-asc', 'title-desc', 'category'], 'newest');
+  const sortierung = normalisiereAuswahl(context.searchParams?.get('sort'), ['newest', 'oldest', 'title-asc', 'title-desc', 'category'], 'newest');
   const sortierteRessourcen = sortiereAdminRessourcen(resources, sortierung);
-  const pagination = paginiereElemente(sortierteRessourcen, context.suchparameter?.get('page'), ADMIN_PRO_SEITE);
-  const tabellenHtml = resources.length === 0 ? renderAdminLeerzustand(t('resource.empty')) : renderAdminPanel(`
+  const pagination = paginiereElemente(sortierteRessourcen, context.searchParams?.get('page'), ADMIN_PRO_SEITE);
+  const tabellenHtml = resources.length === 0 ? renderAdminEmptyState(t('resource.empty')) : renderAdminPanel(`
     ${renderListensteuerung({
       sortierOptionen: [
         { value: 'newest', label: t('general.sortNewest') },
@@ -543,11 +543,11 @@ async function renderResourcesAdmin(container, context) {
     </table>
   `, 'admin-panel-tabelle');
 
-  container.innerHTML = renderAdminBereich({
-    titel: t('admin.resources'),
-    beschreibung: t('admin.resourcesDescription'),
-    aktionen: `<button class="btn btn-primaer" id="create-resource-button">${t('admin.create')}</button>`,
-    inhalt: tabellenHtml
+  container.innerHTML = renderAdminSection({
+    title: t('admin.resources'),
+    description: t('admin.resourcesDescription'),
+    actions: `<button class="btn btn-primaer" id="create-resource-button">${t('admin.create')}</button>`,
+    content: tabellenHtml
   });
 
   verbindeListensteuerung(container, {
@@ -644,10 +644,10 @@ async function renderConcernsAdmin(container, context) {
   }
 
   const concerns = response.ok ? response.data : [];
-  const sortierung = normalisiereAuswahl(context.suchparameter?.get('sort'), ['newest', 'oldest', 'status', 'title-asc', 'title-desc'], 'newest');
+  const sortierung = normalisiereAuswahl(context.searchParams?.get('sort'), ['newest', 'oldest', 'status', 'title-asc', 'title-desc'], 'newest');
   const sortierteAnliegen = sortiereAnliegen(concerns, sortierung);
-  const pagination = paginiereElemente(sortierteAnliegen, context.suchparameter?.get('page'), ADMIN_PRO_SEITE);
-  const tabellenHtml = concerns.length === 0 ? renderAdminLeerzustand(t('admin.noConcerns')) : renderAdminPanel(`
+  const pagination = paginiereElemente(sortierteAnliegen, context.searchParams?.get('page'), ADMIN_PRO_SEITE);
+  const tabellenHtml = concerns.length === 0 ? renderAdminEmptyState(t('admin.noConcerns')) : renderAdminPanel(`
     ${renderListensteuerung({
       sortierOptionen: [
         { value: 'newest', label: t('general.sortNewest') },
@@ -696,10 +696,10 @@ async function renderConcernsAdmin(container, context) {
     </table>
   `, 'admin-panel-tabelle');
 
-  container.innerHTML = renderAdminBereich({
-    titel: t('admin.concerns'),
-    beschreibung: t('admin.concernsDescription'),
-    inhalt: tabellenHtml
+  container.innerHTML = renderAdminSection({
+    title: t('admin.concerns'),
+    description: t('admin.concernsDescription'),
+    content: tabellenHtml
   });
 
   verbindeListensteuerung(container, {
@@ -757,10 +757,10 @@ async function renderNewsAdmin(container, context) {
   }
 
   const newsItems = response.ok ? response.data : [];
-  const sortierung = normalisiereAuswahl(context.suchparameter?.get('sort'), ['newest', 'oldest', 'title-asc', 'title-desc'], 'newest');
+  const sortierung = normalisiereAuswahl(context.searchParams?.get('sort'), ['newest', 'oldest', 'title-asc', 'title-desc'], 'newest');
   const sortierteNeuigkeiten = sortiereNeuigkeiten(newsItems, sortierung);
-  const pagination = paginiereElemente(sortierteNeuigkeiten, context.suchparameter?.get('page'), ADMIN_PRO_SEITE);
-  const tabellenHtml = newsItems.length === 0 ? renderAdminLeerzustand(t('news.empty')) : renderAdminPanel(`
+  const pagination = paginiereElemente(sortierteNeuigkeiten, context.searchParams?.get('page'), ADMIN_PRO_SEITE);
+  const tabellenHtml = newsItems.length === 0 ? renderAdminEmptyState(t('news.empty')) : renderAdminPanel(`
     ${renderListensteuerung({
       sortierOptionen: [
         { value: 'newest', label: t('general.sortNewest') },
@@ -798,11 +798,11 @@ async function renderNewsAdmin(container, context) {
     </table>
   `, 'admin-panel-tabelle');
 
-  container.innerHTML = renderAdminBereich({
-    titel: t('admin.news'),
-    beschreibung: t('admin.newsDescription'),
-    aktionen: `<button class="btn btn-primaer" id="create-news-button">${t('admin.create')}</button>`,
-    inhalt: tabellenHtml
+  container.innerHTML = renderAdminSection({
+    title: t('admin.news'),
+    description: t('admin.newsDescription'),
+    actions: `<button class="btn btn-primaer" id="create-news-button">${t('admin.create')}</button>`,
+    content: tabellenHtml
   });
 
   verbindeListensteuerung(container, {

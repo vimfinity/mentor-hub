@@ -1,37 +1,37 @@
-function installiereRoutenPrefetch(navigation, routeResolver) {
+function installRoutePrefetch(navigation, routeResolver) {
   if (!navigation) {
     return () => {};
   }
 
-  const verarbeitetePfade = new Set();
+  const prefetchedPaths = new Set();
   const prefetch = (link) => {
-    const pfad = link.getAttribute('href');
-    if (!pfad || verarbeitetePfade.has(pfad)) {
+    const path = link.getAttribute('href');
+    if (!path || prefetchedPaths.has(path)) {
       return;
     }
 
-    const route = routeResolver(pfad);
+    const route = routeResolver(path);
     if (!route || !route.preload) {
       return;
     }
 
-    verarbeitetePfade.add(pfad);
+    prefetchedPaths.add(path);
     route.preload().catch(() => {
-      verarbeitetePfade.delete(pfad);
+      prefetchedPaths.delete(path);
     });
   };
 
   const links = Array.from(navigation.querySelectorAll('.tab-link'));
-  const entkoppler = [];
+  const disposers = [];
 
   links.forEach((link) => {
-    const beiHover = () => prefetch(link);
-    const beiFokus = () => prefetch(link);
-    link.addEventListener('mouseenter', beiHover);
-    link.addEventListener('focus', beiFokus);
-    entkoppler.push(() => {
-      link.removeEventListener('mouseenter', beiHover);
-      link.removeEventListener('focus', beiFokus);
+    const onHover = () => prefetch(link);
+    const onFocus = () => prefetch(link);
+    link.addEventListener('mouseenter', onHover);
+    link.addEventListener('focus', onFocus);
+    disposers.push(() => {
+      link.removeEventListener('mouseenter', onHover);
+      link.removeEventListener('focus', onFocus);
     });
   });
 
@@ -50,12 +50,12 @@ function installiereRoutenPrefetch(navigation, routeResolver) {
     });
 
     links.forEach((link) => observer.observe(link));
-    entkoppler.push(() => observer.disconnect());
+    disposers.push(() => observer.disconnect());
   }
 
   return () => {
-    entkoppler.forEach((entkopple) => entkopple());
+    disposers.forEach((dispose) => dispose());
   };
 }
 
-export { installiereRoutenPrefetch };
+export { installRoutePrefetch };

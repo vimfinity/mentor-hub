@@ -1,18 +1,18 @@
-import { holeRuntimeKonfiguration } from './runtime-config.js';
+import { getRuntimeConfig } from './runtime-config.js';
 
 let eventSource = null;
-let gestartet = false;
+let started = false;
 
-async function starteDevReload() {
-  if (gestartet) {
+async function startDevReload() {
+  if (started) {
     return;
   }
 
-  gestartet = true;
+  started = true;
 
   let runtimeConfig = null;
   try {
-    runtimeConfig = await holeRuntimeKonfiguration();
+    runtimeConfig = await getRuntimeConfig();
   } catch (error) {
     return;
   }
@@ -28,9 +28,9 @@ async function starteDevReload() {
   eventSource.onerror = () => {
     if (eventSource && eventSource.readyState === EventSource.CLOSED) {
       eventSource = null;
-      gestartet = false;
+      started = false;
     }
   };
 }
 
-export { starteDevReload };
+export { startDevReload };

@@ -28,9 +28,9 @@ async function render(container, context = {}) {
     return;
   }
 
-  const aktuelleSortierung = normalisiereAuswahl(context.suchparameter?.get('sort'), VALID_SORTS, 'newest');
+  const aktuelleSortierung = normalisiereAuswahl(context.searchParams?.get('sort'), VALID_SORTS, 'newest');
   const sortierteEintraege = sortiereEintraege(response.data, aktuelleSortierung);
-  const pagination = paginiereElemente(sortierteEintraege, context.suchparameter?.get('page'), NEWS_PRO_SEITE);
+  const pagination = paginiereElemente(sortierteEintraege, context.searchParams?.get('page'), NEWS_PRO_SEITE);
   const sortierOptionen = [
     { value: 'newest', label: t('general.sortNewest') },
     { value: 'oldest', label: t('general.sortOldest') },

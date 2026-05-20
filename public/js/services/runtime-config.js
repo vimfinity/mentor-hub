@@ -1,6 +1,6 @@
 let runtimeConfigPromise = null;
 
-async function holeRuntimeKonfiguration() {
+async function getRuntimeConfig() {
   if (!runtimeConfigPromise) {
     runtimeConfigPromise = fetch('/api/runtime-config', {
       headers: {
@@ -23,4 +23,4 @@ async function holeRuntimeKonfiguration() {
   return runtimeConfigPromise;
 }
 
-export { holeRuntimeKonfiguration };
+export { getRuntimeConfig };

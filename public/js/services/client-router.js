@@ -1,141 +1,141 @@
-function normalisierePfad(pfad) {
-  if (!pfad) {
+function normalizePath(pathname) {
+  if (!pathname) {
     return '/';
   }
 
-  let normalisierterPfad = pfad;
+  let normalizedPath = pathname;
 
   try {
-    normalisierterPfad = new URL(pfad, window.location.origin).pathname;
+    normalizedPath = new URL(pathname, window.location.origin).pathname;
   } catch (error) {
-    normalisierterPfad = pfad;
+    normalizedPath = pathname;
   }
 
-  if (!normalisierterPfad.startsWith('/')) {
-    normalisierterPfad = '/' + normalisierterPfad;
+  if (!normalizedPath.startsWith('/')) {
+    normalizedPath = '/' + normalizedPath;
   }
 
-  if (normalisierterPfad.length > 1) {
-    normalisierterPfad = normalisierterPfad.replace(/\/+$/, '');
+  if (normalizedPath.length > 1) {
+    normalizedPath = normalizedPath.replace(/\/+$/, '');
   }
 
-  return normalisierterPfad || '/';
+  return normalizedPath || '/';
 }
 
-function holeUrlObjekt(ziel) {
-  return new URL(ziel || window.location.href, window.location.origin);
+function getUrl(target) {
+  return new URL(target || window.location.href, window.location.origin);
 }
 
-function erstelleRouter() {
-  const routen = new Map();
-  const hoerer = [];
-  let aktuellerPfad = normalisierePfad(window.location.pathname);
-  let istGestartet = false;
+function createRouter() {
+  const routes = new Map();
+  const listeners = [];
+  let currentPath = normalizePath(window.location.pathname);
+  let isStarted = false;
 
-  function registriereRoute(pfad, daten) {
-    routen.set(normalisierePfad(pfad), daten);
+  function registerRoute(pathname, routeData) {
+    routes.set(normalizePath(pathname), routeData);
     return api;
   }
 
-  function findeRoute(pfad = aktuellerPfad) {
-    return routen.get(normalisierePfad(pfad)) || null;
+  function findRoute(pathname = currentPath) {
+    return routes.get(normalizePath(pathname)) || null;
   }
 
-  function holeAktuellenStand() {
-    const url = holeUrlObjekt(window.location.href);
+  function getCurrentState() {
+    const url = getUrl(window.location.href);
     return {
-      pfad: aktuellerPfad,
-      route: findeRoute(aktuellerPfad),
+      path: currentPath,
+      route: findRoute(currentPath),
       url,
-      suchparameter: new URLSearchParams(url.search)
+      searchParams: new URLSearchParams(url.search)
     };
   }
 
-  function benachrichtige() {
-    aktuellerPfad = normalisierePfad(window.location.pathname);
-    const stand = holeAktuellenStand();
-    hoerer.forEach((listener) => {
-      listener(stand);
+  function notify() {
+    currentPath = normalizePath(window.location.pathname);
+    const state = getCurrentState();
+    listeners.forEach((listener) => {
+      listener(state);
     });
   }
 
-  function navigiereZu(pfad, optionen = {}) {
-    const zielUrl = holeUrlObjekt(pfad || window.location.href);
-    const zielpfad = normalisierePfad(zielUrl.pathname);
-    const zielSuche = zielUrl.search || '';
-    const methode = optionen.ersetzen ? 'replaceState' : 'pushState';
-    const aktuellesZiel = window.location.pathname + window.location.search;
-    const neuesZiel = zielpfad + zielSuche;
+  function navigateTo(pathname, options = {}) {
+    const targetUrl = getUrl(pathname || window.location.href);
+    const targetPath = normalizePath(targetUrl.pathname);
+    const targetSearch = targetUrl.search || '';
+    const method = options.replace ? 'replaceState' : 'pushState';
+    const currentTarget = window.location.pathname + window.location.search;
+    const nextTarget = targetPath + targetSearch;
 
-    if (neuesZiel === aktuellesZiel && !optionen.erzwingen) {
-      benachrichtige();
+    if (nextTarget === currentTarget && !options.force) {
+      notify();
       return;
     }
 
-    window.history[methode]({}, '', neuesZiel);
-    benachrichtige();
+    window.history[method]({}, '', nextTarget);
+    notify();
   }
 
-  function ersetzePfad(pfad) {
-    navigiereZu(pfad, { ersetzen: true });
+  function replacePath(pathname) {
+    navigateTo(pathname, { replace: true });
   }
 
-  function setzeSuchparameter(aenderungen, optionen = {}) {
-    const url = holeUrlObjekt(window.location.href);
-    const suchparameter = new URLSearchParams(url.search);
+  function setSearchParams(changes, options = {}) {
+    const url = getUrl(window.location.href);
+    const searchParams = new URLSearchParams(url.search);
 
-    Object.keys(aenderungen).forEach((schluessel) => {
-      const wert = aenderungen[schluessel];
-      if (wert === undefined || wert === null || wert === '') {
-        suchparameter.delete(schluessel);
+    Object.keys(changes).forEach((key) => {
+      const value = changes[key];
+      if (value === undefined || value === null || value === '') {
+        searchParams.delete(key);
         return;
       }
 
-      suchparameter.set(schluessel, String(wert));
+      searchParams.set(key, String(value));
     });
 
-    const query = suchparameter.toString();
-    navigiereZu(url.pathname + (query ? '?' + query : ''), optionen);
+    const query = searchParams.toString();
+    navigateTo(url.pathname + (query ? '?' + query : ''), options);
   }
 
-  function aufAenderung(listener) {
-    hoerer.push(listener);
+  function onChange(listener) {
+    listeners.push(listener);
 
     return () => {
-      const index = hoerer.indexOf(listener);
+      const index = listeners.indexOf(listener);
       if (index >= 0) {
-        hoerer.splice(index, 1);
+        listeners.splice(index, 1);
       }
     };
   }
 
-  function starte() {
-    if (!istGestartet) {
-      window.addEventListener('popstate', benachrichtige);
-      istGestartet = true;
+  function start() {
+    if (!isStarted) {
+      window.addEventListener('popstate', notify);
+      isStarted = true;
     }
 
-    benachrichtige();
+    notify();
 
     return () => {
-      if (istGestartet) {
-        window.removeEventListener('popstate', benachrichtige);
-        istGestartet = false;
+      if (isStarted) {
+        window.removeEventListener('popstate', notify);
+        isStarted = false;
       }
     };
   }
 
   const api = {
-    registriereRoute,
-    navigiereZu,
-    ersetzePfad,
-    setzeSuchparameter,
-    aufAenderung,
-    starte,
-    holeAktuellenStand
+    registerRoute,
+    navigateTo,
+    replacePath,
+    setSearchParams,
+    onChange,
+    start,
+    getCurrentState
   };
 
   return api;
 }
 
-export { erstelleRouter, normalisierePfad };
+export { createRouter, normalizePath };

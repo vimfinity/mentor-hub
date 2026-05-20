@@ -32,8 +32,8 @@ async function render(container, context = {}) {
     return;
   }
 
-  currentFilter = normalisiereFilter(context.suchparameter?.get('filter'));
-  currentSort = normalisiereAuswahl(context.suchparameter?.get('sort'), VALID_SORTS, 'newest');
+  currentFilter = normalisiereFilter(context.searchParams?.get('filter'));
+  currentSort = normalisiereAuswahl(context.searchParams?.get('sort'), VALID_SORTS, 'newest');
   renderContent(container, response.data, context);
 }
 
@@ -50,7 +50,7 @@ function renderContent(container, resources, context = {}) {
     ? resources
     : resources.filter((resource) => resource.category === currentFilter);
   const sortierteRessourcen = sortiereRessourcen(filteredResources, currentSort);
-  const pagination = paginiereElemente(sortierteRessourcen, context.suchparameter?.get('page'), RESSOURCEN_PRO_SEITE);
+  const pagination = paginiereElemente(sortierteRessourcen, context.searchParams?.get('page'), RESSOURCEN_PRO_SEITE);
 
   const html = `
     <h1 class="sektion-titel">${t('resource.title')}</h1>

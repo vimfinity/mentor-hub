@@ -198,6 +198,14 @@ function initializeDevReload() {
 const server = http.createServer((req, res) => {
   setSecurityHeaders(res);
 
+  const requestPath = req.url.split('?')[0];
+
+  if (requestPath === '/admin.html') {
+    res.writeHead(301, { Location: '/admin' });
+    res.end();
+    return;
+  }
+
   if (isDevReloadRequest(req)) {
     handleDevReloadRequest(req, res);
     return;

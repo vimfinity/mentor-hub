@@ -1,28 +1,28 @@
-function renderAdminBereich({ titel, beschreibung = '', aktionen = '', inhalt = '' }) {
+function renderAdminSection({ title, description = '', actions = '', content = '' }) {
   return `
     <section class="admin-bereich">
       <div class="admin-bereich-kopf">
         <div class="admin-bereich-meta">
-          <h2 class="sektion-titel admin-bereich-titel">${titel}</h2>
-          ${beschreibung ? `<p class="sektion-beschreibung admin-bereich-beschreibung">${beschreibung}</p>` : ''}
+          <h2 class="sektion-titel admin-bereich-titel">${title}</h2>
+          ${description ? `<p class="sektion-beschreibung admin-bereich-beschreibung">${description}</p>` : ''}
         </div>
-        ${aktionen ? `<div class="admin-bereich-aktionen">${aktionen}</div>` : ''}
+        ${actions ? `<div class="admin-bereich-aktionen">${actions}</div>` : ''}
       </div>
-      ${inhalt}
+      ${content}
     </section>
   `;
 }
 
-function renderAdminPanel(inhalt, zusatzKlassen = '') {
-  return `<div class="admin-panel ${zusatzKlassen}">${inhalt}</div>`;
+function renderAdminPanel(content, extraClasses = '') {
+  return `<div class="admin-panel ${extraClasses}">${content}</div>`;
 }
 
-function renderAdminLeerzustand(text) {
+function renderAdminEmptyState(text) {
   return renderAdminPanel(`<p class="leer-zustand-text">${text}</p>`, 'admin-panel-zentriert');
 }
 
 export {
-  renderAdminBereich,
+  renderAdminSection,
   renderAdminPanel,
-  renderAdminLeerzustand
+  renderAdminEmptyState
 };
