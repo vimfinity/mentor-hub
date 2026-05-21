@@ -6,7 +6,16 @@
     "content": "HTML als eine Alternative für den Output eines LLM's zu Markdown.",
     "url": "https://x.com/trq212/status/2052809885763747935?s=20",
     "type": "article",
-    "featured": false
+    "featured": false,
+    "updatedAt": "2026-05-21T11:28:51.229Z",
+    "detailContent": "HTML als eine Alternative für den Output eines LLM's zu Markdown.",
+    "imageUrl": "",
+    "subtype": "article",
+    "summary": "HTML als eine Alternative für den Output eines LLM's zu Markdown.",
+    "source": "x.com",
+    "tags": [
+      "article"
+    ]
   },
   {
     "id": "da7dc7e9-c76e-439f-8e84-a8def5881041",
@@ -15,6 +24,15 @@
     "content": "Vorstellung von Gemini 3.5 Flash",
     "url": "https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-3-5/",
     "type": "release",
-    "featured": true
+    "featured": true,
+    "updatedAt": "2026-05-21T11:28:45.524Z",
+    "detailContent": "Vorstellung von Gemini 3.5 Flash",
+    "imageUrl": "",
+    "subtype": "release",
+    "summary": "Vorstellung von Gemini 3.5 Flash",
+    "source": "blog.google",
+    "tags": [
+      "release"
+    ]
   }
 ]

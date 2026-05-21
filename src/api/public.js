@@ -120,6 +120,8 @@ function registerRoutes(router) {
       subtype: item.subtype || item.type || 'announcement',
       type: item.type || 'announcement',
       summary: item.summary || item.content || '',
+      detailContent: item.detailContent || item.content || '',
+      imageUrl: item.imageUrl || '',
       tags: Array.isArray(item.tags) ? item.tags : []
     }));
     const allResources = resources.getAll().map((item) => ({
@@ -129,12 +131,48 @@ function registerRoutes(router) {
       subtype: item.subtype || item.category || 'article',
       type: item.subtype || item.category || 'article',
       summary: item.summary || item.description || '',
+      detailContent: item.detailContent || '',
+      imageUrl: item.imageUrl || '',
       tags: Array.isArray(item.tags) ? item.tags : []
     }));
     const merged = [...news, ...allResources].sort((a, b) =>
       new Date(b.createdAt) - new Date(a.createdAt)
     );
     sendJson(res, 200, merged);
+  });
+
+  router.get('/api/feed/:id', (req, res, params) => {
+    const merged = [
+      ...newsItems.getAll().map((item) => ({
+        ...item,
+        feedSource: 'news',
+        kind: item.kind || 'update',
+        subtype: item.subtype || item.type || 'announcement',
+        type: item.type || 'announcement',
+        summary: item.summary || item.content || '',
+        detailContent: item.detailContent || item.content || '',
+        imageUrl: item.imageUrl || '',
+        tags: Array.isArray(item.tags) ? item.tags : []
+      })),
+      ...resources.getAll().map((item) => ({
+        ...item,
+        feedSource: 'resource',
+        kind: item.kind || 'agent-asset',
+        subtype: item.subtype || item.category || 'article',
+        type: item.subtype || item.category || 'article',
+        summary: item.summary || item.description || '',
+        detailContent: item.detailContent || '',
+        imageUrl: item.imageUrl || '',
+        tags: Array.isArray(item.tags) ? item.tags : []
+      }))
+    ];
+    const item = merged.find((feedItem) => feedItem.id === params.id);
+    if (!item) {
+      sendJson(res, 404, { error: 'Feed item not found' });
+      return;
+    }
+
+    sendJson(res, 200, item);
   });
 }
 

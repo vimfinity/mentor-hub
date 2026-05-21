@@ -1,67 +1,97 @@
 [
-	{
-		"id": "mcp-introduction",
-		"createdAt": "2026-05-20T15:35:00.000Z",
-		"title": "Model Context Protocol: Introduction",
-		"description": "Grundlagen zum Model Context Protocol und warum es fuer agentische Workflows relevant ist.",
-		"summary": "Ein kompakter Einstieg in MCP als offenen Standard fuer Tools, Datenquellen und agentische Integrationen.",
-		"url": "https://modelcontextprotocol.io/introduction",
-		"category": "tool",
-		"kind": "agent-asset",
-		"subtype": "mcp",
-		"source": "mcp",
-		"tags": ["mcp", "protocol", "integration"]
-	},
-	{
-		"id": "mcp-clients-directory",
-		"createdAt": "2026-05-20T15:33:00.000Z",
-		"title": "Model Context Protocol: Example Clients",
-		"description": "Vergleich aktueller MCP-Hosts und Clients mit ihren unterstuetzten Faehigkeiten.",
-		"summary": "Eine gute Vergleichsgrundlage, wenn man wissen will, welche Clients Tools, Resources, Prompts oder Apps unterstuetzen.",
-		"url": "https://modelcontextprotocol.io/clients",
-		"category": "tutorial",
-		"kind": "guide",
-		"subtype": "comparison",
-		"source": "mcp",
-		"tags": ["mcp", "clients", "comparison"]
-	},
-	{
-		"id": "openai-codex-for-work",
-		"createdAt": "2026-05-20T15:31:00.000Z",
-		"title": "OpenAI Academy: Codex for work",
-		"description": "Guidance for coding, tasks, and workflows with Codex.",
-		"summary": "Ein guter Startpunkt fuer praktische Codex-Workflows im Arbeitsalltag.",
-		"url": "https://openai.com/academy/codex-for-work/",
-		"category": "tutorial",
-		"kind": "guide",
-		"subtype": "tutorial",
-		"source": "openai",
-		"tags": ["openai", "codex", "workflow"]
-	},
-	{
-		"id": "claude-skills",
-		"createdAt": "2026-05-20T15:29:00.000Z",
-		"title": "Claude Skills",
-		"description": "Skills buendeln Anweisungen, Wissen und unterstuetzende Artefakte fuer wiederholbare Agentenarbeit.",
-		"summary": "Ein Beispiel dafuer, wie Faehigkeiten fuer Agenten als wiederverwendbare Bausteine organisiert werden koennen.",
-		"url": "https://claude.com/skills",
-		"category": "skill",
-		"kind": "agent-asset",
-		"subtype": "skill",
-		"source": "anthropic",
-		"tags": ["anthropic", "skills", "agent"]
-	},
-	{
-		"id": "mcp-servers-repo",
-		"createdAt": "2026-05-20T15:27:00.000Z",
-		"title": "Model Context Protocol Servers",
-		"description": "Maintained server catalog and reference implementations for expanding agent capabilities.",
-		"summary": "Repository mit gepflegten MCP-Servern und Referenzimplementierungen fuer reale Integrationen.",
-		"url": "https://github.com/modelcontextprotocol/servers",
-		"category": "tool",
-		"kind": "agent-asset",
-		"subtype": "repo",
-		"source": "github",
-		"tags": ["mcp", "servers", "github"]
-	}
+  {
+    "id": "mcp-introduction",
+    "createdAt": "2026-05-20T15:35:00.000Z",
+    "title": "Model Context Protocol: Introduction",
+    "description": "Grundlagen zum Model Context Protocol und warum es fuer agentische Workflows relevant ist.",
+    "summary": "Ein kompakter Einstieg in MCP als offenen Standard fuer Tools, Datenquellen und agentische Integrationen.",
+    "url": "https://modelcontextprotocol.io/introduction",
+    "category": "tool",
+    "kind": "agent-asset",
+    "subtype": "mcp",
+    "source": "mcp",
+    "tags": [
+      "mcp",
+      "protocol",
+      "integration"
+    ]
+  },
+  {
+    "id": "mcp-clients-directory",
+    "createdAt": "2026-05-20T15:33:00.000Z",
+    "title": "Model Context Protocol: Example Clients",
+    "description": "Eine gute Vergleichsgrundlage, wenn man wissen will, welche Clients Tools, Resources, Prompts oder Apps unterstuetzen.",
+    "summary": "Eine gute Vergleichsgrundlage, wenn man wissen will, welche Clients Tools, Resources, Prompts oder Apps unterstuetzen.",
+    "url": "https://modelcontextprotocol.io/clients",
+    "category": "comparison",
+    "kind": "guide",
+    "subtype": "comparison",
+    "source": "mcp",
+    "tags": [
+      "tutorial",
+      "mcp",
+      "clients",
+      "comparison"
+    ],
+    "detailContent": "Vergleich aktueller MCP-Hosts und Clients mit ihren unterstuetzten Faehigkeiten.",
+    "imageUrl": "",
+    "featured": false,
+    "updatedAt": "2026-05-21T11:01:46.963Z"
+  },
+  {
+    "id": "openai-codex-for-work",
+    "createdAt": "2026-05-20T15:31:00.000Z",
+    "title": "OpenAI Academy: Codex for work",
+    "description": "Guidance for coding, tasks, and workflows with Codex.",
+    "summary": "Ein guter Startpunkt fuer praktische Codex-Workflows im Arbeitsalltag.",
+    "url": "https://openai.com/academy/codex-for-work/",
+    "category": "tutorial",
+    "kind": "guide",
+    "subtype": "tutorial",
+    "source": "openai",
+    "tags": [
+      "openai",
+      "codex",
+      "workflow"
+    ]
+  },
+  {
+    "id": "claude-skills",
+    "createdAt": "2026-05-20T15:29:00.000Z",
+    "title": "Claude Skills",
+    "description": "Ein Beispiel dafuer, wie Faehigkeiten fuer Agenten als wiederverwendbare Bausteine organisiert werden koennen.",
+    "summary": "Ein Beispiel dafuer, wie Faehigkeiten fuer Agenten als wiederverwendbare Bausteine organisiert werden koennen.",
+    "url": "https://claude.com/skills",
+    "category": "skill",
+    "kind": "agent-asset",
+    "subtype": "skill",
+    "source": "anthropic",
+    "tags": [
+      "skill",
+      "anthropic",
+      "skills",
+      "agent"
+    ],
+    "detailContent": "Skills buendeln Anweisungen, Wissen und unterstuetzende Artefakte fuer wiederholbare Agentenarbeit.",
+    "imageUrl": "",
+    "featured": false,
+    "updatedAt": "2026-05-21T11:01:36.837Z"
+  },
+  {
+    "id": "mcp-servers-repo",
+    "createdAt": "2026-05-20T15:27:00.000Z",
+    "title": "Model Context Protocol Servers",
+    "description": "Maintained server catalog and reference implementations for expanding agent capabilities.",
+    "summary": "Repository mit gepflegten MCP-Servern und Referenzimplementierungen fuer reale Integrationen.",
+    "url": "https://github.com/modelcontextprotocol/servers",
+    "category": "tool",
+    "kind": "agent-asset",
+    "subtype": "repo",
+    "source": "github",
+    "tags": [
+      "mcp",
+      "servers",
+      "github"
+    ]
+  }
 ]

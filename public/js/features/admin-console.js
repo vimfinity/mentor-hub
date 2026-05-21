@@ -25,6 +25,43 @@ function formatDate(value) {
   return new Date(value).toLocaleDateString(locale);
 }
 
+function getFeedTypeLabels() {
+  return {
+    announcement: 'News',
+    release: 'Release',
+    article: t('feed.article'),
+    tool: t('feed.tool'),
+    skill: t('feed.skill'),
+    video: t('feed.video'),
+    tutorial: t('feed.tutorial'),
+    comparison: t('feed.comparison'),
+    playbook: t('feed.playbook'),
+    'use-case': t('feed.useCase'),
+    onboarding: t('feed.onboarding'),
+    mcp: t('feed.mcp'),
+    agent: t('feed.agent'),
+    'agents-md': t('feed.agentsMd'),
+    template: t('feed.template'),
+    script: t('feed.script'),
+    'prompt-pack': t('feed.promptPack'),
+    repo: t('feed.repo')
+  };
+}
+
+const FEED_KIND_OPTIONS = ['update', 'guide', 'agent-asset'];
+const FEED_SUBTYPES_BY_KIND = {
+  update: ['announcement', 'release', 'article', 'video'],
+  guide: ['tutorial', 'playbook', 'use-case', 'onboarding', 'comparison'],
+  'agent-asset': ['skill', 'mcp', 'agents-md', 'agent', 'template', 'script', 'prompt-pack', 'repo', 'tool']
+};
+
+function getFeedKindLabel(kind) {
+  if (kind === 'guide') return t('feed.filter_guide');
+  if (kind === 'agent-asset') return t('feed.filter_agent_asset');
+  if (kind === 'update') return t('feed.filter_update');
+  return kind || '';
+}
+
 async function holeAdminSitzung() {
   return holeAbfrage({
     schluessel: SESSION_CACHE_KEY,
@@ -499,21 +536,13 @@ async function renderFeedAdmin(container, context) {
   }
 
   const feedItems = Array.isArray(response.data) ? response.data : [];
-  const typeFilter = normalisiereAuswahl(context.searchParams?.get('type'), ['all', 'announcement', 'release', 'article', 'tool', 'skill', 'video', 'tutorial'], 'all');
-  const filteredItems = typeFilter === 'all' ? feedItems : feedItems.filter((item) => item.type === typeFilter);
+  const kindFilter = normalisiereAuswahl(context.searchParams?.get('kind'), ['all', ...FEED_KIND_OPTIONS], 'all');
+  const filteredItems = kindFilter === 'all' ? feedItems : feedItems.filter((item) => item.kind === kindFilter);
   const sortierung = normalisiereAuswahl(context.searchParams?.get('sort'), ['newest', 'oldest', 'title-asc', 'title-desc'], 'newest');
   const sortierteElemente = sortiereFeedElemente(filteredItems, sortierung);
   const pagination = paginiereElemente(sortierteElemente, context.searchParams?.get('page'), ADMIN_PRO_SEITE);
 
-  const TYPE_LABELS = {
-    announcement: 'News',
-    release: 'Release',
-    article: t('feed.article'),
-    tool: t('feed.tool'),
-    skill: t('feed.skill'),
-    video: t('feed.video'),
-    tutorial: t('feed.tutorial')
-  };
+  const TYPE_LABELS = getFeedTypeLabels();
 
   const tabellenHtml = feedItems.length === 0 ? renderAdminEmptyState(t('feed.emptyTitle'), 'newspaper') : renderAdminPanel(`
     ${renderListensteuerung({
@@ -533,6 +562,7 @@ async function renderFeedAdmin(container, context) {
       <thead>
         <tr>
           <th>${t('admin.title')}</th>
+          <th>${t('admin.feedKind')}</th>
           <th>${t('admin.category')}</th>
           <th>${t('admin.date')}</th>
           <th></th>
@@ -545,11 +575,15 @@ async function renderFeedAdmin(container, context) {
               ${escapeHtml(item.title)}
               ${item.featured ? `<span class="status-badge status-open">${t('admin.featured')}</span>` : ''}
             </td>
+            <td><span class="status-badge">${getFeedKindLabel(item.kind)}</span></td>
             <td><span class="karte-kategorie">${TYPE_LABELS[item.type] || item.type}</span></td>
             <td>${formatDate(item.createdAt)}</td>
             <td class="tabelle-aktionen">
               ${item.url ? `<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener" class="btn btn-klein btn-sekundaer">${icon('externalLink', 14)}</a>` : ''}
-              <button class="btn btn-klein btn-gefahr feed-delete-button" data-id="${item.id}" data-source="${item.source}">
+              <button class="btn btn-klein btn-sekundaer feed-edit-button" data-id="${item.id}">
+                ${icon('edit', 16)}
+              </button>
+              <button class="btn btn-klein btn-gefahr feed-delete-button" data-id="${item.id}" data-source="${item.feedSource || item.source}">
                 ${icon('trash', 16)}
               </button>
             </td>
@@ -561,11 +595,11 @@ async function renderFeedAdmin(container, context) {
 
   const filterChips = `
     <div class="feed-filter-bar" style="margin-bottom: 0;">
-      ${['all', 'announcement', 'release', 'article', 'tool', 'skill', 'video', 'tutorial']
-        .filter((f) => f === 'all' || feedItems.some((item) => item.type === f))
+      ${['all', ...FEED_KIND_OPTIONS]
+        .filter((f) => f === 'all' || feedItems.some((item) => item.kind === f))
         .map((f) => `
-          <button class="feed-filter-chip ${f === typeFilter ? 'aktiv' : ''}" data-type-filter="${f}">
-            ${t('feed.filter_' + f)}
+          <button class="feed-filter-chip ${f === kindFilter ? 'aktiv' : ''}" data-kind-filter="${f}">
+            ${f === 'all' ? t('feed.filter_all') : getFeedKindLabel(f)}
           </button>
         `).join('')}
     </div>
@@ -584,66 +618,24 @@ async function renderFeedAdmin(container, context) {
     onSeite: (seite) => context.setSearchParams?.({ page: seite <= 1 ? null : seite })
   });
 
-  container.querySelectorAll('[data-type-filter]').forEach((btn) => {
+  container.querySelectorAll('[data-kind-filter]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      context.setSearchParams?.({ type: btn.dataset.typeFilter === 'all' ? null : btn.dataset.typeFilter, page: null });
+      context.setSearchParams?.({ kind: btn.dataset.kindFilter === 'all' ? null : btn.dataset.kindFilter, page: null });
     });
   });
 
   container.querySelector('#create-feed-button').addEventListener('click', () => {
-    openModal({
-      title: t('admin.create') + ': ' + t('admin.feed'),
-      content: `
-        <div class="formular-gruppe">
-          <label class="formular-label">${t('admin.title')} *</label>
-          <input type="text" class="formular-eingabe" id="new-feed-title" maxlength="200" required>
-        </div>
-        <div class="formular-gruppe">
-          <label class="formular-label">${t('admin.category')}</label>
-          <select class="formular-select" id="new-feed-type">
-            <option value="announcement">News</option>
-            <option value="release">Release</option>
-            <option value="article">${t('feed.article')}</option>
-            <option value="tool">${t('feed.tool')}</option>
-            <option value="skill">${t('feed.skill')}</option>
-            <option value="video">${t('feed.video')}</option>
-            <option value="tutorial">${t('feed.tutorial')}</option>
-          </select>
-        </div>
-        <div class="formular-gruppe">
-          <label class="formular-label">${t('admin.url')}</label>
-          <input type="url" class="formular-eingabe" id="new-feed-url" placeholder="https://...">
-        </div>
-        <div class="formular-gruppe">
-          <label class="formular-label">${t('admin.content')}</label>
-          <textarea class="formular-textarea" id="new-feed-content" maxlength="5000" rows="3"></textarea>
-        </div>
-      `,
-      confirmText: t('admin.save'),
-      cancelText: t('admin.cancel'),
-      onConfirm: async (overlay) => {
-        const title = overlay.querySelector('#new-feed-title').value.trim();
-        if (!title) {
-          return;
-        }
+    openFeedForm({ context, mode: 'create' });
+  });
 
-        const type = overlay.querySelector('#new-feed-type').value;
-        const url = overlay.querySelector('#new-feed-url').value.trim();
-        const content = overlay.querySelector('#new-feed-content').value.trim();
-
-        const result = await api.post('/api/admin/news', { title, content, url, type });
-        if (behandleNichtAutorisierteAntwort(result, context.navigateTo)) {
-          return;
-        }
-        if (!result.ok) {
-          showError(result.data?.error || t('general.error'));
-          return;
-        }
-
-        invalidiereAdminFeed();
-        showSuccess(t('admin.feedCreated'));
-        context.navigateTo('/admin/feed');
+  container.querySelectorAll('.feed-edit-button').forEach((button) => {
+    button.addEventListener('click', () => {
+      const item = feedItems.find((feedItem) => feedItem.id === button.dataset.id);
+      if (!item) {
+        return;
       }
+
+      openFeedForm({ context, mode: 'edit', item });
     });
   });
 
@@ -669,6 +661,150 @@ async function renderFeedAdmin(container, context) {
       });
     });
   });
+}
+
+function openFeedForm({ context, mode, item = null }) {
+  const isEdit = mode === 'edit';
+  const typeLabels = getFeedTypeLabels();
+  const selectedKind = FEED_KIND_OPTIONS.includes(item?.kind) ? item.kind : 'update';
+  const selectedType = item?.subtype || item?.type || FEED_SUBTYPES_BY_KIND[selectedKind][0];
+  const titleValue = escapeHtml(item?.title || '');
+  const urlValue = escapeHtml(item?.url || '');
+  const summaryValue = escapeHtml(item?.summary || item?.content || item?.description || '');
+  const contentValue = escapeHtml(item?.detailContent || item?.content || item?.description || '');
+  const imageValue = escapeHtml(item?.imageUrl || '');
+  const sourceValue = escapeHtml(item?.source || '');
+  const tagValue = escapeHtml(Array.isArray(item?.tags) ? item.tags.join(', ') : '');
+  const kindOptions = FEED_KIND_OPTIONS.map((value) => `
+    <option value="${value}" ${value === selectedKind ? 'selected' : ''}>${getFeedKindLabel(value)}</option>
+  `).join('');
+
+  openModal({
+    title: (isEdit ? t('admin.edit') : t('admin.create')) + ': ' + t('admin.feed'),
+    content: `
+      <div class="formular-gruppe">
+        <label class="formular-label" for="feed-form-title">${t('admin.title')} *</label>
+        <input type="text" class="formular-eingabe" id="feed-form-title" maxlength="200" required value="${titleValue}">
+      </div>
+      <div class="formular-gruppe">
+        <label class="formular-label" for="feed-form-kind">${t('admin.feedKind')}</label>
+        <select class="formular-select" id="feed-form-kind" ${isEdit ? 'disabled' : ''}>
+          ${kindOptions}
+        </select>
+      </div>
+      <div class="formular-gruppe">
+        <label class="formular-label" for="feed-form-subtype">${t('admin.category')}</label>
+        <select class="formular-select" id="feed-form-subtype"></select>
+      </div>
+      <div class="formular-gruppe">
+        <label class="formular-label" for="feed-form-summary">${t('admin.summary')}</label>
+        <textarea class="formular-textarea" id="feed-form-summary" maxlength="1000" rows="2">${summaryValue}</textarea>
+      </div>
+      <div class="formular-gruppe">
+        <label class="formular-label" for="feed-form-content">${t('admin.detailContent')}</label>
+        <textarea class="formular-textarea" id="feed-form-content" maxlength="10000" rows="6">${contentValue}</textarea>
+      </div>
+      <div class="formular-gruppe">
+        <label class="formular-label" for="feed-form-url">${t('admin.url')}</label>
+        <input type="url" class="formular-eingabe" id="feed-form-url" maxlength="2000" placeholder="https://..." value="${urlValue}">
+      </div>
+      <div class="formular-gruppe">
+        <label class="formular-label" for="feed-form-image">${t('admin.imageUrl')}</label>
+        <input type="url" class="formular-eingabe" id="feed-form-image" maxlength="2000" placeholder="https://..." value="${imageValue}">
+      </div>
+      <div class="formular-gruppe">
+        <label class="formular-label" for="feed-form-source">${t('admin.source')}</label>
+        <input type="text" class="formular-eingabe" id="feed-form-source" maxlength="100" value="${sourceValue}">
+      </div>
+      <div class="formular-gruppe">
+        <label class="formular-label" for="feed-form-tags">${t('admin.tags')}</label>
+        <input type="text" class="formular-eingabe" id="feed-form-tags" placeholder="mcp, codex, workflow" value="${tagValue}">
+      </div>
+      <label class="checkbox-label">
+        <input type="checkbox" id="feed-form-featured" ${item?.featured ? 'checked' : ''}>
+        ${t('admin.featured')}
+      </label>
+      <div class="feed-admin-vorschau" id="feed-form-preview"></div>
+      <p class="formular-hilfe">${t('admin.feedFormHint')}</p>
+    `,
+    confirmText: t('admin.save'),
+    cancelText: t('admin.cancel'),
+    onConfirm: async (overlay) => {
+      const title = overlay.querySelector('#feed-form-title').value.trim();
+      if (!title) {
+        return;
+      }
+
+      const kind = overlay.querySelector('#feed-form-kind').value;
+      const subtype = overlay.querySelector('#feed-form-subtype').value;
+      const url = overlay.querySelector('#feed-form-url').value.trim();
+      const summary = overlay.querySelector('#feed-form-summary').value.trim();
+      const content = overlay.querySelector('#feed-form-content').value.trim();
+      const imageUrl = overlay.querySelector('#feed-form-image').value.trim();
+      const source = overlay.querySelector('#feed-form-source').value.trim();
+      const tags = overlay.querySelector('#feed-form-tags').value.split(',').map((tag) => tag.trim()).filter(Boolean);
+      const featured = overlay.querySelector('#feed-form-featured').checked;
+      const payload = kind === 'update'
+        ? { title, content: summary, detailContent: content, summary, url, imageUrl, source, tags, type: subtype, subtype, featured }
+        : { title, description: summary, detailContent: content, summary, url, imageUrl, source, tags, kind, category: subtype, subtype, featured };
+      const endpoint = isEdit
+        ? ((item.feedSource || item.source) === 'resource' ? '/api/admin/resources/' : '/api/admin/news/') + item.id
+        : kind === 'update'
+          ? '/api/admin/news'
+          : '/api/admin/resources';
+      const result = isEdit
+        ? await api.put(endpoint, payload)
+        : await api.post(endpoint, payload);
+
+      if (behandleNichtAutorisierteAntwort(result, context.navigateTo)) {
+        return;
+      }
+      if (!result.ok) {
+        showError(result.data?.error || t('general.error'));
+        return;
+      }
+
+      invalidiereAdminFeed();
+      showSuccess(isEdit ? t('admin.feedUpdated') : t('admin.feedCreated'));
+      context.navigateTo('/admin/feed', { erzwingen: true });
+    }
+  });
+
+  const overlay = document.querySelector('.modal-overlay:last-child');
+  const kindSelect = overlay.querySelector('#feed-form-kind');
+  const subtypeSelect = overlay.querySelector('#feed-form-subtype');
+  const preview = overlay.querySelector('#feed-form-preview');
+  const refreshPreview = () => {
+    const imageUrl = overlay.querySelector('#feed-form-image').value.trim();
+    const title = overlay.querySelector('#feed-form-title').value.trim();
+    const summary = overlay.querySelector('#feed-form-summary').value.trim();
+    preview.innerHTML = `
+      ${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="">` : `<div class="feed-admin-vorschau-placeholder">${icon('image', 22)}</div>`}
+      <div>
+        <strong>${escapeHtml(title || t('admin.title'))}</strong>
+        <span>${getFeedKindLabel(kindSelect.value)} - ${typeLabels[subtypeSelect.value] || subtypeSelect.value}</span>
+        ${summary ? `<p>${escapeHtml(summary)}</p>` : ''}
+      </div>
+    `;
+  };
+  const refreshSubtypeOptions = () => {
+    const allowedSubtypes = FEED_SUBTYPES_BY_KIND[kindSelect.value] || FEED_SUBTYPES_BY_KIND.update;
+    const nextSubtype = allowedSubtypes.includes(subtypeSelect.value)
+      ? subtypeSelect.value
+      : allowedSubtypes.includes(selectedType)
+        ? selectedType
+        : allowedSubtypes[0];
+    subtypeSelect.innerHTML = allowedSubtypes.map((value) => `
+      <option value="${value}" ${value === nextSubtype ? 'selected' : ''}>${typeLabels[value] || value}</option>
+    `).join('');
+    refreshPreview();
+  };
+  kindSelect.addEventListener('change', refreshSubtypeOptions);
+  subtypeSelect.addEventListener('change', refreshPreview);
+  ['feed-form-title', 'feed-form-summary', 'feed-form-image'].forEach((id) => {
+    overlay.querySelector('#' + id).addEventListener('input', refreshPreview);
+  });
+  refreshSubtypeOptions();
 }
 
 async function renderConcernsAdmin(container, context) {

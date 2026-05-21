@@ -8,6 +8,12 @@ const concerns = require('../data/concerns');
 const newsItems = require('../data/news');
 const { sendJson, readBody } = require('./public');
 
+const NEWS_TYPES = ['announcement', 'release', 'article', 'tool', 'skill', 'video', 'tutorial'];
+const FEED_KINDS = ['update', 'guide', 'agent-asset'];
+const GUIDE_TYPES = ['tutorial', 'playbook', 'use-case', 'onboarding', 'comparison'];
+const AGENT_ASSET_TYPES = ['skill', 'mcp', 'agents-md', 'agent', 'template', 'script', 'prompt-pack', 'repo', 'tool'];
+const RESOURCE_TYPES = [...GUIDE_TYPES, ...AGENT_ASSET_TYPES, 'article', 'video'];
+
 /**
  * Checks the Authorization header and validates the session token.
  * @param {Object} req - HTTP request
@@ -221,35 +227,44 @@ function registerRoutes(router) {
       const title = body?.title || body?.titel;
       const description = body?.description || body?.beschreibung || '';
       const category = body?.category || body?.kategorie || 'article';
+      const kind = body?.kind || body?.art || 'agent-asset';
+      const subtype = body?.subtype || body?.untertyp || category;
 
       if (!title || title.trim().length === 0) {
         sendJson(res, 400, { error: 'Title is required' });
-        return;
-      }
-      if (!body.url || body.url.trim().length === 0) {
-        sendJson(res, 400, { error: 'URL is required' });
         return;
       }
       if (title.length > 200) {
         sendJson(res, 400, { error: 'Title is too long (max 200 characters)' });
         return;
       }
-      if (body.url.length > 2000) {
+      if (body.url && body.url.length > 2000) {
         sendJson(res, 400, { error: 'URL is too long (max 2000 characters)' });
         return;
       }
 
-      const validCategories = ['tool', 'article', 'video', 'tutorial', 'artikel'];
-      if (category && !validCategories.includes(category)) {
+      if (!FEED_KINDS.includes(kind) || kind === 'update') {
+        sendJson(res, 400, { error: 'Invalid kind for resource' });
+        return;
+      }
+      if (subtype && !RESOURCE_TYPES.includes(subtype)) {
         sendJson(res, 400, { error: 'Invalid category' });
         return;
       }
 
       const created = resources.create({
         title: title.trim(),
-        url: body.url.trim(),
+        url: (body.url || '').trim(),
         description: description.trim(),
-        category
+        detailContent: (body.detailContent || body.content || '').trim(),
+        imageUrl: (body.imageUrl || '').trim(),
+        category: subtype,
+        kind,
+        subtype,
+        summary: (body.summary || description).trim(),
+        source: (body.source || '').trim(),
+        tags: body.tags,
+        featured: body.featured || false
       });
 
       sendJson(res, 201, created);
@@ -262,6 +277,38 @@ function registerRoutes(router) {
     }
 
     readBody(req, res, (body) => {
+      const title = body?.title || body?.titel;
+      const description = body?.description || body?.beschreibung || '';
+      const category = body?.category || body?.kategorie;
+      const kind = body?.kind || body?.art;
+      const subtype = body?.subtype || body?.untertyp || category;
+
+      if (title !== undefined && title.trim().length === 0) {
+        sendJson(res, 400, { error: 'Title is required' });
+        return;
+      }
+      if (title !== undefined && title.length > 200) {
+        sendJson(res, 400, { error: 'Title is too long (max 200 characters)' });
+        return;
+      }
+      if (body.url !== undefined && body.url.length > 2000) {
+        sendJson(res, 400, { error: 'URL is too long (max 2000 characters)' });
+        return;
+      }
+      if (description !== undefined && description.length > 5000) {
+        sendJson(res, 400, { error: 'Description is too long (max 5000 characters)' });
+        return;
+      }
+
+      if (kind && (!FEED_KINDS.includes(kind) || kind === 'update')) {
+        sendJson(res, 400, { error: 'Invalid kind for resource' });
+        return;
+      }
+      if (subtype && !RESOURCE_TYPES.includes(subtype)) {
+        sendJson(res, 400, { error: 'Invalid category' });
+        return;
+      }
+
       const updated = resources.update(params.id, body);
       if (!updated) {
         sendJson(res, 404, { error: 'Resource not found' });
@@ -346,12 +393,22 @@ function registerRoutes(router) {
         sendJson(res, 400, { error: 'Content is too long (max 5000 characters)' });
         return;
       }
+      if (!NEWS_TYPES.includes(type)) {
+        sendJson(res, 400, { error: 'Invalid type' });
+        return;
+      }
 
       const created = newsItems.create({
         title: title.trim(),
         content: content.trim(),
+        detailContent: (body.detailContent || content).trim(),
+        imageUrl: (body.imageUrl || '').trim(),
         url: url.trim(),
         type,
+        subtype: type,
+        summary: (body.summary || content).trim(),
+        source: (body.source || '').trim(),
+        tags: body.tags,
         featured
       });
 
@@ -365,6 +422,32 @@ function registerRoutes(router) {
     }
 
     readBody(req, res, (body) => {
+      const title = body?.title || body?.titel;
+      const content = body?.content || body?.inhalt || '';
+      const url = body?.url;
+      const type = body?.type;
+
+      if (title !== undefined && title.trim().length === 0) {
+        sendJson(res, 400, { error: 'Title is required' });
+        return;
+      }
+      if (title !== undefined && title.length > 200) {
+        sendJson(res, 400, { error: 'Title is too long (max 200 characters)' });
+        return;
+      }
+      if (content !== undefined && content.length > 5000) {
+        sendJson(res, 400, { error: 'Content is too long (max 5000 characters)' });
+        return;
+      }
+      if (url !== undefined && url.length > 2000) {
+        sendJson(res, 400, { error: 'URL is too long (max 2000 characters)' });
+        return;
+      }
+      if (type && !NEWS_TYPES.includes(type)) {
+        sendJson(res, 400, { error: 'Invalid type' });
+        return;
+      }
+
       const updated = newsItems.update(params.id, body);
       if (!updated) {
         sendJson(res, 404, { error: 'News item not found' });

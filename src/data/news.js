@@ -10,6 +10,8 @@ function normalizeNewsItem(item) {
     id: item.id,
     title: item.title || item.titel || '',
     content: item.content || item.inhalt || '',
+    detailContent: item.detailContent || item.detailInhalt || item.content || item.inhalt || '',
+    imageUrl: item.imageUrl || item.bildUrl || item.thumbnailUrl || '',
     url: item.url || '',
     type: normalizedType,
     kind: 'update',
@@ -94,8 +96,14 @@ function create(data) {
   const newsItem = {
     title: data.title,
     content: data.content || '',
+    detailContent: data.detailContent || data.content || '',
+    imageUrl: data.imageUrl || '',
     url: data.url || '',
     type: data.type || 'announcement',
+    subtype: data.subtype || data.type || 'announcement',
+    summary: data.summary || data.content || '',
+    source: data.source || detectSource(data.url || ''),
+    tags: normalizeTags(data.tags, data.type || 'announcement'),
     featured: data.featured || false
   };
   return store.addItem(FILE_NAME, newsItem);
@@ -116,11 +124,34 @@ function update(id, changes) {
   if (changes.content !== undefined || changes.inhalt !== undefined) {
     filteredChanges.content = changes.content !== undefined ? changes.content : changes.inhalt;
   }
+  if (changes.detailContent !== undefined || changes.detailInhalt !== undefined) {
+    filteredChanges.detailContent = changes.detailContent !== undefined ? changes.detailContent : changes.detailInhalt;
+  }
+  if (changes.imageUrl !== undefined || changes.bildUrl !== undefined || changes.thumbnailUrl !== undefined) {
+    filteredChanges.imageUrl = changes.imageUrl !== undefined
+      ? changes.imageUrl
+      : changes.bildUrl !== undefined
+        ? changes.bildUrl
+        : changes.thumbnailUrl;
+  }
   if (changes.url !== undefined) {
     filteredChanges.url = changes.url;
   }
   if (changes.type !== undefined) {
     filteredChanges.type = changes.type;
+  }
+  if (changes.subtype !== undefined) {
+    filteredChanges.subtype = changes.subtype;
+    filteredChanges.type = changes.subtype;
+  }
+  if (changes.summary !== undefined || changes.zusammenfassung !== undefined) {
+    filteredChanges.summary = changes.summary !== undefined ? changes.summary : changes.zusammenfassung;
+  }
+  if (changes.source !== undefined || changes.quelle !== undefined) {
+    filteredChanges.source = changes.source !== undefined ? changes.source : changes.quelle;
+  }
+  if (changes.tags !== undefined || changes.schlagwoerter !== undefined) {
+    filteredChanges.tags = normalizeTags(changes.tags !== undefined ? changes.tags : changes.schlagwoerter, changes.type || changes.subtype);
   }
   if (changes.featured !== undefined) {
     filteredChanges.featured = changes.featured;

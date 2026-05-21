@@ -49,7 +49,12 @@
     "template": "Template",
     "script": "Skript",
     "promptPack": "Prompt Pack",
-    "repo": "Repo"
+    "repo": "Repo",
+    "categories": "Feed-Kategorien",
+    "sort": "Sortieren",
+    "layout": "Ansicht",
+    "layoutGrid": "Rasteransicht",
+    "layoutList": "Listenansicht"
   },
   "news": {
     "title": "Neuigkeiten",
@@ -110,6 +115,14 @@
     "feed": "Feed",
     "feedDescription": "Alle Inhalte fuer den Feed verwalten: News, Ressourcen, Artikel, Tools und mehr.",
     "feedCreated": "Feed-Eintrag erstellt",
+    "feedUpdated": "Feed-Eintrag aktualisiert",
+    "feedKind": "Feed-Bereich",
+    "summary": "Kurzbeschreibung",
+    "detailContent": "Detail-Inhalt",
+    "imageUrl": "Vorschaubild-URL",
+    "source": "Quelle",
+    "tags": "Tags",
+    "feedFormHint": "Kurzbeschreibung erscheint auf Karten, Detail-Inhalt in der Detailansicht. Tags bitte kommagetrennt eingeben.",
     "featured": "Hervorgehoben",
     "create": "Erstellen",
     "edit": "Bearbeiten",

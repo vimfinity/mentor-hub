@@ -11,12 +11,15 @@ function normalizeResource(resource) {
     title: resource.title || resource.titel || '',
     url: resource.url || '',
     description: resource.description || resource.beschreibung || '',
+    detailContent: resource.detailContent || resource.detailInhalt || resource.content || resource.inhalt || '',
+    imageUrl: resource.imageUrl || resource.bildUrl || resource.thumbnailUrl || '',
     category: normalizedCategory,
     kind: normalizeKind(resource.kind || resource.art || normalizedCategory),
     subtype: normalizeSubtype(resource.subtype || resource.untertyp || normalizedCategory),
     summary: resource.summary || resource.zusammenfassung || resource.description || resource.beschreibung || '',
     source: resource.source || resource.quelle || detectSource(resource.url || ''),
     tags: normalizeTags(resource.tags || resource.schlagwoerter, normalizedCategory),
+    featured: resource.featured || false,
     createdAt: resource.createdAt || resource.erstelltAm || new Date().toISOString(),
     updatedAt: resource.updatedAt || resource.aktualisiertAm || null
   };
@@ -131,7 +134,15 @@ function create(data) {
     title: data.title,
     url: data.url,
     description: data.description || '',
-    category: normalizeCategory(data.category || 'article')
+    detailContent: data.detailContent || data.content || '',
+    imageUrl: data.imageUrl || '',
+    category: normalizeCategory(data.category || data.subtype || 'article'),
+    kind: normalizeKind(data.kind || data.category || data.subtype || 'agent-asset'),
+    subtype: normalizeSubtype(data.subtype || data.category || 'article'),
+    summary: data.summary || data.description || '',
+    source: data.source || detectSource(data.url || ''),
+    tags: normalizeTags(data.tags, data.subtype || data.category || 'article'),
+    featured: data.featured || false
   };
   return store.addItem(FILE_NAME, resource);
 }
@@ -154,8 +165,44 @@ function update(id, changes) {
   if (changes.description !== undefined || changes.beschreibung !== undefined) {
     filteredChanges.description = changes.description !== undefined ? changes.description : changes.beschreibung;
   }
+  if (changes.detailContent !== undefined || changes.detailInhalt !== undefined || changes.content !== undefined || changes.inhalt !== undefined) {
+    filteredChanges.detailContent = changes.detailContent !== undefined
+      ? changes.detailContent
+      : changes.detailInhalt !== undefined
+        ? changes.detailInhalt
+        : changes.content !== undefined
+          ? changes.content
+          : changes.inhalt;
+  }
+  if (changes.imageUrl !== undefined || changes.bildUrl !== undefined || changes.thumbnailUrl !== undefined) {
+    filteredChanges.imageUrl = changes.imageUrl !== undefined
+      ? changes.imageUrl
+      : changes.bildUrl !== undefined
+        ? changes.bildUrl
+        : changes.thumbnailUrl;
+  }
   if (changes.category !== undefined || changes.kategorie !== undefined) {
     filteredChanges.category = normalizeCategory(changes.category !== undefined ? changes.category : changes.kategorie);
+  }
+  if (changes.kind !== undefined || changes.art !== undefined) {
+    filteredChanges.kind = normalizeKind(changes.kind !== undefined ? changes.kind : changes.art);
+  }
+  if (changes.subtype !== undefined || changes.untertyp !== undefined) {
+    const subtype = normalizeSubtype(changes.subtype !== undefined ? changes.subtype : changes.untertyp);
+    filteredChanges.subtype = subtype;
+    filteredChanges.category = normalizeCategory(subtype);
+  }
+  if (changes.summary !== undefined || changes.zusammenfassung !== undefined) {
+    filteredChanges.summary = changes.summary !== undefined ? changes.summary : changes.zusammenfassung;
+  }
+  if (changes.source !== undefined || changes.quelle !== undefined) {
+    filteredChanges.source = changes.source !== undefined ? changes.source : changes.quelle;
+  }
+  if (changes.tags !== undefined || changes.schlagwoerter !== undefined) {
+    filteredChanges.tags = normalizeTags(changes.tags !== undefined ? changes.tags : changes.schlagwoerter, changes.subtype || changes.category);
+  }
+  if (changes.featured !== undefined) {
+    filteredChanges.featured = changes.featured;
   }
 
   return store.updateItem(FILE_NAME, id, filteredChanges);

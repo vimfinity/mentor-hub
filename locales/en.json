@@ -49,7 +49,12 @@
     "template": "Template",
     "script": "Script",
     "promptPack": "Prompt Pack",
-    "repo": "Repo"
+    "repo": "Repo",
+    "categories": "Feed categories",
+    "sort": "Sort",
+    "layout": "Layout",
+    "layoutGrid": "Grid view",
+    "layoutList": "List view"
   },
   "news": {
     "title": "News",
@@ -110,6 +115,14 @@
     "feed": "Feed",
     "feedDescription": "Manage all feed content: news, resources, articles, tools, and more.",
     "feedCreated": "Feed item created",
+    "feedUpdated": "Feed item updated",
+    "feedKind": "Feed section",
+    "summary": "Summary",
+    "detailContent": "Detail content",
+    "imageUrl": "Preview image URL",
+    "source": "Source",
+    "tags": "Tags",
+    "feedFormHint": "Summary appears on cards, detail content in the detail view. Enter tags separated by commas.",
     "featured": "Featured",
     "create": "Create",
     "edit": "Edit",
