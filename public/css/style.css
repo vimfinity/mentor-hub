@@ -12,15 +12,15 @@
   --farbe-primaer-hell: #009db3;
   --farbe-primaer-sehr-hell: #e6f5f7;
 
-  --farbe-bg: #fafbfc;
+  --farbe-bg: #f7f7f4;
   --farbe-bg-erhoeht: #ffffff;
-  --farbe-bg-aktiv: #eef1f3;
-  --farbe-rand: #e0e4e7;
-  --farbe-rand-subtil: #eef1f3;
+  --farbe-bg-aktiv: #ecebe6;
+  --farbe-rand: #deddd7;
+  --farbe-rand-subtil: #ecebe6;
 
-  --farbe-text: #1c2b33;
-  --farbe-text-sekundaer: #4a5c68;
-  --farbe-text-gedaempft: #738590;
+  --farbe-text: #111111;
+  --farbe-text-sekundaer: #4b4a45;
+  --farbe-text-gedaempft: #77756d;
   --farbe-text-invers: #ffffff;
 
   --farbe-erfolg: #1a7f5a;
@@ -58,16 +58,16 @@
   --farbe-primaer-hell: #5cc8d4;
   --farbe-primaer-sehr-hell: #142a2e;
 
-  --farbe-bg: #0f1216;
-  --farbe-bg-erhoeht: #181d22;
-  --farbe-bg-aktiv: #242c32;
-  --farbe-rand: #2e373e;
-  --farbe-rand-subtil: #242c32;
+  --farbe-bg: #0d0d0d;
+  --farbe-bg-erhoeht: #171717;
+  --farbe-bg-aktiv: #242424;
+  --farbe-rand: #333333;
+  --farbe-rand-subtil: #242424;
 
-  --farbe-text: #e3e8ec;
-  --farbe-text-sekundaer: #a4b3bd;
-  --farbe-text-gedaempft: #6e8090;
-  --farbe-text-invers: #151a1e;
+  --farbe-text: #f5f5f0;
+  --farbe-text-sekundaer: #c7c5bd;
+  --farbe-text-gedaempft: #8f8d86;
+  --farbe-text-invers: #111111;
 
   --farbe-erfolg: #34d399;
   --farbe-erfolg-bg: #132a22;
