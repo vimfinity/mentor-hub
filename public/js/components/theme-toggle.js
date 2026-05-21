@@ -65,8 +65,13 @@ function bindThemeToggle() {
   button.addEventListener('click', () => {
     const nextTheme = toggleTheme();
     const iconName = nextTheme === 'dark' ? 'sun' : 'moon';
-    button.innerHTML = icon(iconName, 16);
+    const iconSlot = button.querySelector('.tab-icon');
+    if (iconSlot) {
+      iconSlot.innerHTML = icon(iconName, 16);
+    } else {
+      button.innerHTML = icon(iconName, 16);
+    }
   });
 }
 
-export { renderThemeToggle, bindThemeToggle, initTheme };
+export { renderThemeToggle, bindThemeToggle, initTheme, getTheme };

@@ -54,7 +54,11 @@
     "sort": "Sortieren",
     "layout": "Ansicht",
     "layoutGrid": "Rasteransicht",
-    "layoutList": "Listenansicht"
+    "layoutList": "Listenansicht",
+    "backToFeed": "Zurueck zur Uebersicht",
+    "detailEmpty": "Fuer diesen Eintrag liegt kein eigener Detail-Inhalt vor.",
+    "detailMissingTitle": "Eintrag nicht gefunden",
+    "detailMissingText": "Dieser Beitrag existiert nicht oder wurde entfernt."
   },
   "news": {
     "title": "Neuigkeiten",

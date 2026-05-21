@@ -1,8 +1,9 @@
 import * as api from '../services/api-client.js';
 import { holeAbfrage } from '../services/query-cache.js';
 import { t } from '../services/i18n.js';
-import { escapeHtml, openModal } from './modal.js';
+import { escapeHtml } from './modal.js';
 import { icon } from './icons.js';
+import { renderSelect, bindSelect } from './select.js';
 
 const FEED_CACHE_KEY = ['feed'];
 const FEED_CACHE_TTL_MS = 60 * 1000;
@@ -78,13 +79,6 @@ async function render(container, context = {}) {
 
   container.innerHTML = `
     <div class="feed-page">
-      <header class="feed-header">
-        <div class="feed-header-text">
-          <h1 class="feed-titel">${t('feed.title')}</h1>
-          <p class="feed-untertitel">${t('feed.subtitle')}</p>
-        </div>
-      </header>
-
       ${renderFeedToolbar({ allItems, currentFilter, currentSort, currentLayout })}
 
       ${renderHighlights(highlights)}
@@ -175,6 +169,12 @@ function sortFeedItems(items, sortierung) {
 }
 
 function renderFeedToolbar({ allItems, currentFilter, currentSort, currentLayout }) {
+  const sortOptions = [
+    { value: 'newest', label: t('general.sortNewest') },
+    { value: 'oldest', label: t('general.sortOldest') },
+    { value: 'title', label: t('general.sortTitleAsc') }
+  ];
+
   return `
     <div class="feed-toolbar">
       <nav class="feed-category-tabs" aria-label="${escapeHtml(t('feed.categories'))}">
@@ -185,12 +185,14 @@ function renderFeedToolbar({ allItems, currentFilter, currentSort, currentLayout
         `).join('')}
       </nav>
       <div class="feed-toolbar-actions">
-        <label class="feed-sort-label" for="feed-sort-select">${t('feed.sort')}</label>
-        <select class="feed-sort-select" id="feed-sort-select">
-          <option value="newest" ${currentSort === 'newest' ? 'selected' : ''}>${t('general.sortNewest')}</option>
-          <option value="oldest" ${currentSort === 'oldest' ? 'selected' : ''}>${t('general.sortOldest')}</option>
-          <option value="title" ${currentSort === 'title' ? 'selected' : ''}>${t('general.sortTitleAsc')}</option>
-        </select>
+        <span class="feed-sort-label">${t('feed.sort')}</span>
+        ${renderSelect({
+          name: 'feed-sort',
+          value: currentSort,
+          options: sortOptions,
+          size: 'klein',
+          ariaLabel: t('feed.sort')
+        })}
         <div class="feed-layout-toggle" aria-label="${escapeHtml(t('feed.layout'))}">
           <button class="${currentLayout === 'grid' ? 'aktiv' : ''}" data-layout-option="grid" title="${escapeHtml(t('feed.layoutGrid'))}">
             ${icon('layoutDashboard', 15)}
@@ -255,13 +257,6 @@ function renderHighlights({ lead, secondary }) {
 
   return `
     <section class="feed-highlights">
-      <div class="feed-section-header">
-        <div>
-          <div class="feed-section-kicker">${t('feed.sectionHighlights')}</div>
-          <h2 class="feed-section-title">${t('feed.sectionHighlights')}</h2>
-          <p class="feed-section-subtitle">${t('feed.sectionHighlightsSubtitle')}</p>
-        </div>
-      </div>
       ${renderFeatured(lead)}
       ${secondary.length > 0 ? `
         <div class="feed-highlight-grid">
@@ -274,10 +269,9 @@ function renderHighlights({ lead, secondary }) {
 
 function renderSection(section, sectionIndex, layout) {
   return `
-    <section class="feed-section feed-section-${escapeHtml(section.key)}" style="animation-delay: ${Math.min(sectionIndex * 40, 200)}ms">
+    <section class="feed-section feed-section-${escapeHtml(section.key)}">
       <div class="feed-section-header">
         <div>
-          <div class="feed-section-kicker">${section.title}</div>
           <h2 class="feed-section-title">${section.title}</h2>
           <p class="feed-section-subtitle">${section.subtitle}</p>
         </div>
@@ -291,42 +285,77 @@ function renderSection(section, sectionIndex, layout) {
 
 function renderFeatured(item) {
   const config = getTypeConfig(item);
-  const url = item.url || '';
-  const hasLink = url.length > 0;
   const sourceLabel = formatSourceLabel(item.source);
   const visibleTags = getVisibleTags(item);
+  const target = resolveFeedTarget(item);
+
+  const innerHtml = `
+    ${renderFeedImage(item, 'feed-featured-image')}
+    <h2 class="feed-featured-titel">${escapeHtml(item.title)}</h2>
+    ${getItemSummary(item) ? `<p class="feed-featured-text">${linkifyText(escapeHtml(getItemSummary(item)))}</p>` : ''}
+    <div class="feed-featured-footer">
+      <span>${t(config.labelKey)}</span>
+      <time class="feed-featured-zeit">${formatRelativeTime(item.createdAt)}</time>
+      ${target.kind === 'external' ? `<span class="feed-featured-link">${extractDomain(target.url)}</span>` : ''}
+    </div>
+    ${sourceLabel || visibleTags.length > 0 ? `
+      <div class="feed-card-tags feed-card-tags-featured">
+        ${sourceLabel ? `<span class="feed-card-tag feed-card-source">${escapeHtml(sourceLabel)}</span>` : ''}
+        ${visibleTags.map((tag) => `<span class="feed-card-tag">${escapeHtml(formatTag(tag))}</span>`).join('')}
+      </div>
+    ` : ''}
+  `;
+
+  return renderFeedAnchor(item, target, `feed-featured ${config.accent}`, innerHtml);
+}
+
+/**
+ * Decides where a feed card should lead when clicked:
+ *  - 'detail'  -> internal route /feed/:id (full page, kein Modal)
+ *  - 'external' -> direct external link, opens in new tab
+ *  - 'none'    -> nothing to navigate to (rare; fallback to detail)
+ */
+function resolveFeedTarget(item) {
+  const hasOwnContent = Boolean((item.detailContent || '').trim());
+  const url = (item.url || '').trim();
+
+  if (hasOwnContent) {
+    return { kind: 'detail', href: '/feed/' + encodeURIComponent(item.id) };
+  }
+  if (url) {
+    return { kind: 'external', href: url, url };
+  }
+  return { kind: 'detail', href: '/feed/' + encodeURIComponent(item.id) };
+}
+
+function renderFeedAnchor(item, target, className, innerHtml) {
+  if (target.kind === 'external') {
+    return `
+      <a class="${className}"
+        href="${escapeHtml(target.href)}"
+        target="_blank"
+        rel="noopener noreferrer"
+        data-feed-id="${escapeHtml(item.id)}">
+        ${innerHtml}
+      </a>
+    `;
+  }
 
   return `
-    <article class="feed-featured ${config.accent}" data-feed-detail="${escapeHtml(item.id)}">
-      ${renderFeedImage(item, 'feed-featured-image')}
-      <h2 class="feed-featured-titel">${escapeHtml(item.title)}</h2>
-      ${getItemSummary(item) ? `<p class="feed-featured-text">${linkifyText(escapeHtml(getItemSummary(item)))}</p>` : ''}
-      <div class="feed-featured-footer">
-        <span>${t(config.labelKey)}</span>
-        <time class="feed-featured-zeit">${formatRelativeTime(item.createdAt)}</time>
-        ${hasLink ? `
-          <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="feed-featured-link">
-            <span>${extractDomain(url)}</span>
-          </a>
-        ` : ''}
-      </div>
-      ${sourceLabel || visibleTags.length > 0 ? `
-        <div class="feed-card-tags feed-card-tags-featured">
-          ${sourceLabel ? `<span class="feed-card-tag feed-card-source">${escapeHtml(sourceLabel)}</span>` : ''}
-          ${visibleTags.map((tag) => `<span class="feed-card-tag">${escapeHtml(formatTag(tag))}</span>`).join('')}
-        </div>
-      ` : ''}
-    </article>
+    <a class="${className}"
+      href="${escapeHtml(target.href)}"
+      data-feed-id="${escapeHtml(item.id)}"
+      data-feed-internal="1">
+      ${innerHtml}
+    </a>
   `;
 }
 
 function renderFeedCard(item, index) {
   const config = getTypeConfig(item);
-  const url = item.url || '';
-  const hasLink = url.length > 0;
-  const delay = Math.min(index * 40, 300);
   const sourceLabel = formatSourceLabel(item.source);
   const visibleTags = getVisibleTags(item);
+  const target = resolveFeedTarget(item);
 
   const cardContent = `
     ${renderFeedImage(item, 'feed-card-image')}
@@ -347,20 +376,16 @@ function renderFeedCard(item, index) {
           ${visibleTags.map((tag) => `<span class="feed-card-tag">${escapeHtml(formatTag(tag))}</span>`).join('')}
         </div>
       ` : ''}
-      ${hasLink ? `
+      ${target.kind === 'external' ? `
         <span class="feed-card-link">
           ${icon('externalLink', 13)}
-          ${extractDomain(url)}
+          ${extractDomain(target.url)}
         </span>
       ` : ''}
     </div>
   `;
 
-  return `
-    <article class="feed-card feed-card-clickable" style="animation-delay: ${delay}ms" data-feed-detail="${escapeHtml(item.id)}">
-      ${cardContent}
-    </article>
-  `;
+  return renderFeedAnchor(item, target, 'feed-card feed-card-clickable', cardContent);
 }
 
 function renderFeedImage(item, className) {
@@ -478,10 +503,10 @@ function bindEvents(container, context) {
     });
   });
 
-  const sortSelect = container.querySelector('#feed-sort-select');
+  const sortSelect = container.querySelector('[data-select="feed-sort"]');
   if (sortSelect) {
-    sortSelect.addEventListener('change', () => {
-      context.setSearchParams?.({ sort: sortSelect.value === 'newest' ? null : sortSelect.value });
+    bindSelect(sortSelect, (value) => {
+      context.setSearchParams?.({ sort: value === 'newest' ? null : value });
     });
   }
 
@@ -491,57 +516,16 @@ function bindEvents(container, context) {
     });
   });
 
-  container.querySelectorAll('[data-feed-detail]').forEach((card) => {
-    card.addEventListener('click', () => {
-      const item = [...container.querySelectorAll('[data-feed-detail]')]
-        .map((node) => node.dataset.feedDetail)
-        .includes(card.dataset.feedDetail);
-      if (!item) {
+  // Interne Detail-Links: SPA-Navigation; externe Links: nativer Klick.
+  container.querySelectorAll('[data-feed-internal="1"]').forEach((anchor) => {
+    anchor.addEventListener('click', (event) => {
+      if (event.defaultPrevented || event.button !== 0
+        || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
         return;
       }
-      const feedItem = card.dataset.feedDetail;
-      api.get('/api/feed/' + encodeURIComponent(feedItem)).then((response) => {
-        if (!response.ok || !response.data) {
-          return;
-        }
-        openFeedDetail(response.data);
-      });
+      event.preventDefault();
+      context.navigateTo?.(anchor.getAttribute('href'));
     });
-  });
-}
-
-function openFeedDetail(item) {
-  const config = getTypeConfig(item);
-  const visibleTags = getVisibleTags(item);
-  const sourceLabel = formatSourceLabel(item.source);
-  openModal({
-    title: item.title,
-    content: `
-      <article class="feed-detail">
-        ${item.imageUrl ? `<img class="feed-detail-image" src="${escapeHtml(item.imageUrl)}" alt="">` : ''}
-        <div class="feed-card-meta">
-          <span class="feed-card-type ${config.accent}">
-            ${icon(config.icon, 13)}
-            ${t(config.labelKey)}
-          </span>
-          <time class="feed-card-zeit">${formatRelativeTime(item.createdAt)}</time>
-        </div>
-        ${getItemDetailContent(item) ? `<div class="feed-detail-content">${linkifyText(escapeHtml(getItemDetailContent(item))).replace(/\n/g, '<br>')}</div>` : ''}
-        ${sourceLabel || visibleTags.length > 0 ? `
-          <div class="feed-card-tags">
-            ${sourceLabel ? `<span class="feed-card-tag feed-card-source">${escapeHtml(sourceLabel)}</span>` : ''}
-            ${visibleTags.map((tag) => `<span class="feed-card-tag">${escapeHtml(formatTag(tag))}</span>`).join('')}
-          </div>
-        ` : ''}
-        ${item.url ? `
-          <a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" class="btn btn-sekundaer">
-            ${icon('externalLink', 14)}
-            ${extractDomain(item.url)}
-          </a>
-        ` : ''}
-      </article>
-    `,
-    cancelText: t('general.close')
   });
 }
 

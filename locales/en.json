@@ -54,7 +54,11 @@
     "sort": "Sort",
     "layout": "Layout",
     "layoutGrid": "Grid view",
-    "layoutList": "List view"
+    "layoutList": "List view",
+    "backToFeed": "Back to feed",
+    "detailEmpty": "This entry has no dedicated detail content.",
+    "detailMissingTitle": "Entry not found",
+    "detailMissingText": "This item does not exist or has been removed."
   },
   "news": {
     "title": "News",

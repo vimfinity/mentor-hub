@@ -7,6 +7,7 @@ import { escapeHtml, openModal, confirmDialog } from '../components/modal.js';
 import { renderAdminSection, renderAdminPanel, renderAdminEmptyState } from '../components/admin-ui.js';
 import { renderListensteuerung, verbindeListensteuerung } from '../components/list-controls.js';
 import { icon } from '../components/icons.js';
+import { renderSelect, bindSelect } from '../components/select.js';
 
 const SESSION_CACHE_KEY = 'admin:session';
 const SURVEYS_CACHE_KEY = 'admin:surveys';
@@ -97,7 +98,7 @@ function behandleNichtAutorisierteAntwort(antwort, navigateTo) {
     api.removeToken();
     invalidiereAdminSitzung();
     showError(t('admin.sessionExpired'));
-    navigateTo('/admin', { ersetzen: true, erzwingen: true });
+    navigateTo('/admin', { replace: true, force: true });
     return true;
   }
 
@@ -211,7 +212,7 @@ function renderLogin(container, context) {
       api.setToken(result.data.token);
       invalidiereAdminSitzung();
       showSuccess(t('admin.signInSuccess'));
-      context.navigateTo(context.path || '/admin/feed', { ersetzen: true, erzwingen: true });
+      context.navigateTo('/admin/feed', { replace: true, force: true });
       return;
     }
 
@@ -221,21 +222,22 @@ function renderLogin(container, context) {
 
 async function renderAdminShell(container, context, section) {
   container.innerHTML = `
-    <div class="admin-layout">
-      <aside class="admin-sidebar">
-        ${Object.keys(SECTION_META).map((key) => `
-          <a class="admin-nav-link ${section === key ? 'aktiv' : ''}"
-            href="${SECTION_META[key].path}" data-admin-route="${key}">
-            ${icon(SECTION_META[key].icon, 16)}
-            <span>${t('admin.' + key)}</span>
-          </a>
-        `).join('')}
-        <hr class="admin-trenner">
-        <button class="admin-nav-link" id="sign-out-button" type="button">
-          ${icon('logOut', 16)}
+    <div class="admin-shell">
+      <nav class="sub-nav" aria-label="${escapeHtml(t('admin.pageTitle'))}">
+        <div class="sub-nav-tabs">
+          ${Object.keys(SECTION_META).map((key) => `
+            <a class="sub-nav-tab ${section === key ? 'aktiv' : ''}"
+              href="${SECTION_META[key].path}" data-admin-route="${key}">
+              ${icon(SECTION_META[key].icon, 15)}
+              <span>${t('admin.' + key)}</span>
+            </a>
+          `).join('')}
+        </div>
+        <button class="sub-nav-action" id="sign-out-button" type="button">
+          ${icon('logOut', 14)}
           <span>${t('admin.signOut')}</span>
         </button>
-      </aside>
+      </nav>
       <div class="admin-inhalt" id="admin-content">
         <p class="sektion-beschreibung">${t('general.loading')}</p>
       </div>
@@ -244,6 +246,10 @@ async function renderAdminShell(container, context, section) {
 
   container.querySelectorAll('[data-admin-route]').forEach((link) => {
     link.addEventListener('click', (event) => {
+      if (event.defaultPrevented || event.button !== 0
+        || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+        return;
+      }
       event.preventDefault();
       context.navigateTo(link.getAttribute('href'));
     });
@@ -256,7 +262,7 @@ async function renderAdminShell(container, context, section) {
     invalidiereAdminSurveys();
     invalidiereAdminFeed();
     invalidiereAdminConcerns();
-    context.navigateTo('/admin', { ersetzen: true, erzwingen: true });
+    context.navigateTo('/admin', { replace: true, force: true });
   });
 
   const adminContent = container.querySelector('#admin-content');
@@ -464,13 +470,21 @@ function openSurveyForm(container, context) {
     wrapper.innerHTML = `
       <input type="text" class="formular-eingabe question-text-input"
         placeholder="${t('admin.question')} ${questionCounter}" style="margin-bottom:0.5rem">
-      <select class="formular-select question-type-select">
-        <option value="free_text">${t('admin.freeText')}</option>
-        <option value="rating">${t('admin.rating')}</option>
-        <option value="yes_no">${t('admin.yesNo')}</option>
-      </select>
+      ${renderSelect({
+        name: 'question-type-' + questionCounter,
+        value: 'free_text',
+        size: 'klein',
+        options: [
+          { value: 'free_text', label: t('admin.freeText') },
+          { value: 'rating', label: t('admin.rating') },
+          { value: 'yes_no', label: t('admin.yesNo') }
+        ],
+        ariaLabel: t('admin.question')
+      })}
     `;
+    wrapper.querySelector('[data-select]').classList.add('question-type-select');
     questionList.appendChild(wrapper);
+    bindSelect(wrapper.querySelector('.question-type-select'), () => {});
   });
 
   addQuestionButton.click();
@@ -478,18 +492,18 @@ function openSurveyForm(container, context) {
 
 function collectQuestionsFromForm(overlay) {
   const questions = [];
-  const textInputs = overlay.querySelectorAll('.question-text-input');
-  const typeInputs = overlay.querySelectorAll('.question-type-select');
+  const items = overlay.querySelectorAll('.admin-question-item');
 
-  textInputs.forEach((input, index) => {
-    const text = input.value.trim();
+  items.forEach((item) => {
+    const input = item.querySelector('.question-text-input');
+    const typeSelect = item.querySelector('.question-type-select');
+    const text = input ? input.value.trim() : '';
     if (!text) {
       return;
     }
-
     questions.push({
       text,
-      type: typeInputs[index] ? typeInputs[index].value : 'free_text'
+      type: typeSelect ? typeSelect.dataset.value : 'free_text'
     });
   });
 
@@ -657,7 +671,7 @@ async function renderFeedAdmin(container, context) {
 
         invalidiereAdminFeed();
         showSuccess(t('admin.deleted'));
-        context.navigateTo('/admin/feed');
+        context.navigateTo('/admin/feed', { force: true });
       });
     });
   });
@@ -679,6 +693,11 @@ function openFeedForm({ context, mode, item = null }) {
     <option value="${value}" ${value === selectedKind ? 'selected' : ''}>${getFeedKindLabel(value)}</option>
   `).join('');
 
+  const kindSelectOptions = FEED_KIND_OPTIONS.map((value) => ({
+    value,
+    label: getFeedKindLabel(value)
+  }));
+
   openModal({
     title: (isEdit ? t('admin.edit') : t('admin.create')) + ': ' + t('admin.feed'),
     content: `
@@ -687,14 +706,18 @@ function openFeedForm({ context, mode, item = null }) {
         <input type="text" class="formular-eingabe" id="feed-form-title" maxlength="200" required value="${titleValue}">
       </div>
       <div class="formular-gruppe">
-        <label class="formular-label" for="feed-form-kind">${t('admin.feedKind')}</label>
-        <select class="formular-select" id="feed-form-kind" ${isEdit ? 'disabled' : ''}>
-          ${kindOptions}
-        </select>
+        <label class="formular-label">${t('admin.feedKind')}</label>
+        ${renderSelect({
+          name: 'feed-form-kind',
+          value: selectedKind,
+          options: kindSelectOptions,
+          disabled: isEdit,
+          ariaLabel: t('admin.feedKind')
+        })}
       </div>
       <div class="formular-gruppe">
-        <label class="formular-label" for="feed-form-subtype">${t('admin.category')}</label>
-        <select class="formular-select" id="feed-form-subtype"></select>
+        <label class="formular-label">${t('admin.category')}</label>
+        <div id="feed-form-subtype-host"></div>
       </div>
       <div class="formular-gruppe">
         <label class="formular-label" for="feed-form-summary">${t('admin.summary')}</label>
@@ -735,8 +758,8 @@ function openFeedForm({ context, mode, item = null }) {
         return;
       }
 
-      const kind = overlay.querySelector('#feed-form-kind').value;
-      const subtype = overlay.querySelector('#feed-form-subtype').value;
+      const kind = overlay.querySelector('[data-select="feed-form-kind"]').dataset.value;
+      const subtype = overlay.querySelector('[data-select="feed-form-subtype"]').dataset.value;
       const url = overlay.querySelector('#feed-form-url').value.trim();
       const summary = overlay.querySelector('#feed-form-summary').value.trim();
       const content = overlay.querySelector('#feed-form-content').value.trim();
@@ -766,45 +789,57 @@ function openFeedForm({ context, mode, item = null }) {
 
       invalidiereAdminFeed();
       showSuccess(isEdit ? t('admin.feedUpdated') : t('admin.feedCreated'));
-      context.navigateTo('/admin/feed', { erzwingen: true });
+      context.navigateTo('/admin/feed', { force: true });
     }
   });
 
   const overlay = document.querySelector('.modal-overlay:last-child');
-  const kindSelect = overlay.querySelector('#feed-form-kind');
-  const subtypeSelect = overlay.querySelector('#feed-form-subtype');
+  const kindSelect = overlay.querySelector('[data-select="feed-form-kind"]');
+  const subtypeHost = overlay.querySelector('#feed-form-subtype-host');
   const preview = overlay.querySelector('#feed-form-preview');
+
   const refreshPreview = () => {
     const imageUrl = overlay.querySelector('#feed-form-image').value.trim();
     const title = overlay.querySelector('#feed-form-title').value.trim();
     const summary = overlay.querySelector('#feed-form-summary').value.trim();
+    const subtypeRoot = subtypeHost.querySelector('[data-select="feed-form-subtype"]');
+    const subtypeValue = subtypeRoot ? subtypeRoot.dataset.value : '';
     preview.innerHTML = `
       ${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="">` : `<div class="feed-admin-vorschau-placeholder">${icon('image', 22)}</div>`}
       <div>
         <strong>${escapeHtml(title || t('admin.title'))}</strong>
-        <span>${getFeedKindLabel(kindSelect.value)} - ${typeLabels[subtypeSelect.value] || subtypeSelect.value}</span>
+        <span>${getFeedKindLabel(kindSelect.dataset.value)} - ${typeLabels[subtypeValue] || subtypeValue}</span>
         ${summary ? `<p>${escapeHtml(summary)}</p>` : ''}
       </div>
     `;
   };
-  const refreshSubtypeOptions = () => {
-    const allowedSubtypes = FEED_SUBTYPES_BY_KIND[kindSelect.value] || FEED_SUBTYPES_BY_KIND.update;
-    const nextSubtype = allowedSubtypes.includes(subtypeSelect.value)
-      ? subtypeSelect.value
-      : allowedSubtypes.includes(selectedType)
+
+  const renderSubtypeSelect = () => {
+    const kind = kindSelect.dataset.value;
+    const allowed = FEED_SUBTYPES_BY_KIND[kind] || FEED_SUBTYPES_BY_KIND.update;
+    const previousRoot = subtypeHost.querySelector('[data-select="feed-form-subtype"]');
+    const previousValue = previousRoot ? previousRoot.dataset.value : selectedType;
+    const nextSubtype = allowed.includes(previousValue)
+      ? previousValue
+      : allowed.includes(selectedType)
         ? selectedType
-        : allowedSubtypes[0];
-    subtypeSelect.innerHTML = allowedSubtypes.map((value) => `
-      <option value="${value}" ${value === nextSubtype ? 'selected' : ''}>${typeLabels[value] || value}</option>
-    `).join('');
+        : allowed[0];
+    subtypeHost.innerHTML = renderSelect({
+      name: 'feed-form-subtype',
+      value: nextSubtype,
+      options: allowed.map((value) => ({ value, label: typeLabels[value] || value })),
+      ariaLabel: t('admin.category')
+    });
+    const subtypeRoot = subtypeHost.querySelector('[data-select="feed-form-subtype"]');
+    bindSelect(subtypeRoot, () => refreshPreview());
     refreshPreview();
   };
-  kindSelect.addEventListener('change', refreshSubtypeOptions);
-  subtypeSelect.addEventListener('change', refreshPreview);
+
+  bindSelect(kindSelect, () => renderSubtypeSelect());
   ['feed-form-title', 'feed-form-summary', 'feed-form-image'].forEach((id) => {
     overlay.querySelector('#' + id).addEventListener('input', refreshPreview);
   });
-  refreshSubtypeOptions();
+  renderSubtypeSelect();
 }
 
 async function renderConcernsAdmin(container, context) {
@@ -852,12 +887,18 @@ async function renderConcernsAdmin(container, context) {
           <tr>
             <td title="${escapeHtml(concern.description || '')}">${escapeHtml(concern.title)}</td>
             <td>${concern.name ? escapeHtml(concern.name) : '<em>' + escapeHtml(t('admin.anonymous')) + '</em>'}</td>
-            <td>
-              <select class="formular-select concern-status-select" data-id="${concern.id}">
-                <option value="open" ${concern.status === 'open' ? 'selected' : ''}>${t('admin.open')}</option>
-                <option value="in_progress" ${concern.status === 'in_progress' ? 'selected' : ''}>${t('admin.inProgress')}</option>
-                <option value="done" ${concern.status === 'done' ? 'selected' : ''}>${t('admin.done')}</option>
-              </select>
+            <td data-concern-status-cell="${escapeHtml(concern.id)}">
+              ${renderSelect({
+                name: 'concern-status-' + concern.id,
+                value: concern.status,
+                size: 'klein',
+                options: [
+                  { value: 'open', label: t('admin.open') },
+                  { value: 'in_progress', label: t('admin.inProgress') },
+                  { value: 'done', label: t('admin.done') }
+                ],
+                ariaLabel: t('admin.status')
+              })}
             </td>
             <td>${formatDate(concern.createdAt)}</td>
             <td class="tabelle-aktionen">
@@ -883,11 +924,14 @@ async function renderConcernsAdmin(container, context) {
     onSeite: (seite) => context.setSearchParams?.({ page: seite <= 1 ? null : seite })
   });
 
-  container.querySelectorAll('.concern-status-select').forEach((select) => {
-    select.addEventListener('change', async () => {
-      const result = await api.put('/api/admin/concerns/' + select.dataset.id, {
-        status: select.value
-      });
+  container.querySelectorAll('[data-concern-status-cell]').forEach((cell) => {
+    const concernId = cell.dataset.concernStatusCell;
+    const root = cell.querySelector('[data-select]');
+    if (!root) {
+      return;
+    }
+    bindSelect(root, async (value) => {
+      const result = await api.put('/api/admin/concerns/' + concernId, { status: value });
       if (behandleNichtAutorisierteAntwort(result, context.navigateTo)) {
         return;
       }
@@ -895,7 +939,6 @@ async function renderConcernsAdmin(container, context) {
         showError(result.data?.error || t('general.error'));
         return;
       }
-
       invalidiereAdminConcerns();
       showSuccess(t('admin.statusUpdated'));
     });

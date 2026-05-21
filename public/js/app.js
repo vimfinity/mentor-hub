@@ -4,9 +4,10 @@ import { startDevReload } from './services/dev-reload.js';
 import { installRoutePrefetch } from './services/route-prefetch.js';
 import { renderRouteSkeleton } from './components/loading-state.js';
 import { icon } from './components/icons.js';
-import { renderThemeToggle, bindThemeToggle, initTheme } from './components/theme-toggle.js';
+import { renderThemeToggle, bindThemeToggle, initTheme, getTheme } from './components/theme-toggle.js';
 import * as adminConsole from './features/admin-console.js';
 import * as homepage from './components/homepage.js';
+import * as feedDetail from './components/feed-detail.js';
 import * as feedbackSection from './components/feedback-section.js';
 
 const router = createRouter();
@@ -17,6 +18,7 @@ let prefetchCleanup = null;
 const ROUTES = {
   news: { key: 'feed', path: '/', render: homepage.render, preload: homepage.preload, icon: 'megaphone', titleKey: 'feed.title', navigationKey: 'feed', skeleton: 'feed' },
   indexAlias: { key: 'feed', path: '/index.html', render: homepage.render, preload: homepage.preload, icon: 'megaphone', titleKey: 'feed.title', navigationKey: 'feed', skeleton: 'feed' },
+  feedDetail: { key: 'feed-detail', path: '/feed/:id', render: feedDetail.render, preload: feedDetail.preload, icon: 'megaphone', titleKey: 'feed.title', navigationKey: 'feed', skeleton: 'feed-detail' },
   feedback: { key: 'feedback', path: '/feedback', render: feedbackSection.render, preload: feedbackSection.preload, icon: 'messageSquare', titleKey: 'nav.feedback', navigationKey: 'feedback', skeleton: 'feedback' },
   adminLanding: { key: 'admin', path: '/admin', render: renderAdminRoute, preload: adminConsole.preload, icon: 'settings', titleKey: 'admin.pageTitle', navigationKey: 'admin', adminSection: 'feed', skeleton: 'admin' },
   adminFeed: { key: 'admin', path: '/admin/feed', render: renderAdminRoute, preload: adminConsole.preload, icon: 'settings', titleKey: 'admin.feed', navigationKey: 'admin', adminSection: 'feed', skeleton: 'admin' },
@@ -107,7 +109,7 @@ function renderNavigation() {
     return;
   }
 
-  const html = NAVIGATION_ITEMS.map((item) => `
+  const mainItems = NAVIGATION_ITEMS.map((item) => `
     <a class="tab-link ${item.key === activeRoute ? 'aktiv' : ''}"
       href="${item.path}" data-route="${item.key}"
       aria-current="${item.key === activeRoute ? 'page' : 'false'}">
@@ -116,18 +118,27 @@ function renderNavigation() {
     </a>
   `).join('');
 
-  const languageSwitcherHtml = `
-    <button class="sprach-wechsel" id="language-button" title="${t('nav.language')}">
-      ${icon('globe', 16)}
-      <span>${getLanguage() === 'de' ? 'EN' : 'DE'}</span>
-    </button>
+  // Theme- und Sprach-Toggle teilen sich nun den .tab-link-Stil,
+  // sitzen aber rechtsbündig in einer eigenen Gruppe (.nav-utilities).
+  const themeName = getTheme();
+  const themeIcon = themeName === 'dark' ? 'sun' : 'moon';
+  const otherLanguage = getLanguage() === 'de' ? 'EN' : 'DE';
+
+  const utilities = `
+    <div class="nav-utilities">
+      <button class="tab-link tab-link-utility" id="language-button" type="button" title="${t('nav.language')}">
+        <span class="tab-icon">${icon('globe', 16)}</span>
+        <span class="tab-label">${otherLanguage}</span>
+      </button>
+      <button class="tab-link tab-link-utility tab-link-icon" id="theme-toggle" type="button" title="Toggle theme" aria-label="Toggle theme">
+        <span class="tab-icon">${icon(themeIcon, 16)}</span>
+      </button>
+    </div>
   `;
 
-  const themeToggleHtml = renderThemeToggle();
+  navigation.innerHTML = mainItems + utilities;
 
-  navigation.innerHTML = html + languageSwitcherHtml + themeToggleHtml;
-
-  navigation.querySelectorAll('.tab-link').forEach((link) => {
+  navigation.querySelectorAll('.tab-link[data-route]').forEach((link) => {
     link.addEventListener('click', (event) => {
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
         return;
@@ -175,8 +186,9 @@ async function renderRoute(route) {
     await route.render(section, {
       route,
       section: route.adminSection || null,
-      path: route.path,
+      path: router.getCurrentState().path,
       searchParams: router.getCurrentState().searchParams,
+      params: route.params || {},
       navigateTo: (path, options) => router.navigateTo(path, options),
       setSearchParams: (values, options) => router.setSearchParams(values, options)
     });
@@ -203,12 +215,19 @@ function setViewClasses(route) {
   }
 
   const isAdminView = (route.navigationKey || route.key) === 'admin';
+  // Admin teilt jetzt dasselbe Hauptlayout wie der Rest; die alten
+  // Sonder-Klassen bleiben für Auth-Karten (Login/Setup) erhalten.
   mainContent.classList.toggle('hauptinhalt-admin', isAdminView);
   document.body.classList.toggle('ansicht-admin', isAdminView);
 }
 
 function findRouteByPath(pathname) {
-  return Object.values(ROUTES).find((route) => route.path === pathname) || null;
+  for (const route of Object.values(ROUTES)) {
+    if (route.path === pathname) {
+      return route;
+    }
+  }
+  return null;
 }
 
 function renderAdminRoute(container, context) {

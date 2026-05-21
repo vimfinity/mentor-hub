@@ -26,19 +26,92 @@ function getUrl(target) {
   return new URL(target || window.location.href, window.location.origin);
 }
 
+/**
+ * Compiles a route pattern like '/feed/:id' into:
+ *  - a RegExp matcher (anchored)
+ *  - the list of parameter names in path order
+ *  - a specificity score (higher = more specific; static segments win)
+ *
+ * Patterns supported:
+ *  - static segments: '/admin/feed'
+ *  - named params:    '/feed/:id'
+ *  - catch-all tail:  '/admin/*'   (kept for forward compat; greedy)
+ */
+function compilePattern(pattern) {
+  const path = normalizePath(pattern);
+
+  if (!path.includes(':') && !path.includes('*')) {
+    return {
+      path,
+      params: [],
+      specificity: 100,
+      match: (candidate) => (candidate === path ? {} : null)
+    };
+  }
+
+  const params = [];
+  const segments = path.split('/').slice(1);
+  let specificity = 0;
+  const regexParts = segments.map((segment) => {
+    if (segment.startsWith(':')) {
+      params.push(segment.slice(1));
+      specificity += 1;
+      return '([^/]+)';
+    }
+    if (segment === '*') {
+      params.push('rest');
+      return '(.*)';
+    }
+    specificity += 2;
+    return segment.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
+  });
+  const regex = new RegExp('^/' + regexParts.join('/') + '$');
+
+  return {
+    path,
+    params,
+    specificity,
+    match: (candidate) => {
+      const result = regex.exec(candidate);
+      if (!result) {
+        return null;
+      }
+      const values = {};
+      params.forEach((name, index) => {
+        const raw = result[index + 1];
+        try {
+          values[name] = decodeURIComponent(raw);
+        } catch (error) {
+          values[name] = raw;
+        }
+      });
+      return values;
+    }
+  };
+}
+
 function createRouter() {
-  const routes = new Map();
+  const compiled = [];
   const listeners = [];
   let currentPath = normalizePath(window.location.pathname);
   let isStarted = false;
 
-  function registerRoute(pathname, routeData) {
-    routes.set(normalizePath(pathname), routeData);
+  function registerRoute(pattern, routeData) {
+    const compiledRoute = compilePattern(pattern);
+    compiled.push({ ...compiledRoute, route: routeData });
+    compiled.sort((a, b) => b.specificity - a.specificity);
     return api;
   }
 
   function findRoute(pathname = currentPath) {
-    return routes.get(normalizePath(pathname)) || null;
+    const normalized = normalizePath(pathname);
+    for (const entry of compiled) {
+      const params = entry.match(normalized);
+      if (params !== null) {
+        return { ...entry.route, params };
+      }
+    }
+    return null;
   }
 
   function getCurrentState() {
@@ -63,11 +136,13 @@ function createRouter() {
     const targetUrl = getUrl(pathname || window.location.href);
     const targetPath = normalizePath(targetUrl.pathname);
     const targetSearch = targetUrl.search || '';
-    const method = options.replace ? 'replaceState' : 'pushState';
+    const replace = options.replace || options.ersetzen;
+    const force = options.force || options.erzwingen;
+    const method = replace ? 'replaceState' : 'pushState';
     const currentTarget = window.location.pathname + window.location.search;
     const nextTarget = targetPath + targetSearch;
 
-    if (nextTarget === currentTarget && !options.force) {
+    if (nextTarget === currentTarget && !force) {
       notify();
       return;
     }
