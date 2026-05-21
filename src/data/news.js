@@ -5,16 +5,69 @@ const store = require('./store');
 const FILE_NAME = 'news.json';
 
 function normalizeNewsItem(item) {
+  const normalizedType = normalizeType(item.type || item.art || 'announcement');
   return {
     id: item.id,
     title: item.title || item.titel || '',
     content: item.content || item.inhalt || '',
     url: item.url || '',
-    type: item.type || 'announcement',
+    type: normalizedType,
+    kind: 'update',
+    subtype: normalizedType,
+    summary: item.summary || item.zusammenfassung || item.content || item.inhalt || '',
+    source: item.source || item.quelle || detectSource(item.url || ''),
+    tags: normalizeTags(item.tags || item.schlagwoerter, normalizedType),
     featured: item.featured || false,
     createdAt: item.createdAt || item.erstelltAm || new Date().toISOString(),
     updatedAt: item.updatedAt || item.aktualisiertAm || null
   };
+}
+
+function normalizeType(type) {
+  const normalized = String(type || '').toLowerCase();
+
+  if (normalized === 'news') return 'announcement';
+  if (normalized === 'artikel') return 'article';
+
+  return normalized || 'announcement';
+}
+
+function normalizeTags(tags, fallbackType) {
+  const values = Array.isArray(tags)
+    ? tags
+    : typeof tags === 'string'
+      ? tags.split(',')
+      : [];
+
+  const normalized = values
+    .map((tag) => String(tag || '').trim().toLowerCase())
+    .filter(Boolean);
+
+  if (fallbackType && !normalized.includes(fallbackType)) {
+    normalized.unshift(fallbackType);
+  }
+
+  return Array.from(new Set(normalized));
+}
+
+function detectSource(url) {
+  if (!url) {
+    return 'internal';
+  }
+
+  try {
+    const hostname = new URL(url).hostname.toLowerCase();
+
+    if (hostname.includes('openai.com') || hostname.includes('chatgpt.com')) return 'openai';
+    if (hostname.includes('anthropic.com') || hostname.includes('claude.com')) return 'anthropic';
+    if (hostname.includes('google.') || hostname.includes('deepmind.google')) return 'google';
+    if (hostname.includes('github.com')) return 'github';
+    if (hostname.includes('modelcontextprotocol.io')) return 'mcp';
+
+    return hostname.replace(/^www\./, '');
+  } catch (error) {
+    return 'external';
+  }
 }
 
 function loadNewsItems() {

@@ -14,10 +14,28 @@ const TYPE_CONFIG = {
   tool: { icon: 'wrench', labelKey: 'feed.tool', accent: 'accent-tool' },
   skill: { icon: 'lightbulb', labelKey: 'feed.skill', accent: 'accent-skill' },
   video: { icon: 'video', labelKey: 'feed.video', accent: 'accent-video' },
-  tutorial: { icon: 'graduationCap', labelKey: 'feed.tutorial', accent: 'accent-tutorial' }
+  tutorial: { icon: 'graduationCap', labelKey: 'feed.tutorial', accent: 'accent-tutorial' },
+  comparison: { icon: 'layoutDashboard', labelKey: 'feed.comparison', accent: 'accent-tutorial' },
+  playbook: { icon: 'clipboardList', labelKey: 'feed.playbook', accent: 'accent-article' },
+  'use-case': { icon: 'layoutDashboard', labelKey: 'feed.useCase', accent: 'accent-article' },
+  onboarding: { icon: 'bookOpen', labelKey: 'feed.onboarding', accent: 'accent-tutorial' },
+  mcp: { icon: 'settings', labelKey: 'feed.mcp', accent: 'accent-tool' },
+  agent: { icon: 'layoutDashboard', labelKey: 'feed.agent', accent: 'accent-skill' },
+  'agents-md': { icon: 'fileText', labelKey: 'feed.agentsMd', accent: 'accent-article' },
+  template: { icon: 'fileText', labelKey: 'feed.template', accent: 'accent-article' },
+  script: { icon: 'wrench', labelKey: 'feed.script', accent: 'accent-tool' },
+  'prompt-pack': { icon: 'messageSquare', labelKey: 'feed.promptPack', accent: 'accent-skill' },
+  repo: { icon: 'bookOpen', labelKey: 'feed.repo', accent: 'accent-tool' }
 };
 
-const VALID_FILTERS = ['all', 'release', 'announcement', 'article', 'tool', 'skill', 'video', 'tutorial'];
+const FILTER_CONFIG = {
+  all: { labelKey: 'feed.filter_all' },
+  update: { labelKey: 'feed.filter_update' },
+  guide: { labelKey: 'feed.filter_guide' },
+  'agent-asset': { labelKey: 'feed.filter_agent_asset' }
+};
+
+const VALID_FILTERS = Object.keys(FILTER_CONFIG);
 
 async function render(container, context = {}) {
   const response = await holeAbfrage({
@@ -37,17 +55,19 @@ async function render(container, context = {}) {
     return;
   }
 
-  const currentFilter = context.searchParams?.get('filter') || 'all';
-  const items = currentFilter === 'all'
-    ? response.data
-    : response.data.filter((item) => item.type === currentFilter);
+  const allItems = response.data.map(normalizeFeedItem);
+  const requestedFilter = context.searchParams?.get('kind') || 'all';
+  const currentFilter = VALID_FILTERS.includes(requestedFilter) ? requestedFilter : 'all';
+  const filteredItems = currentFilter === 'all'
+    ? allItems
+    : allItems.filter((item) => item.kind === currentFilter);
 
-  const featured = response.data.find((item) => item.featured);
-  const feedItems = featured
-    ? items.filter((item) => item.id !== featured.id)
-    : items;
-
-  const grouped = groupByTime(feedItems);
+  const highlights = currentFilter === 'all' ? selectHighlights(allItems) : { lead: null, secondary: [] };
+  const highlightIds = new Set([
+    highlights.lead?.id,
+    ...highlights.secondary.map((item) => item.id)
+  ].filter(Boolean));
+  const sections = buildSections(filteredItems, currentFilter, highlightIds);
 
   container.innerHTML = `
     <div class="feed-page">
@@ -58,32 +78,20 @@ async function render(container, context = {}) {
         </div>
       </header>
 
-      ${featured && currentFilter === 'all' ? renderFeatured(featured) : ''}
+      ${renderHighlights(highlights)}
 
       <div class="feed-filter-bar">
-        ${VALID_FILTERS.filter((f) => f === 'all' || response.data.some((item) => item.type === f)).map((f) => `
-          <button class="feed-filter-chip ${f === currentFilter ? 'aktiv' : ''}" data-filter="${f}">
-            ${f !== 'all' ? `<span class="feed-filter-dot ${TYPE_CONFIG[f]?.accent || ''}"></span>` : ''}
-            ${t('feed.filter_' + f)}
+        ${VALID_FILTERS.filter((value) => value === 'all' || allItems.some((item) => item.kind === value)).map((value) => `
+          <button class="feed-filter-chip ${value === currentFilter ? 'aktiv' : ''}" data-kind-filter="${value}">
+            ${value !== 'all' ? `<span class="feed-filter-dot ${getKindAccent(value)}"></span>` : ''}
+            ${t(FILTER_CONFIG[value].labelKey)}
           </button>
         `).join('')}
       </div>
 
-      <div class="feed-stream">
-        ${grouped.map(({ label, items: groupItems }) => `
-          <section class="feed-gruppe">
-            <div class="feed-gruppe-header">
-              <span class="feed-gruppe-label">${label}</span>
-              <span class="feed-gruppe-linie"></span>
-            </div>
-            <div class="feed-grid">
-              ${groupItems.map((item, index) => renderFeedCard(item, index)).join('')}
-            </div>
-          </section>
-        `).join('')}
-      </div>
+      ${sections.map((section, sectionIndex) => renderSection(section, sectionIndex)).join('')}
 
-      ${items.length === 0 ? `
+      ${filteredItems.length === 0 ? `
         <div class="feed-keine-ergebnisse">
           <p>${t('feed.noResults')}</p>
         </div>
@@ -91,7 +99,7 @@ async function render(container, context = {}) {
     </div>
   `;
 
-  bindEvents(container, context, response.data);
+  bindEvents(container, context);
 }
 
 function preload() {
@@ -102,10 +110,144 @@ function preload() {
   });
 }
 
+function normalizeFeedItem(item) {
+  const normalizedType = item.subtype || item.type || 'article';
+  return {
+    ...item,
+    kind: item.kind || inferKind(normalizedType),
+    subtype: normalizedType,
+    type: normalizedType,
+    summary: item.summary || item.content || item.description || '',
+    source: item.source || 'internal',
+    tags: Array.isArray(item.tags) ? Array.from(new Set(item.tags.filter(Boolean))) : []
+  };
+}
+
+function inferKind(type) {
+  if (['release', 'announcement', 'article', 'video'].includes(type)) {
+    return 'update';
+  }
+
+  if (['tutorial', 'playbook', 'use-case', 'onboarding', 'comparison'].includes(type)) {
+    return 'guide';
+  }
+
+  return 'agent-asset';
+}
+
+function selectHighlights(items) {
+  const updateItems = items.filter((item) => item.kind === 'update');
+  const pool = updateItems.length > 0 ? updateItems : items;
+
+  if (pool.length === 0) {
+    return { lead: null, secondary: [] };
+  }
+
+  const sorted = [...pool].sort((a, b) => {
+    if (Boolean(a.featured) !== Boolean(b.featured)) {
+      return Number(Boolean(b.featured)) - Number(Boolean(a.featured));
+    }
+
+    return new Date(b.createdAt) - new Date(a.createdAt);
+  });
+
+  return {
+    lead: sorted[0],
+    secondary: sorted.slice(1, 4)
+  };
+}
+
+function buildSections(items, currentFilter, highlightIds) {
+  if (currentFilter !== 'all') {
+    return [{
+      key: currentFilter,
+      title: t(getSectionTitleKey(currentFilter)),
+      subtitle: t(getSectionSubtitleKey(currentFilter)),
+      items
+    }];
+  }
+
+  return [
+    {
+      key: 'updates',
+      title: t('feed.sectionUpdates'),
+      subtitle: t('feed.sectionUpdatesSubtitle'),
+      items: items.filter((item) => item.kind === 'update' && !highlightIds.has(item.id))
+    },
+    {
+      key: 'guides',
+      title: t('feed.sectionGuides'),
+      subtitle: t('feed.sectionGuidesSubtitle'),
+      items: items.filter((item) => item.kind === 'guide')
+    },
+    {
+      key: 'agent-assets',
+      title: t('feed.sectionAssets'),
+      subtitle: t('feed.sectionAssetsSubtitle'),
+      items: items.filter((item) => item.kind === 'agent-asset')
+    }
+  ].filter((section) => section.items.length > 0);
+}
+
+function getSectionTitleKey(filter) {
+  if (filter === 'update') return 'feed.sectionUpdates';
+  if (filter === 'guide') return 'feed.sectionGuides';
+  return 'feed.sectionAssets';
+}
+
+function getSectionSubtitleKey(filter) {
+  if (filter === 'update') return 'feed.sectionUpdatesSubtitle';
+  if (filter === 'guide') return 'feed.sectionGuidesSubtitle';
+  return 'feed.sectionAssetsSubtitle';
+}
+
+function renderHighlights({ lead, secondary }) {
+  if (!lead) {
+    return '';
+  }
+
+  return `
+    <section class="feed-highlights">
+      <div class="feed-section-header">
+        <div>
+          <div class="feed-section-kicker">${t('feed.sectionHighlights')}</div>
+          <h2 class="feed-section-title">${t('feed.sectionHighlights')}</h2>
+          <p class="feed-section-subtitle">${t('feed.sectionHighlightsSubtitle')}</p>
+        </div>
+      </div>
+      ${renderFeatured(lead)}
+      ${secondary.length > 0 ? `
+        <div class="feed-highlight-grid">
+          ${secondary.map((item, index) => renderFeedCard(item, index)).join('')}
+        </div>
+      ` : ''}
+    </section>
+  `;
+}
+
+function renderSection(section, sectionIndex) {
+  return `
+    <section class="feed-section feed-section-${escapeHtml(section.key)}" style="animation-delay: ${Math.min(sectionIndex * 40, 200)}ms">
+      <div class="feed-section-header">
+        <div>
+          <div class="feed-section-kicker">${section.title}</div>
+          <h2 class="feed-section-title">${section.title}</h2>
+          <p class="feed-section-subtitle">${section.subtitle}</p>
+        </div>
+      </div>
+      <div class="feed-grid">
+        ${section.items.map((item, index) => renderFeedCard(item, index)).join('')}
+      </div>
+    </section>
+  `;
+}
+
 function renderFeatured(item) {
-  const config = TYPE_CONFIG[item.type] || TYPE_CONFIG.announcement;
+  const config = getTypeConfig(item);
   const url = item.url || '';
   const hasLink = url.length > 0;
+  const sourceLabel = formatSourceLabel(item.source);
+  const visibleTags = getVisibleTags(item);
 
   return `
     <article class="feed-featured ${config.accent}">
@@ -114,7 +256,13 @@ function renderFeatured(item) {
         <span>${t(config.labelKey)}</span>
       </div>
       <h2 class="feed-featured-titel">${escapeHtml(item.title)}</h2>
-      ${item.content ? `<p class="feed-featured-text">${linkifyText(escapeHtml(item.content))}</p>` : ''}
+      ${getItemSummary(item) ? `<p class="feed-featured-text">${linkifyText(escapeHtml(getItemSummary(item)))}</p>` : ''}
+      ${sourceLabel || visibleTags.length > 0 ? `
+        <div class="feed-card-tags feed-card-tags-featured">
+          ${sourceLabel ? `<span class="feed-card-tag feed-card-source">${escapeHtml(sourceLabel)}</span>` : ''}
+          ${visibleTags.map((tag) => `<span class="feed-card-tag">${escapeHtml(formatTag(tag))}</span>`).join('')}
+        </div>
+      ` : ''}
       <div class="feed-featured-footer">
         <time class="feed-featured-zeit">${formatRelativeTime(item.createdAt)}</time>
         ${hasLink ? `
@@ -129,10 +277,12 @@ function renderFeatured(item) {
 }
 
 function renderFeedCard(item, index) {
-  const config = TYPE_CONFIG[item.type] || TYPE_CONFIG.article;
+  const config = getTypeConfig(item);
   const url = item.url || '';
   const hasLink = url.length > 0;
   const delay = Math.min(index * 40, 300);
+  const sourceLabel = formatSourceLabel(item.source);
+  const visibleTags = getVisibleTags(item);
 
   const cardContent = `
     <div class="feed-card-accent ${config.accent}"></div>
@@ -145,8 +295,14 @@ function renderFeedCard(item, index) {
         <time class="feed-card-zeit">${formatRelativeTime(item.createdAt)}</time>
       </div>
       <h3 class="feed-card-titel">${escapeHtml(item.title)}</h3>
-      ${item.content || item.description ? `
-        <p class="feed-card-text">${linkifyText(escapeHtml(item.content || item.description))}</p>
+      ${getItemSummary(item) ? `
+        <p class="feed-card-text">${linkifyText(escapeHtml(getItemSummary(item)))}</p>
+      ` : ''}
+      ${sourceLabel || visibleTags.length > 0 ? `
+        <div class="feed-card-tags">
+          ${sourceLabel ? `<span class="feed-card-tag feed-card-source">${escapeHtml(sourceLabel)}</span>` : ''}
+          ${visibleTags.map((tag) => `<span class="feed-card-tag">${escapeHtml(formatTag(tag))}</span>`).join('')}
+        </div>
       ` : ''}
       ${hasLink ? `
         <span class="feed-card-link">
@@ -171,43 +327,6 @@ function renderFeedCard(item, index) {
       ${cardContent}
     </article>
   `;
-}
-
-function groupByTime(items) {
-  const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const weekStart = new Date(todayStart);
-  weekStart.setDate(weekStart.getDate() - 7);
-
-  const groups = { today: [], week: [], earlier: [] };
-
-  for (const item of items) {
-    const date = new Date(item.createdAt);
-    if (date >= todayStart) {
-      groups.today.push(item);
-    } else if (date >= weekStart) {
-      groups.week.push(item);
-    } else {
-      groups.earlier.push(item);
-    }
-  }
-
-  const result = [];
-  if (groups.today.length > 0) {
-    result.push({ label: t('feed.today'), items: groups.today });
-  }
-  if (groups.week.length > 0) {
-    result.push({ label: t('feed.thisWeek'), items: groups.week });
-  }
-  if (groups.earlier.length > 0) {
-    result.push({ label: t('feed.earlier'), items: groups.earlier });
-  }
-
-  if (result.length === 0 && items.length > 0) {
-    result.push({ label: t('feed.latest'), items });
-  }
-
-  return result;
 }
 
 function formatRelativeTime(dateStr) {
@@ -248,11 +367,62 @@ function linkifyText(text) {
   );
 }
 
-function bindEvents(container, context, allData) {
-  container.querySelectorAll('.feed-filter-chip').forEach((btn) => {
+function getTypeConfig(item) {
+  return TYPE_CONFIG[item.subtype] || TYPE_CONFIG[item.type] || TYPE_CONFIG.article;
+}
+
+function getKindAccent(kind) {
+  if (kind === 'guide') return 'accent-tutorial';
+  if (kind === 'agent-asset') return 'accent-skill';
+  return 'accent-release';
+}
+
+function getItemSummary(item) {
+  return item.summary || item.content || item.description || '';
+}
+
+function getVisibleTags(item) {
+  const blocked = new Set([
+    item.kind,
+    item.type,
+    item.subtype,
+    item.source
+  ].filter(Boolean));
+
+  return (item.tags || [])
+    .filter((tag) => !blocked.has(tag))
+    .slice(0, 3);
+}
+
+function formatTag(tag) {
+  return tag
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function formatSourceLabel(source) {
+  if (!source || source === 'internal') {
+    return '';
+  }
+
+  const knownLabels = {
+    openai: 'OpenAI',
+    anthropic: 'Anthropic',
+    google: 'Google',
+    github: 'GitHub',
+    mcp: 'MCP'
+  };
+
+  return knownLabels[source] || formatTag(source);
+}
+
+function bindEvents(container, context) {
+  container.querySelectorAll('[data-kind-filter]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const filter = btn.dataset.filter;
-      context.setSearchParams?.({ filter: filter === 'all' ? null : filter });
+      const filter = btn.dataset.kindFilter;
+      context.setSearchParams?.({ kind: filter === 'all' ? null : filter });
     });
   });
 }

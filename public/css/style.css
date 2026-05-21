@@ -1586,6 +1586,52 @@ body {
 .feed-filter-dot.accent-video { background: var(--accent-video); }
 .feed-filter-dot.accent-tutorial { background: var(--accent-tutorial); }
 
+.feed-highlights {
+  margin-bottom: var(--abstand-3xl);
+}
+
+.feed-highlight-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--abstand-lg);
+}
+
+.feed-section {
+  margin-top: var(--abstand-3xl);
+}
+
+.feed-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: var(--abstand-lg);
+  margin-bottom: var(--abstand-lg);
+}
+
+.feed-section-kicker {
+  font-size: var(--schrift-xs);
+  font-weight: var(--gewicht-semi);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--farbe-text-gedaempft);
+  margin-bottom: var(--abstand-xs);
+}
+
+.feed-section-title {
+  font-family: var(--schrift-display);
+  font-size: var(--schrift-2xl);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: var(--farbe-text);
+  margin-bottom: var(--abstand-xs);
+}
+
+.feed-section-subtitle {
+  font-size: var(--schrift-sm);
+  color: var(--farbe-text-gedaempft);
+  max-width: 58ch;
+}
+
 /* Time groups */
 .feed-stream {
   display: flex;
@@ -1733,6 +1779,35 @@ body {
   font-weight: var(--gewicht-mittel);
 }
 
+.feed-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: var(--abstand-sm);
+}
+
+.feed-card-tags-featured {
+  margin-bottom: var(--abstand-lg);
+}
+
+.feed-card-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: var(--radius-voll);
+  background: var(--farbe-bg);
+  border: 1px solid var(--farbe-rand-subtil);
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--schrift-xs);
+  line-height: 1;
+}
+
+.feed-card-source {
+  background: var(--farbe-primaer-sehr-hell);
+  border-color: transparent;
+  color: var(--farbe-primaer);
+}
+
 .feed-inline-link {
   color: var(--farbe-primaer);
   text-decoration: underline;
@@ -1818,6 +1893,10 @@ body {
   }
 
   .feed-featured-titel {
+    font-size: var(--schrift-xl);
+  }
+
+  .feed-section-title {
     font-size: var(--schrift-xl);
   }
 
