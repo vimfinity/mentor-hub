@@ -20,5 +20,16 @@
     "sha256": "56ef14a71c3b348830495efc685361bf61063aa34f65413ee793db91774b2379",
     "url": "/uploads/images/56ef14a71c3b348830495efc685361bf61063aa34f65413ee793db91774b2379.png",
     "createdAt": "2026-05-27T20:53:01.777Z"
+  },
+  {
+    "id": "565be239-33f3-4305-9d7c-54fad322222e",
+    "kind": "image",
+    "filename": "cdda31e0f663b5d51b70b660f3b3d6e0a23d536012ab1979504516ca1ff8b914.png",
+    "originalName": "db-readonly-skill.png",
+    "mimeType": "image/png",
+    "sizeBytes": 3306042,
+    "sha256": "cdda31e0f663b5d51b70b660f3b3d6e0a23d536012ab1979504516ca1ff8b914",
+    "url": "/uploads/images/cdda31e0f663b5d51b70b660f3b3d6e0a23d536012ab1979504516ca1ff8b914.png",
+    "createdAt": "2026-05-27T22:48:52.899Z"
   }
 ]

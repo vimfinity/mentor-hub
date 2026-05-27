@@ -1,3 +1,0 @@
-display_name: SQL Server Readonly Query
-short_description: Run safe read-only queries against approved SQL Server test profiles.
-default_prompt: Use sqlserver-readonly-query to inspect the default test database and validate the answer with real rows.

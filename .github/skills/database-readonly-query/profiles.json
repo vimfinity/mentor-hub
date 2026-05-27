@@ -1,0 +1,173 @@
+{
+  "defaultProfile": "2025-dev1",
+  "profiles": [
+    {
+      "name": "48-mhg1",
+      "aliases": ["4.8 mhg1", "4.8-mhg1", "48_mhg1", "gfos48_mhg1"],
+      "description": "GFOS 4.8 MHG1 SQL Server test database.",
+      "version": "4.8",
+      "engine": "sqlserver",
+      "serverLabel": "esvmwin5001\\sql2019_dev",
+      "databaseLabel": "gfos48_mhg1",
+      "connection": { "type": "env", "envVar": "DATABASE_READONLY_48_MHG1" }
+    },
+    {
+      "name": "48-test",
+      "aliases": ["4.8 test", "4.8-test", "48test", "gfos48test"],
+      "description": "GFOS 4.8 SQL Server test database.",
+      "version": "4.8",
+      "engine": "sqlserver",
+      "serverLabel": "esvmwin5000\\sql2019_dev",
+      "databaseLabel": "gfos48test",
+      "connection": { "type": "env", "envVar": "DATABASE_READONLY_48_TEST" }
+    },
+    {
+      "name": "48plus",
+      "aliases": ["4.8plus", "48plus", "gfos48plus"],
+      "description": "GFOS 4.8plus Oracle test database.",
+      "version": "4.8plus",
+      "engine": "oracle",
+      "serverLabel": "oda-03",
+      "databaseLabel": "gfos48plus",
+      "serviceLabel": "gf19p15",
+      "connection": { "type": "env", "envVar": "DATABASE_READONLY_48PLUS" }
+    },
+    {
+      "name": "48plus-unicode",
+      "aliases": ["4.8plus unicode", "48plus unicode", "gfos48plus unicode", "gf198u8"],
+      "description": "GFOS 4.8plus Unicode Oracle test database.",
+      "version": "4.8plus",
+      "engine": "oracle",
+      "serverLabel": "oda-03",
+      "databaseLabel": "gfos48plus Unicode",
+      "serviceLabel": "gf198u8",
+      "connection": { "type": "env", "envVar": "DATABASE_READONLY_48PLUS_UNICODE" }
+    },
+    {
+      "name": "48plus-dev1",
+      "aliases": ["4.8plus dev1", "48plus_dev1", "gfos48plus_dev1"],
+      "description": "GFOS 4.8plus DEV1 SQL Server test database.",
+      "version": "4.8plus",
+      "engine": "sqlserver",
+      "serverLabel": "esvmwin5000\\sql2022_dev",
+      "databaseLabel": "gfos48plus_dev1",
+      "connection": { "type": "env", "envVar": "DATABASE_READONLY_48PLUS_DEV1" }
+    },
+    {
+      "name": "48plus-mhg1",
+      "aliases": ["4.8plus mhg1", "48plus_mhg1", "gfos48plus_mhg1"],
+      "description": "GFOS 4.8plus MHG1 SQL Server test database.",
+      "version": "4.8plus",
+      "engine": "sqlserver",
+      "serverLabel": "esvmwin5001\\sql2022_dev",
+      "databaseLabel": "gfos48plus_mhg1",
+      "connection": { "type": "env", "envVar": "DATABASE_READONLY_48PLUS_MHG1" }
+    },
+    {
+      "name": "48plus-plantest",
+      "aliases": ["4.8plus plantest", "gfosplantest 4.8plus", "gf121p15"],
+      "description": "GFOS 4.8plus plantest Oracle test database.",
+      "version": "4.8plus",
+      "engine": "oracle",
+      "serverLabel": "oda-03",
+      "databaseLabel": "gfosplantest",
+      "serviceLabel": "gf121p15",
+      "connection": { "type": "env", "envVar": "DATABASE_READONLY_48PLUS_PLANTEST" }
+    },
+    {
+      "name": "48plus-vmmeshg",
+      "aliases": ["4.8plus vmmeshg", "gfosvmmeshg", "gf122p15"],
+      "description": "GFOS 4.8plus vmmeshg Oracle test database.",
+      "version": "4.8plus",
+      "engine": "oracle",
+      "serverLabel": "oda-03",
+      "databaseLabel": "gfosvmmeshg",
+      "serviceLabel": "gf122p15",
+      "connection": { "type": "env", "envVar": "DATABASE_READONLY_48PLUS_VMMESHG" }
+    },
+    {
+      "name": "2025-dev1",
+      "aliases": ["dev1", "default", "2025 dev1", "2025-dev1", "gfos2025_dev1"],
+      "description": "GFOS 2025 DEV1 SQL Server test database. Default profile.",
+      "version": "2025",
+      "engine": "sqlserver",
+      "serverLabel": "esvmwin5000\\sql2022_dev",
+      "databaseLabel": "gfos2025_dev1",
+      "connection": { "type": "env", "envVar": "DATABASE_READONLY_2025_DEV1" }
+    },
+    {
+      "name": "2025-easyui",
+      "aliases": ["2025 easyui", "gfos2025_easyui"],
+      "description": "GFOS 2025 EasyUI SQL Server test database.",
+      "version": "2025",
+      "engine": "sqlserver",
+      "serverLabel": "esvmwin5000\\sql2022_dev",
+      "databaseLabel": "gfos2025_easyui",
+      "connection": { "type": "env", "envVar": "DATABASE_READONLY_2025_EASYUI" }
+    },
+    {
+      "name": "2025-mhg1",
+      "aliases": ["mhg1", "2025 mhg1", "2025-mhg1", "gfos2025_mhg1"],
+      "description": "GFOS 2025 MHG1 SQL Server test database.",
+      "version": "2025",
+      "engine": "sqlserver",
+      "serverLabel": "esvmwin5001\\sql2025_dev",
+      "databaseLabel": "gfos2025_mhg1",
+      "connection": { "type": "env", "envVar": "DATABASE_READONLY_2025_MHG1" }
+    },
+    {
+      "name": "2025-qa1",
+      "aliases": ["qa1", "2025 qa1", "gfos2025_qa1"],
+      "description": "GFOS 2025 QA1 SQL Server test database.",
+      "version": "2025",
+      "engine": "sqlserver",
+      "serverLabel": "esvmwin5000\\sql2022_dev",
+      "databaseLabel": "gfos2025_qa1",
+      "connection": { "type": "env", "envVar": "DATABASE_READONLY_2025_QA1" }
+    },
+    {
+      "name": "2025-plantest",
+      "aliases": ["2025 plantest", "gfosplantest 2025", "gf19p15"],
+      "description": "GFOS 2025 plantest Oracle test database.",
+      "version": "2025",
+      "engine": "oracle",
+      "serverLabel": "oda-03",
+      "databaseLabel": "gfosplantest",
+      "serviceLabel": "gf19p15",
+      "connection": { "type": "env", "envVar": "DATABASE_READONLY_2025_PLANTEST" }
+    },
+    {
+      "name": "2025-plantest1",
+      "aliases": ["2025 plantest1", "gfosplantest1"],
+      "description": "GFOS 2025 plantest1 Oracle test database.",
+      "version": "2025",
+      "engine": "oracle",
+      "serverLabel": "oda-03",
+      "databaseLabel": "gfosplantest1",
+      "serviceLabel": "gf19p15",
+      "connection": { "type": "env", "envVar": "DATABASE_READONLY_2025_PLANTEST1" }
+    },
+    {
+      "name": "2025-vmmeshg49",
+      "aliases": ["2025 vmmeshg49", "gfosvmmeshg49"],
+      "description": "GFOS 2025 vmmeshg49 Oracle test database.",
+      "version": "2025",
+      "engine": "oracle",
+      "serverLabel": "oda-03",
+      "databaseLabel": "gfosvmmeshg49",
+      "serviceLabel": "gf122p15",
+      "connection": { "type": "env", "envVar": "DATABASE_READONLY_2025_VMMESHG49" }
+    },
+    {
+      "name": "2025-gfvmpep",
+      "aliases": ["2025 gfvmpep", "gfvmpep"],
+      "description": "GFOS 2025 gfvmpep Oracle test database.",
+      "version": "2025",
+      "engine": "oracle",
+      "serverLabel": "oda-03",
+      "databaseLabel": "gfvmpep",
+      "serviceLabel": "gf122p15",
+      "connection": { "type": "env", "envVar": "DATABASE_READONLY_2025_GFVMPEP" }
+    }
+  ]
+}
