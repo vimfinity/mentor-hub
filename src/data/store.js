@@ -135,7 +135,7 @@ function updateItem(fileName, id, changes) {
       ...records[index],
       ...changes,
       id: records[index].id,
-      createdAt: records[index].createdAt || records[index].erstelltAm || new Date().toISOString(),
+      createdAt: changes.createdAt || records[index].createdAt || records[index].erstelltAm || new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
     delete records[index].erstelltAm;

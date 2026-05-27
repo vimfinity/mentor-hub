@@ -4,6 +4,7 @@ import { t } from '../services/i18n.js';
 import { escapeHtml } from './modal.js';
 import { icon } from './icons.js';
 import { mountRichDocument } from '../services/rich-content.js';
+import { showSuccess } from './toast.js';
 
 const DETAIL_CACHE_TTL_MS = 60 * 1000;
 
@@ -33,6 +34,7 @@ async function render(container, context = {}) {
   const detailContent = (item.detailContent || item.content || item.description || item.summary || '').trim();
   const sourceLabel = formatSourceLabel(item.source);
   const visibleTags = getVisibleTags(item);
+  const attachments = Array.isArray(item.attachments) ? item.attachments : [];
   const config = getTypeConfig(item);
 
   container.innerHTML = `
@@ -45,6 +47,11 @@ async function render(container, context = {}) {
         </div>
         <h1 class="feed-detail-titel">${escapeHtml(item.title)}</h1>
         ${item.summary ? `<p class="feed-detail-lead">${escapeHtml(item.summary)}</p>` : ''}
+        <div class="feed-detail-actions">
+          <button class="tab-link tab-link-utility tab-link-icon" type="button" data-copy-article-link aria-label="Link kopieren" title="Link kopieren">
+            <span class="tab-icon">${icon('link', 16)}</span>
+          </button>
+        </div>
       </header>
 
       ${item.imageUrl ? `<img class="feed-detail-image" src="${escapeHtml(item.imageUrl)}" alt="">` : ''}
@@ -61,6 +68,21 @@ async function render(container, context = {}) {
         </div>
       ` : ''}
 
+      ${attachments.length > 0 ? `
+        <section class="feed-detail-attachments" aria-label="Downloads">
+          <h2>Downloads</h2>
+          <div class="feed-detail-attachment-list">
+            ${attachments.map((attachment) => `
+              <a class="feed-detail-attachment" href="${escapeHtml(attachment.url || '')}" download>
+                ${icon('fileText', 16)}
+                <span>${escapeHtml(attachment.label || attachment.originalName || attachment.filename || 'Download')}</span>
+                ${attachment.sizeBytes ? `<small>${escapeHtml(formatBytes(attachment.sizeBytes))}</small>` : ''}
+              </a>
+            `).join('')}
+          </div>
+        </section>
+      ` : ''}
+
       ${item.url ? `
         <a class="btn btn-sekundaer feed-detail-external"
           href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer">
@@ -74,6 +96,14 @@ async function render(container, context = {}) {
   const richHost = container.querySelector('[data-rich-host]');
   if (richHost && detailContent) {
     mountRichDocument(richHost, detailContent, { minHeight: 0, className: 'feed-detail-iframe' });
+  }
+
+  const copyButton = container.querySelector('[data-copy-article-link]');
+  if (copyButton) {
+    copyButton.addEventListener('click', async () => {
+      await copyToClipboard(new URL('/feed/' + encodeURIComponent(item.id), window.location.origin).href);
+      showSuccess('Link wurde kopiert');
+    });
   }
 }
 
@@ -169,6 +199,30 @@ function formatSourceLabel(source) {
     mcp: 'MCP'
   };
   return known[source] || formatTag(source);
+}
+
+function formatBytes(value) {
+  const bytes = Number(value) || 0;
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1).replace('.0', '') + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1).replace('.0', '') + ' MB';
+}
+
+async function copyToClipboard(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const input = document.createElement('textarea');
+  input.value = text;
+  input.setAttribute('readonly', '');
+  input.style.position = 'fixed';
+  input.style.opacity = '0';
+  document.body.appendChild(input);
+  input.select();
+  document.execCommand('copy');
+  input.remove();
 }
 
 function getVisibleTags(item) {

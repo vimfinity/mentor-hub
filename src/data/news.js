@@ -104,7 +104,8 @@ function create(data) {
     summary: data.summary || data.content || '',
     source: data.source || detectSource(data.url || ''),
     tags: normalizeTags(data.tags, data.type || 'announcement'),
-    featured: data.featured || false
+    featured: data.featured || false,
+    createdAt: data.createdAt || new Date().toISOString()
   };
   return store.addItem(FILE_NAME, newsItem);
 }
@@ -155,6 +156,9 @@ function update(id, changes) {
   }
   if (changes.featured !== undefined) {
     filteredChanges.featured = changes.featured;
+  }
+  if (changes.createdAt !== undefined || changes.erstelltAm !== undefined) {
+    filteredChanges.createdAt = changes.createdAt !== undefined ? changes.createdAt : changes.erstelltAm;
   }
 
   return store.updateItem(FILE_NAME, id, filteredChanges);

@@ -19,20 +19,61 @@
   },
   {
     "id": "da7dc7e9-c76e-439f-8e84-a8def5881041",
-    "createdAt": "2026-05-20T15:11:56.139Z",
+    "createdAt": "2026-05-27T20:24:00.000Z",
     "title": "Gemini 3.5: frontier intelligence with action",
     "content": "Vorstellung von Gemini 3.5 Flash",
     "url": "https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-3-5/",
     "type": "release",
     "featured": true,
-    "updatedAt": "2026-05-26T06:31:33.293Z",
+    "updatedAt": "2026-05-27T20:40:14.120Z",
     "detailContent": "Vorstellung von Gemini 3.5 Flash",
     "imageUrl": "https://storage.googleapis.com/gweb-uniblog-publish-prod/images/gemini-3-5__keyword__blog-header.width-1200.format-webp.webp",
     "subtype": "release",
     "summary": "Vorstellung von Gemini 3.5 Flash",
-    "source": "blog.google",
+    "source": "Google Blog",
     "tags": [
       "release"
     ]
+  },
+  {
+    "id": "042e857d-829b-4d9d-ba05-27c9a2aadf26",
+    "createdAt": "2026-05-27T20:19:39.443Z",
+    "title": "Introducing Claude Opus 4.7",
+    "content": "Release of Anthropics new frontier model: Claude Opus 4.7",
+    "detailContent": "Release of Anthropics new frontier model: Claude Opus 4.7",
+    "imageUrl": "https://www.anthropic.com/_next/image?url=https%3A%2F%2Fwww-cdn.anthropic.com%2Fimages%2F4zrzovbb%2Fwebsite%2F96ea2509a90e527642c822303e56296a07bcfce4-1920x1080.png&w=1920&q=75",
+    "url": "https://www.anthropic.com/news/claude-opus-4-7",
+    "type": "release",
+    "subtype": "release",
+    "summary": "Release of Anthropics new frontier model: Claude Opus 4.7",
+    "source": "Anthropic News",
+    "tags": [
+      "release",
+      "anthropic",
+      "claude",
+      "opus"
+    ],
+    "featured": false,
+    "updatedAt": "2026-05-27T20:24:56.193Z"
+  },
+  {
+    "id": "13b77219-b97e-4f72-817b-cb0f37a1dc5d",
+    "createdAt": "2026-05-27T20:22:32.321Z",
+    "title": "Entdecke GPT‑5.5",
+    "content": "Einführung des neusten Models aus dem Hause OpenAI: GPT-5.5",
+    "detailContent": "Einführung des neusten Models aus dem Hause OpenAI: GPT-5.5",
+    "imageUrl": "https://images.ctfassets.net/kftzwdyauwt9/2Bh47W4cA48dvG5FbDtNQH/5897109fb0de6fc3125c0c35c4f60001/Hero_Art_Card_16x9.jpg?w=1920&q=90&fm=webp",
+    "url": "https://openai.com/de-DE/index/introducing-gpt-5-5/",
+    "type": "release",
+    "subtype": "release",
+    "summary": "Einführung des neusten Models aus dem Hause OpenAI: GPT-5.5",
+    "source": "OpenAI News",
+    "tags": [
+      "release",
+      "openai",
+      "gpt"
+    ],
+    "featured": false,
+    "updatedAt": "2026-05-27T20:25:10.289Z"
   }
 ]

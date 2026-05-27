@@ -9,6 +9,15 @@ const concerns = require('../data/concerns');
 const newsItems = require('../data/news');
 
 const localesDirectory = path.join(__dirname, '..', '..', 'locales');
+const resourceUploadDirectory = path.join(__dirname, '..', '..', 'data', 'uploads', 'resources');
+const imageUploadDirectory = path.join(__dirname, '..', '..', 'data', 'uploads', 'images');
+const imageMimeTypes = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif'
+};
 
 /**
  * Registers public API routes.
@@ -73,6 +82,49 @@ function registerRoutes(router) {
 
   router.get('/api/resources', (req, res) => {
     sendJson(res, 200, resources.getAll());
+  });
+
+  router.get('/api/uploads/images/:filename', (req, res, params) => {
+    const filePath = safeImagePath(params.filename);
+    if (!filePath || !fs.existsSync(filePath)) {
+      sendJson(res, 404, { error: 'Image not found' });
+      return;
+    }
+
+    res.writeHead(200, {
+      'Content-Type': imageMimeTypes[path.extname(filePath).toLowerCase()] || 'application/octet-stream',
+      'Content-Length': fs.statSync(filePath).size,
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'X-Content-Type-Options': 'nosniff'
+    });
+    fs.createReadStream(filePath).pipe(res);
+  });
+
+  router.get('/api/resources/:id/attachments/:attachmentId', (req, res, params) => {
+    const resource = resources.getAll().find((item) => item.id === params.id);
+    const attachment = resource?.attachments?.find((item) => item.id === params.attachmentId);
+
+    if (!attachment) {
+      sendJson(res, 404, { error: 'Attachment not found' });
+      return;
+    }
+
+    const filePath = safeAttachmentPath(params.id, params.attachmentId, attachment.filename);
+    if (!filePath || !fs.existsSync(filePath)) {
+      sendJson(res, 404, { error: 'Attachment file not found' });
+      return;
+    }
+
+    const downloadName = encodeURIComponent(attachment.originalName || attachment.filename || 'download')
+      .replace(/[!'()*]/g, (char) => '%' + char.charCodeAt(0).toString(16).toUpperCase());
+
+    res.writeHead(200, {
+      'Content-Type': attachment.mimeType || 'application/octet-stream',
+      'Content-Length': fs.statSync(filePath).size,
+      'Content-Disposition': `attachment; filename*=UTF-8''${downloadName}`,
+      'X-Content-Type-Options': 'nosniff'
+    });
+    fs.createReadStream(filePath).pipe(res);
   });
 
   router.post('/api/concerns', (req, res) => {
@@ -185,6 +237,32 @@ function registerRoutes(router) {
 function sendJson(res, statusCode, data) {
   res.writeHead(statusCode, { 'Content-Type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify(data));
+}
+
+function safeAttachmentPath(resourceId, attachmentId, filename) {
+  const resolvedRoot = path.resolve(resourceUploadDirectory);
+  const resolvedTarget = path.resolve(resourceUploadDirectory, resourceId, attachmentId, filename || '');
+
+  if (!resolvedTarget.startsWith(resolvedRoot + path.sep)) {
+    return null;
+  }
+
+  return resolvedTarget;
+}
+
+function safeImagePath(filename) {
+  if (!/^[a-f0-9-]+\.(png|jpg|jpeg|webp|gif)$/i.test(filename || '')) {
+    return null;
+  }
+
+  const resolvedRoot = path.resolve(imageUploadDirectory);
+  const resolvedTarget = path.resolve(imageUploadDirectory, filename);
+
+  if (!resolvedTarget.startsWith(resolvedRoot + path.sep)) {
+    return null;
+  }
+
+  return resolvedTarget;
 }
 
 /**

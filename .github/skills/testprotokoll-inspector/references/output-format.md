@@ -15,13 +15,16 @@ The extractor produces these artifacts under `.copilot-artifacts\testprotokoll-i
 
 ## Recommended Agent Flow
 
-1. If the artifact directory is missing or stale, run the extractor immediately, usually with `--reuse-if-current`.
-2. Do **not** inspect the application code before extraction for mixed requests like "analyze defect and fix code".
-3. If the user refers to a specific defect like `1.3.5`, **open `errors.json` first**. It is the direct lookup index — no guessing required.
-4. Read `document.md` for the full protocol overview (error index, tables, paragraphs).
-5. Open only the image files that are referenced by the relevant defect entry.
-6. Use `document.json` only when structured traversal is more useful than the markdown view.
-7. Use `charts\*.json` for Office chart data.
+1. Resolve the `.docx` path or inbox folder from the user request.
+2. Run the bundled extractor from the skill directory immediately, usually with `--reuse-if-current`.
+3. Do **not** search `.copilot-artifacts` before running the extractor. Missing artifacts are normal before the first run.
+4. Do **not** inspect the application code before extraction for mixed requests like "analyze defect and fix code".
+5. Use the output paths printed by the extractor.
+6. If the user refers to a specific defect like `1.3.5`, **open `errors.json` first**. It is the direct lookup index — no guessing required.
+7. Read `document.md` for the full protocol overview (error index, tables, paragraphs).
+8. Open only the image files that are referenced by the relevant defect entry.
+9. Use `document.json` only when structured traversal is more useful than the markdown view.
+10. Use `charts\*.json` for Office chart data.
 
 ## Required No-Cache Behavior
 
@@ -34,14 +37,16 @@ Missing `.copilot-artifacts\testprotokoll-inspector\...` output is the normal tr
 ## Recommended Command Pattern
 
 ```powershell
-python .\scripts\extract_docx.py "<source>" --reuse-if-current
+python ".github\skills\testprotokoll-inspector\scripts\extract_docx.py" "<source>" --reuse-if-current
 ```
 
 For inbox-style folders, use:
 
 ```powershell
-python .\scripts\extract_docx.py "J:\dev\docs\testprotokolle\inbox" --latest --reuse-if-current
+python ".github\skills\testprotokoll-inspector\scripts\extract_docx.py" "J:\dev\docs\testprotokolle\inbox" --latest --reuse-if-current
 ```
+
+If the repository path does not exist because the skill is globally installed, use the actual folder that contains the loaded `SKILL.md`.
 
 ## `errors.json` Structure
 

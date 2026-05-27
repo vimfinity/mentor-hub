@@ -11,6 +11,7 @@ Use this skill when QA or QS delivers a test protocol as a Word `.docx` and the 
 
 If the user asks about a `.docx` test protocol or a defect from it, **run the bundled extractor before any code exploration**.
 
+- Do **not** look for `.copilot-artifacts\testprotokoll-inspector\...` before extraction. The extractor creates or reuses that cache and prints the output paths.
 - Missing `.copilot-artifacts\testprotokoll-inspector\...` cache is **not** a blocker; it is the signal to run the extractor now.
 - Do **not** start repository discovery, implementation planning, or defect fixing until `errors.json` or `document.md` exists for the target document.
 - Do **not** claim that the `.docx` cannot be read directly in the current session while this skill is available; this skill exists specifically to make it readable.
@@ -20,11 +21,13 @@ If the user asks about a `.docx` test protocol or a defect from it, **run the bu
 ## Required Order
 
 1. Resolve the target `.docx`.
-2. Run `extract_docx.py` immediately.
-3. Read `errors.json` first for concrete defect IDs like `1.3.5`; otherwise read `document.md`.
-4. Open only the images referenced by the relevant defect entry.
-5. If the user supplied their own notes per defect, compare those notes against the extracted defect entries before judging the implementation.
-6. Only then inspect code or propose fixes.
+2. Resolve the directory that contains this `SKILL.md`; that directory is the skill directory.
+3. Run `<skill-directory>\scripts\extract_docx.py` immediately against the target `.docx` or inbox folder.
+4. Read the extractor JSON/console output and use the reported artifact paths.
+5. Read `errors.json` first for concrete defect IDs like `1.3.5`; otherwise read `document.md`.
+6. Open only the images referenced by the relevant defect entry.
+7. If the user supplied their own notes per defect, compare those notes against the extracted defect entries before judging the implementation.
+8. Only then inspect code or propose fixes.
 
 ## When the User Supplies Notes
 
@@ -51,24 +54,28 @@ Do **not** skip directly from user notes into code reasoning without checking th
 ## Fast Path Commands
 
 Run the bundled `scripts\extract_docx.py` from this skill. Do not require the user to provide or know the skill installation path.
+When this `SKILL.md` has been loaded, its parent folder is the skill directory. If the shell is currently in the repository root and this is a repository-installed skill, the script path is usually `.github\skills\testprotokoll-inspector\scripts\extract_docx.py`. If the skill is globally installed, use the path of the loaded skill folder instead.
 If `python` is not available, retry the same command with `python3`. If neither command is available, tell the user Python must be installed and accessible before this skill can extract the `.docx`.
 
 Direct file path:
 
 ```powershell
-python .\scripts\extract_docx.py "J:\dev\docs\Testprotokoll-103429.docx" --reuse-if-current
+$skillDir = ".github\skills\testprotokoll-inspector"
+python "$skillDir\scripts\extract_docx.py" "J:\dev\docs\Testprotokoll-103429.docx" --reuse-if-current
 ```
 
 Latest dropped file in the canonical inbox:
 
 ```powershell
-python .\scripts\extract_docx.py "J:\dev\docs\testprotokolle\inbox" --latest --reuse-if-current
+$skillDir = ".github\skills\testprotokoll-inspector"
+python "$skillDir\scripts\extract_docx.py" "J:\dev\docs\testprotokolle\inbox" --latest --reuse-if-current
 ```
 
 Latest dropped file in a legacy inbox layout:
 
 ```powershell
-python .\scripts\extract_docx.py "J:\dev\docs\inbox" --latest --reuse-if-current
+$skillDir = ".github\skills\testprotokoll-inspector"
+python "$skillDir\scripts\extract_docx.py" "J:\dev\docs\inbox" --latest --reuse-if-current
 ```
 
 ## Recommended Folder Layout
@@ -112,29 +119,33 @@ Transform the `.docx` into agent-friendly artifacts:
 1. Resolve the source document.
    - If the user provided a `.docx` path, use it directly.
    - If the user provided a folder such as `J:\dev\docs`, `J:\dev\docs\inbox`, or `J:\dev\docs\testprotokolle\inbox`, treat that as a handover location and run the extractor there immediately. Use `--latest` when the user refers to "the dropped document", "latest", or an inbox-style folder.
-   - If artifacts are missing, do not investigate code first. Extract first.
-2. Run the extractor immediately. Prefer `--reuse-if-current` unless the user explicitly wants a full refresh:
+   - Do not check whether artifacts already exist. Extract first; `--reuse-if-current` handles current caches safely.
+2. Resolve the extractor script path.
+   - Use the `scripts\extract_docx.py` file in this skill directory.
+   - If this is a repository skill and the current shell is at the repository root, use `.github\skills\testprotokoll-inspector\scripts\extract_docx.py`.
+   - If that path does not exist, use the actual folder path of the loaded `SKILL.md` rather than searching `.copilot-artifacts`.
+3. Run the extractor immediately. Prefer `--reuse-if-current` unless the user explicitly wants a full refresh:
 
    ```powershell
-   python .\scripts\extract_docx.py "J:\dev\docs\testprotokolle\inbox\Testprotokoll-103429.docx" --reuse-if-current
+   python ".github\skills\testprotokoll-inspector\scripts\extract_docx.py" "J:\dev\docs\testprotokolle\inbox\Testprotokoll-103429.docx" --reuse-if-current
    ```
 
    Override artifact root if the auto-detection picks the wrong directory:
 
    ```powershell
-   python .\scripts\extract_docx.py "...\Testprotokoll.docx" --artifact-root "J:\dev\docs" --reuse-if-current
+   python ".github\skills\testprotokoll-inspector\scripts\extract_docx.py" "...\Testprotokoll.docx" --artifact-root "J:\dev\docs" --reuse-if-current
    ```
 
-3. If `python` fails because the command is missing, retry with `python3`. If neither command is available, stop and ask the user to make Python available. If the extractor itself fails, report the exact error from its JSON output or stderr. For file-in-use, permission, or corrupted ZIP/DOCX errors, ask the user to close the document in Word or provide a readable copy before retrying. Do not proceed from memory or guess at protocol contents.
-4. Confirm the output paths from the extractor result and use those files as the source of truth for the session.
-5. **Read `errors.json` first** if the user references a specific defect ID like `1.3.5`. Jump directly to the relevant block, date, login, and linked images.
+4. If `python` fails because the command is missing, retry with `python3`. If neither command is available, stop and ask the user to make Python available. If the extractor itself fails, report the exact error from its JSON output or stderr. For file-in-use, permission, or corrupted ZIP/DOCX errors, ask the user to close the document in Word or provide a readable copy before retrying. Do not proceed from memory or guess at protocol contents.
+5. Confirm the output paths from the extractor result and use those files as the source of truth for the session.
+6. **Read `errors.json` first** if the user references a specific defect ID like `1.3.5`. Jump directly to the relevant block, date, login, and linked images.
    - If the exact defect ID is missing, search `document.md` for the textual ID and nearby headings.
    - If the ID still cannot be located, tell the user that the defect was not found in the extracted protocol. Continue analyzing only the user's notes if useful, but explicitly refuse to propose code changes until the user clarifies the defect or provides the correct protocol entry.
-6. Read `document.md` for a full document overview or to answer questions about the whole protocol.
-7. View specific images from `images\` only when the defect evidence cannot be understood from text alone. Use the environment's built-in image-viewing/image-analysis capability for the referenced image file; do not read binary image files as text.
-8. If the prompt includes the user's own notes per defect, create a per-defect comparison of **protocol evidence vs. user note vs. recommendation**.
-9. Use `charts\` and `document.json` only for structured traversal or chart data.
-10. Proceed with defect analysis, root-cause investigation, or implementation fix.
+7. Read `document.md` for a full document overview or to answer questions about the whole protocol.
+8. View specific images from `images\` only when the defect evidence cannot be understood from text alone. Use the environment's built-in image-viewing/image-analysis capability for the referenced image file; do not read binary image files as text.
+9. If the prompt includes the user's own notes per defect, create a per-defect comparison of **protocol evidence vs. user note vs. recommendation**.
+10. Use `charts\` and `document.json` only for structured traversal or chart data.
+11. Proceed with defect analysis, root-cause investigation, or implementation fix.
 
 ## Output Location
 

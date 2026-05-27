@@ -1,11 +1,15 @@
 'use strict';
 
+const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const auth = require('../auth');
 const { loadConfig, saveLocalConfig } = require('../config');
 const surveys = require('../data/surveys');
 const resources = require('../data/resources');
 const concerns = require('../data/concerns');
 const newsItems = require('../data/news');
+const media = require('../data/media');
 const { sendJson, readBody } = require('./public');
 
 const NEWS_TYPES = ['announcement', 'release', 'article', 'tool', 'skill', 'video', 'tutorial'];
@@ -13,6 +17,41 @@ const FEED_KINDS = ['update', 'guide', 'agent-asset'];
 const GUIDE_TYPES = ['tutorial', 'playbook', 'use-case', 'onboarding', 'comparison'];
 const AGENT_ASSET_TYPES = ['skill', 'mcp', 'agents-md', 'agent', 'template', 'script', 'prompt-pack', 'repo', 'tool'];
 const RESOURCE_TYPES = [...GUIDE_TYPES, ...AGENT_ASSET_TYPES, 'article', 'video'];
+const UPLOAD_ROOT = path.join(__dirname, '..', '..', 'data', 'uploads', 'resources');
+const IMAGE_UPLOAD_ROOT = path.join(__dirname, '..', '..', 'data', 'uploads', 'images');
+const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const ALLOWED_ATTACHMENT_EXTENSIONS = new Set([
+  '.zip',
+  '.pdf',
+  '.docx',
+  '.xlsx',
+  '.pptx',
+  '.txt',
+  '.md',
+  '.json',
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.webp'
+]);
+const ALLOWED_IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif']);
+const IMAGE_MIME_TYPES = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif'
+};
+
+function normalizeEditableDate(value) {
+  if (!value) {
+    return new Date().toISOString();
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
 
 /**
  * Checks the Authorization header and validates the session token.
@@ -31,6 +70,104 @@ function requireAuth(req, res) {
   }
 
   return true;
+}
+
+function readLargeJsonBody(req, res, callback) {
+  let body = '';
+  let receivedBytes = 0;
+  let responseSent = false;
+  const maxSize = Math.ceil(MAX_ATTACHMENT_BYTES * 1.4) + 4096;
+
+  function sendError(statusCode, payload) {
+    if (responseSent) {
+      return;
+    }
+
+    responseSent = true;
+    sendJson(res, statusCode, payload);
+  }
+
+  req.on('data', (chunk) => {
+    if (responseSent) {
+      return;
+    }
+
+    receivedBytes += chunk.length;
+    if (receivedBytes > maxSize) {
+      sendError(413, { error: 'Attachment is too large' });
+      req.destroy();
+      return;
+    }
+
+    body += chunk;
+  });
+
+  req.on('end', () => {
+    if (responseSent) {
+      return;
+    }
+
+    try {
+      callback(JSON.parse(body));
+    } catch (error) {
+      sendError(400, { error: 'Invalid JSON payload' });
+    }
+  });
+
+  req.on('error', () => {
+    sendError(400, { error: 'Invalid request payload' });
+  });
+}
+
+function sanitizeFileName(filename) {
+  const basename = path.basename(String(filename || 'attachment.bin'));
+  const sanitized = basename
+    .replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return sanitized || 'attachment.bin';
+}
+
+function safeAttachmentDirectory(resourceId, attachmentId) {
+  const targetDirectory = path.join(UPLOAD_ROOT, resourceId, attachmentId);
+  const resolvedRoot = path.resolve(UPLOAD_ROOT);
+  const resolvedTarget = path.resolve(targetDirectory);
+
+  if (!resolvedTarget.startsWith(resolvedRoot + path.sep)) {
+    throw new Error('Invalid attachment path');
+  }
+
+  return resolvedTarget;
+}
+
+function removeAttachmentDirectory(resourceId, attachmentId) {
+  const directory = safeAttachmentDirectory(resourceId, attachmentId);
+  if (fs.existsSync(directory)) {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+}
+
+function removeResourceAttachmentDirectory(resourceId) {
+  const targetDirectory = path.join(UPLOAD_ROOT, resourceId);
+  const resolvedRoot = path.resolve(UPLOAD_ROOT);
+  const resolvedTarget = path.resolve(targetDirectory);
+
+  if (resolvedTarget.startsWith(resolvedRoot + path.sep) && fs.existsSync(resolvedTarget)) {
+    fs.rmSync(resolvedTarget, { recursive: true, force: true });
+  }
+}
+
+function safeImageUploadPath(filename) {
+  const targetPath = path.join(IMAGE_UPLOAD_ROOT, filename);
+  const resolvedRoot = path.resolve(IMAGE_UPLOAD_ROOT);
+  const resolvedTarget = path.resolve(targetPath);
+
+  if (!resolvedTarget.startsWith(resolvedRoot + path.sep)) {
+    throw new Error('Invalid image path');
+  }
+
+  return resolvedTarget;
 }
 
 /**
@@ -157,6 +294,91 @@ function registerRoutes(router) {
     });
   });
 
+  router.post('/api/admin/uploads/images', (req, res) => {
+    if (!requireAuth(req, res)) {
+      return;
+    }
+
+    readLargeJsonBody(req, res, (body) => {
+      const originalName = sanitizeFileName(body?.filename || body?.name);
+      const extension = path.extname(originalName).toLowerCase();
+      const contentBase64 = String(body?.contentBase64 || '').replace(/^data:[^,]+,/, '');
+
+      if (!originalName || !contentBase64) {
+        sendJson(res, 400, { error: 'Image filename and content are required' });
+        return;
+      }
+      if (!ALLOWED_IMAGE_EXTENSIONS.has(extension)) {
+        sendJson(res, 400, { error: 'Image file type is not allowed' });
+        return;
+      }
+
+      let buffer;
+      try {
+        buffer = Buffer.from(contentBase64, 'base64');
+      } catch (error) {
+        sendJson(res, 400, { error: 'Invalid image content' });
+        return;
+      }
+
+      if (buffer.length === 0 || buffer.length > MAX_IMAGE_BYTES) {
+        sendJson(res, 413, { error: 'Image is too large' });
+        return;
+      }
+
+      const sha256 = crypto.createHash('sha256').update(buffer).digest('hex');
+      const existing = media.addImage({
+        filename: `${sha256}${extension}`,
+        originalName,
+        mimeType: IMAGE_MIME_TYPES[extension] || body?.mimeType || 'application/octet-stream',
+        sizeBytes: buffer.length,
+        sha256
+      });
+
+      fs.mkdirSync(IMAGE_UPLOAD_ROOT, { recursive: true });
+      const imagePath = safeImageUploadPath(existing.filename);
+      if (!fs.existsSync(imagePath)) {
+        fs.writeFileSync(imagePath, buffer);
+      }
+
+      sendJson(res, 201, existing);
+    });
+  });
+
+  router.get('/api/admin/media/images', (req, res) => {
+    if (!requireAuth(req, res)) {
+      return;
+    }
+
+    sendJson(res, 200, media.getImagesWithUsage());
+  });
+
+  router.delete('/api/admin/media/images/:id', (req, res, params) => {
+    if (!requireAuth(req, res)) {
+      return;
+    }
+
+    const result = media.removeImage(params.id);
+    if (!result.ok && result.reason === 'missing') {
+      sendJson(res, 404, { error: 'Image not found' });
+      return;
+    }
+    if (!result.ok && result.reason === 'in-use') {
+      sendJson(res, 409, { error: 'Image is still used', image: result.image });
+      return;
+    }
+
+    sendJson(res, 200, { success: true });
+  });
+
+  router.post('/api/admin/media/images/cleanup', (req, res) => {
+    if (!requireAuth(req, res)) {
+      return;
+    }
+
+    sendJson(res, 200, media.removeUnusedImages());
+  });
+
   router.get('/api/admin/surveys', (req, res) => {
     if (!requireAuth(req, res)) {
       return;
@@ -251,6 +473,11 @@ function registerRoutes(router) {
         sendJson(res, 400, { error: 'URL is too long (max 2000 characters)' });
         return;
       }
+      const createdAt = normalizeEditableDate(body.createdAt || body.erstelltAm);
+      if (!createdAt) {
+        sendJson(res, 400, { error: 'Invalid date' });
+        return;
+      }
 
       if (!FEED_KINDS.includes(kind) || kind === 'update') {
         sendJson(res, 400, { error: 'Invalid kind for resource' });
@@ -273,7 +500,8 @@ function registerRoutes(router) {
         summary: (body.summary || description).trim(),
         source: (body.source || '').trim(),
         tags: body.tags,
-        featured: body.featured || false
+        featured: body.featured || false,
+        createdAt
       });
 
       sendJson(res, 201, created);
@@ -312,6 +540,14 @@ function registerRoutes(router) {
         sendJson(res, 400, { error: 'Detail content is too long (max 200000 characters)' });
         return;
       }
+      if (body.createdAt !== undefined || body.erstelltAm !== undefined) {
+        const createdAt = normalizeEditableDate(body.createdAt || body.erstelltAm);
+        if (!createdAt) {
+          sendJson(res, 400, { error: 'Invalid date' });
+          return;
+        }
+        body.createdAt = createdAt;
+      }
 
       if (kind && (!FEED_KINDS.includes(kind) || kind === 'update')) {
         sendJson(res, 400, { error: 'Invalid kind for resource' });
@@ -342,7 +578,86 @@ function registerRoutes(router) {
       return;
     }
 
+    removeResourceAttachmentDirectory(params.id);
     sendJson(res, 200, { success: true });
+  });
+
+  router.post('/api/admin/resources/:id/attachments', (req, res, params) => {
+    if (!requireAuth(req, res)) {
+      return;
+    }
+
+    const resource = resources.getAll().find((entry) => entry.id === params.id);
+    if (!resource) {
+      sendJson(res, 404, { error: 'Resource not found' });
+      return;
+    }
+
+    readLargeJsonBody(req, res, (body) => {
+      const originalName = sanitizeFileName(body?.filename || body?.name);
+      const extension = path.extname(originalName).toLowerCase();
+      const contentBase64 = String(body?.contentBase64 || '').replace(/^data:[^,]+,/, '');
+
+      if (!originalName || !contentBase64) {
+        sendJson(res, 400, { error: 'Attachment filename and content are required' });
+        return;
+      }
+      if (!ALLOWED_ATTACHMENT_EXTENSIONS.has(extension)) {
+        sendJson(res, 400, { error: 'Attachment file type is not allowed' });
+        return;
+      }
+
+      let buffer;
+      try {
+        buffer = Buffer.from(contentBase64, 'base64');
+      } catch (error) {
+        sendJson(res, 400, { error: 'Invalid attachment content' });
+        return;
+      }
+
+      if (buffer.length === 0 || buffer.length > MAX_ATTACHMENT_BYTES) {
+        sendJson(res, 413, { error: 'Attachment is too large' });
+        return;
+      }
+
+      const attachmentId = crypto.randomUUID();
+      const directory = safeAttachmentDirectory(params.id, attachmentId);
+      fs.mkdirSync(directory, { recursive: true });
+      fs.writeFileSync(path.join(directory, originalName), buffer);
+
+      const updated = resources.addAttachment(params.id, {
+        id: attachmentId,
+        label: String(body?.label || '').trim() || originalName,
+        filename: originalName,
+        originalName,
+        mimeType: body?.mimeType || body?.type || 'application/octet-stream',
+        sizeBytes: buffer.length,
+        createdAt: new Date().toISOString()
+      });
+
+      if (!updated) {
+        removeAttachmentDirectory(params.id, attachmentId);
+        sendJson(res, 404, { error: 'Resource not found' });
+        return;
+      }
+
+      sendJson(res, 201, updated);
+    });
+  });
+
+  router.delete('/api/admin/resources/:id/attachments/:attachmentId', (req, res, params) => {
+    if (!requireAuth(req, res)) {
+      return;
+    }
+
+    const updated = resources.removeAttachment(params.id, params.attachmentId);
+    if (!updated) {
+      sendJson(res, 404, { error: 'Attachment not found' });
+      return;
+    }
+
+    removeAttachmentDirectory(params.id, params.attachmentId);
+    sendJson(res, 200, updated);
   });
 
   router.get('/api/admin/concerns', (req, res) => {
@@ -414,6 +729,11 @@ function registerRoutes(router) {
         sendJson(res, 400, { error: 'Invalid type' });
         return;
       }
+      const createdAt = normalizeEditableDate(body.createdAt || body.erstelltAm);
+      if (!createdAt) {
+        sendJson(res, 400, { error: 'Invalid date' });
+        return;
+      }
 
       const created = newsItems.create({
         title: title.trim(),
@@ -426,7 +746,8 @@ function registerRoutes(router) {
         summary: (body.summary || content).trim(),
         source: (body.source || '').trim(),
         tags: body.tags,
-        featured
+        featured,
+        createdAt
       });
 
       sendJson(res, 201, created);
@@ -459,6 +780,14 @@ function registerRoutes(router) {
       if (body.detailContent !== undefined && String(body.detailContent).length > 200000) {
         sendJson(res, 400, { error: 'Detail content is too long (max 200000 characters)' });
         return;
+      }
+      if (body.createdAt !== undefined || body.erstelltAm !== undefined) {
+        const createdAt = normalizeEditableDate(body.createdAt || body.erstelltAm);
+        if (!createdAt) {
+          sendJson(res, 400, { error: 'Invalid date' });
+          return;
+        }
+        body.createdAt = createdAt;
       }
       if (url !== undefined && url.length > 2000) {
         sendJson(res, 400, { error: 'URL is too long (max 2000 characters)' });

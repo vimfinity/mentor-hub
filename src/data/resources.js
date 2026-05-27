@@ -19,6 +19,7 @@ function normalizeResource(resource) {
     summary: resource.summary || resource.zusammenfassung || resource.description || resource.beschreibung || '',
     source: resource.source || resource.quelle || detectSource(resource.url || ''),
     tags: normalizeTags(resource.tags || resource.schlagwoerter, normalizedCategory),
+    attachments: normalizeAttachments(resource.attachments || resource.anhaenge, resource.id),
     featured: resource.featured || false,
     createdAt: resource.createdAt || resource.erstelltAm || new Date().toISOString(),
     updatedAt: resource.updatedAt || resource.aktualisiertAm || null
@@ -73,6 +74,37 @@ function normalizeTags(tags, fallbackCategory) {
   }
 
   return Array.from(new Set(normalized));
+}
+
+function normalizeAttachments(attachments, resourceId) {
+  if (!Array.isArray(attachments)) {
+    return [];
+  }
+
+  return attachments
+    .map((attachment) => {
+      if (!attachment || !attachment.id) {
+        return null;
+      }
+
+      const id = String(attachment.id);
+      const filename = attachment.filename || attachment.dateiname || attachment.originalName || attachment.name || '';
+      const originalName = attachment.originalName || attachment.name || filename;
+
+      return {
+        id,
+        label: attachment.label || attachment.title || originalName || filename || 'Download',
+        filename,
+        originalName,
+        mimeType: attachment.mimeType || attachment.type || 'application/octet-stream',
+        sizeBytes: Number.isFinite(Number(attachment.sizeBytes || attachment.size))
+          ? Number(attachment.sizeBytes || attachment.size)
+          : 0,
+        url: attachment.url || (resourceId ? `/api/resources/${encodeURIComponent(resourceId)}/attachments/${encodeURIComponent(id)}` : ''),
+        createdAt: attachment.createdAt || new Date().toISOString()
+      };
+    })
+    .filter(Boolean);
 }
 
 function detectSource(url) {
@@ -142,7 +174,9 @@ function create(data) {
     summary: data.summary || data.description || '',
     source: data.source || detectSource(data.url || ''),
     tags: normalizeTags(data.tags, data.subtype || data.category || 'article'),
-    featured: data.featured || false
+    attachments: normalizeAttachments(data.attachments, null),
+    featured: data.featured || false,
+    createdAt: data.createdAt || new Date().toISOString()
   };
   return store.addItem(FILE_NAME, resource);
 }
@@ -201,11 +235,63 @@ function update(id, changes) {
   if (changes.tags !== undefined || changes.schlagwoerter !== undefined) {
     filteredChanges.tags = normalizeTags(changes.tags !== undefined ? changes.tags : changes.schlagwoerter, changes.subtype || changes.category);
   }
+  if (changes.attachments !== undefined || changes.anhaenge !== undefined) {
+    filteredChanges.attachments = normalizeAttachments(changes.attachments !== undefined ? changes.attachments : changes.anhaenge, id);
+  }
   if (changes.featured !== undefined) {
     filteredChanges.featured = changes.featured;
   }
+  if (changes.createdAt !== undefined || changes.erstelltAm !== undefined) {
+    filteredChanges.createdAt = changes.createdAt !== undefined ? changes.createdAt : changes.erstelltAm;
+  }
 
   return store.updateItem(FILE_NAME, id, filteredChanges);
+}
+
+function addAttachment(id, attachment) {
+  return store.mutateDataFile(FILE_NAME, (records) => {
+    const index = records.findIndex((record) => record.id === id);
+    if (index === -1) {
+      return { changed: false, result: null };
+    }
+
+    const currentAttachments = normalizeAttachments(records[index].attachments, id);
+    const nextAttachment = normalizeAttachments([attachment], id)[0];
+    if (!nextAttachment) {
+      return { changed: false, result: null };
+    }
+
+    records[index] = {
+      ...records[index],
+      attachments: [...currentAttachments.filter((item) => item.id !== nextAttachment.id), nextAttachment],
+      updatedAt: new Date().toISOString()
+    };
+
+    return { changed: true, result: normalizeResource(records[index]) };
+  });
+}
+
+function removeAttachment(id, attachmentId) {
+  return store.mutateDataFile(FILE_NAME, (records) => {
+    const index = records.findIndex((record) => record.id === id);
+    if (index === -1) {
+      return { changed: false, result: null };
+    }
+
+    const currentAttachments = normalizeAttachments(records[index].attachments, id);
+    const nextAttachments = currentAttachments.filter((attachment) => attachment.id !== attachmentId);
+    if (nextAttachments.length === currentAttachments.length) {
+      return { changed: false, result: null };
+    }
+
+    records[index] = {
+      ...records[index],
+      attachments: nextAttachments,
+      updatedAt: new Date().toISOString()
+    };
+
+    return { changed: true, result: normalizeResource(records[index]) };
+  });
 }
 
 /**
@@ -222,5 +308,7 @@ module.exports = {
   getByCategory,
   create,
   update,
+  addAttachment,
+  removeAttachment,
   remove
 };

@@ -27,6 +27,36 @@ function formatDate(value) {
   return new Date(value).toLocaleDateString(locale);
 }
 
+function formatDateTime(value) {
+  const locale = getLanguage() === 'de' ? 'de-DE' : 'en-US';
+  return new Date(value).toLocaleString(locale, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function formatDateTimeInput(value) {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return offsetDate.toISOString().slice(0, 16);
+}
+
+function parseDateTimeInput(value) {
+  if (!value) {
+    return new Date().toISOString();
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
 function getFeedTypeLabels() {
   return {
     announcement: 'News',
@@ -592,7 +622,7 @@ async function renderFeedAdmin(container, context) {
             </td>
             <td data-label="${escapeHtml(t('admin.feedKind'))}"><span class="status-badge">${getFeedKindLabel(item.kind)}</span></td>
             <td data-label="${escapeHtml(t('admin.category'))}"><span class="karte-kategorie">${TYPE_LABELS[item.type] || item.type}</span></td>
-            <td data-label="${escapeHtml(t('admin.date'))}">${formatDate(item.createdAt)}</td>
+            <td data-label="${escapeHtml(t('admin.date'))}">${formatDateTime(item.createdAt)}</td>
             <td class="tabelle-aktionen" data-label="${escapeHtml(t('general.actions'))}">
               ${item.url ? `<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener" class="btn btn-klein btn-sekundaer">${icon('externalLink', 14)}</a>` : ''}
               <button class="btn btn-klein btn-sekundaer feed-edit-button" data-id="${item.id}">
@@ -691,6 +721,8 @@ function openFeedForm({ context, mode, item = null }) {
   const imageValue = escapeHtml(item?.imageUrl || '');
   const sourceValue = escapeHtml(item?.source || '');
   const tagValue = escapeHtml(Array.isArray(item?.tags) ? item.tags.join(', ') : '');
+  const createdAtValue = escapeHtml(formatDateTimeInput(item?.createdAt));
+  const isResourceEdit = isEdit && (item?.feedSource === 'resource' || selectedKind !== 'update');
   const kindOptions = FEED_KIND_OPTIONS.map((value) => `
     <option value="${value}" ${value === selectedKind ? 'selected' : ''}>${getFeedKindLabel(value)}</option>
   `).join('');
@@ -734,6 +766,21 @@ function openFeedForm({ context, mode, item = null }) {
           <div class="formular-gruppe">
             <label class="formular-label" for="feed-form-image">${t('admin.imageUrl')}</label>
             <input type="url" class="formular-eingabe" id="feed-form-image" maxlength="2000" placeholder="https://..." value="${imageValue}">
+            <div class="feed-image-actions">
+              <button type="button" class="tab-link tab-link-utility" data-open-media-library>
+                ${icon('image', 14)}
+                <span class="tab-label">Mediathek</span>
+              </button>
+              <button type="button" class="tab-link tab-link-utility" data-clear-image>
+                ${icon('x', 14)}
+                <span class="tab-label">Bild entfernen</span>
+              </button>
+            </div>
+            <label class="attachment-file-picker feed-image-picker">
+              <input type="file" data-image-file accept=".png,.jpg,.jpeg,.webp,.gif">
+              <span>${icon('image', 14)} Bild hochladen</span>
+              <em data-image-file-name>PNG, JPG, WebP oder GIF</em>
+            </label>
           </div>
           <div class="formular-gruppe">
             <label class="formular-label" for="feed-form-url">${t('admin.url')}</label>
@@ -745,14 +792,39 @@ function openFeedForm({ context, mode, item = null }) {
               <input type="text" class="formular-eingabe" id="feed-form-source" maxlength="100" value="${sourceValue}">
             </div>
             <div class="formular-gruppe">
-              <label class="formular-label" for="feed-form-tags">${t('admin.tags')}</label>
-              <input type="text" class="formular-eingabe" id="feed-form-tags" placeholder="mcp, codex" value="${tagValue}">
+              <label class="formular-label" for="feed-form-date">${t('admin.date')}</label>
+              <input type="datetime-local" class="formular-eingabe" id="feed-form-date" value="${createdAtValue}">
             </div>
+          </div>
+          <div class="formular-gruppe">
+            <label class="formular-label" for="feed-form-tags">${t('admin.tags')}</label>
+            <input type="text" class="formular-eingabe" id="feed-form-tags" placeholder="mcp, codex" value="${tagValue}">
           </div>
           <label class="checkbox-label">
             <input type="checkbox" id="feed-form-featured" ${item?.featured ? 'checked' : ''}>
             <span>${t('admin.featured')}</span>
           </label>
+          ${isResourceEdit ? `
+            <div class="feed-form-attachments">
+              <div class="feed-form-attachments-header">
+                <label class="formular-label">Anhänge</label>
+                <span>Dateien, die am Artikel als Download erscheinen.</span>
+              </div>
+              <div class="feed-form-attachment-list" data-attachment-list></div>
+              <div class="feed-form-attachment-upload">
+                <label class="attachment-file-picker">
+                  <input type="file" data-attachment-file accept=".zip,.pdf,.docx,.xlsx,.pptx,.txt,.md,.json,.png,.jpg,.jpeg,.webp">
+                  <span>${icon('fileText', 14)} Datei auswählen</span>
+                  <em data-attachment-file-name>Keine Datei ausgewählt</em>
+                </label>
+                <input type="text" class="formular-eingabe" data-attachment-label maxlength="120" placeholder="Anzeigename, optional">
+                <button type="button" class="btn btn-sekundaer" data-attachment-upload>
+                  ${icon('plus', 14)}
+                  <span>Anhang hochladen</span>
+                </button>
+              </div>
+            </div>
+          ` : ''}
           <div class="feed-form-card-preview">
             <div class="feed-form-card-preview-label">${t('admin.preview') || 'Karten-Vorschau'}</div>
             <div class="feed-admin-vorschau" id="feed-form-preview"></div>
@@ -784,11 +856,16 @@ function openFeedForm({ context, mode, item = null }) {
       const content = (editor?.getValue() || '').trim();
       const imageUrl = overlay.querySelector('#feed-form-image').value.trim();
       const source = overlay.querySelector('#feed-form-source').value.trim();
+      const createdAt = parseDateTimeInput(overlay.querySelector('#feed-form-date').value);
+      if (!createdAt) {
+        showError('Bitte ein gültiges Datum eintragen.');
+        return;
+      }
       const tags = overlay.querySelector('#feed-form-tags').value.split(',').map((tag) => tag.trim()).filter(Boolean);
       const featured = overlay.querySelector('#feed-form-featured').checked;
       const payload = kind === 'update'
-        ? { title, content: summary, detailContent: content, summary, url, imageUrl, source, tags, type: subtype, subtype, featured }
-        : { title, description: summary, detailContent: content, summary, url, imageUrl, source, tags, kind, category: subtype, subtype, featured };
+        ? { title, content: summary, detailContent: content, summary, url, imageUrl, source, tags, type: subtype, subtype, featured, createdAt }
+        : { title, description: summary, detailContent: content, summary, url, imageUrl, source, tags, kind, category: subtype, subtype, featured, createdAt };
       const endpoint = isEdit
         ? ((item.feedSource || item.source) === 'resource' ? '/api/admin/resources/' : '/api/admin/news/') + item.id
         : kind === 'update'
@@ -816,6 +893,7 @@ function openFeedForm({ context, mode, item = null }) {
   const kindSelect = overlay.querySelector('[data-select="feed-form-kind"]');
   const subtypeHost = overlay.querySelector('#feed-form-subtype-host');
   const preview = overlay.querySelector('#feed-form-preview');
+  let currentAttachments = Array.isArray(item?.attachments) ? [...item.attachments] : [];
 
   const refreshPreview = () => {
     const imageUrl = overlay.querySelector('#feed-form-image').value.trim();
@@ -860,6 +938,155 @@ function openFeedForm({ context, mode, item = null }) {
   });
   renderSubtypeSelect();
 
+  const imageFileInput = overlay.querySelector('[data-image-file]');
+  const imageFileName = overlay.querySelector('[data-image-file-name]');
+  if (imageFileInput && imageFileName) {
+    imageFileInput.addEventListener('change', async () => {
+      const file = imageFileInput.files?.[0];
+      if (!file) {
+        imageFileName.textContent = 'PNG, JPG, WebP oder GIF';
+        return;
+      }
+
+      imageFileName.textContent = file.name;
+      try {
+        const contentBase64 = await readFileAsBase64(file);
+        const result = await api.post('/api/admin/uploads/images', {
+          filename: file.name,
+          mimeType: file.type || 'application/octet-stream',
+          contentBase64
+        });
+
+        if (behandleNichtAutorisierteAntwort(result, context.navigateTo)) {
+          return;
+        }
+        if (!result.ok || !result.data?.url) {
+          showError(result.data?.error || t('general.error'));
+          return;
+        }
+
+        const imageInput = overlay.querySelector('#feed-form-image');
+        imageInput.value = result.data.url;
+        refreshPreview();
+        showSuccess('Bild hochgeladen');
+      } finally {
+        imageFileInput.value = '';
+      }
+    });
+  }
+
+  const mediaButton = overlay.querySelector('[data-open-media-library]');
+  if (mediaButton) {
+    mediaButton.addEventListener('click', () => openMediaLibrary({
+      context,
+      selectedUrl: overlay.querySelector('#feed-form-image').value.trim(),
+      onSelect: (url) => {
+        overlay.querySelector('#feed-form-image').value = url;
+        refreshPreview();
+      }
+    }));
+  }
+
+  const clearImageButton = overlay.querySelector('[data-clear-image]');
+  if (clearImageButton) {
+    clearImageButton.addEventListener('click', () => {
+      overlay.querySelector('#feed-form-image').value = '';
+      refreshPreview();
+    });
+  }
+
+  const attachmentList = overlay.querySelector('[data-attachment-list]');
+  const renderAttachments = () => {
+    if (!attachmentList) {
+      return;
+    }
+
+    attachmentList.innerHTML = currentAttachments.length === 0
+      ? '<p class="feed-form-attachment-empty">Noch keine Anhänge vorhanden.</p>'
+      : currentAttachments.map((attachment) => `
+        <div class="feed-form-attachment-row">
+          <div>
+            <strong>${escapeHtml(attachment.label || attachment.originalName || attachment.filename || 'Download')}</strong>
+            <span>${escapeHtml(attachment.originalName || attachment.filename || '')}${attachment.sizeBytes ? ' · ' + escapeHtml(formatBytes(attachment.sizeBytes)) : ''}</span>
+          </div>
+          <button type="button" class="icon-button" data-attachment-delete="${escapeHtml(attachment.id)}" aria-label="Anhang löschen">
+            ${icon('trash', 15)}
+          </button>
+        </div>
+      `).join('');
+
+    attachmentList.querySelectorAll('[data-attachment-delete]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const result = await api.remove('/api/admin/resources/' + encodeURIComponent(item.id) + '/attachments/' + encodeURIComponent(button.dataset.attachmentDelete));
+        if (behandleNichtAutorisierteAntwort(result, context.navigateTo)) {
+          return;
+        }
+        if (!result.ok) {
+          showError(result.data?.error || t('general.error'));
+          return;
+        }
+
+        currentAttachments = Array.isArray(result.data?.attachments) ? result.data.attachments : [];
+        item.attachments = currentAttachments;
+        invalidiereAdminFeed();
+        renderAttachments();
+        showSuccess('Anhang gelöscht');
+      });
+    });
+  };
+
+  renderAttachments();
+
+  const uploadButton = overlay.querySelector('[data-attachment-upload]');
+  if (uploadButton) {
+    const fileInput = overlay.querySelector('[data-attachment-file]');
+    const fileNameLabel = overlay.querySelector('[data-attachment-file-name]');
+    if (fileInput && fileNameLabel) {
+      fileInput.addEventListener('change', () => {
+        fileNameLabel.textContent = fileInput.files?.[0]?.name || 'Keine Datei ausgewählt';
+      });
+    }
+
+    uploadButton.addEventListener('click', async () => {
+      const labelInput = overlay.querySelector('[data-attachment-label]');
+      const file = fileInput?.files?.[0];
+      if (!file) {
+        showError('Bitte zuerst eine Datei auswählen.');
+        return;
+      }
+
+      uploadButton.disabled = true;
+      try {
+        const contentBase64 = await readFileAsBase64(file);
+        const result = await api.post('/api/admin/resources/' + encodeURIComponent(item.id) + '/attachments', {
+          filename: file.name,
+          label: labelInput.value.trim(),
+          mimeType: file.type || 'application/octet-stream',
+          contentBase64
+        });
+
+        if (behandleNichtAutorisierteAntwort(result, context.navigateTo)) {
+          return;
+        }
+        if (!result.ok) {
+          showError(result.data?.error || t('general.error'));
+          return;
+        }
+
+        currentAttachments = Array.isArray(result.data?.attachments) ? result.data.attachments : [];
+        item.attachments = currentAttachments;
+        fileInput.value = '';
+        fileNameLabel.textContent = 'Keine Datei ausgewählt';
+        labelInput.value = '';
+        invalidiereAdminFeed();
+        renderAttachments();
+        showSuccess('Anhang hochgeladen');
+      } finally {
+        uploadButton.disabled = false;
+      }
+    });
+  }
+
   const editorHost = overlay.querySelector('#feed-form-content-host');
   if (editorHost) {
     editor = mountMarkdownEditor(editorHost, {
@@ -867,6 +1094,114 @@ function openFeedForm({ context, mode, item = null }) {
       placeholder: t('admin.detailContentPlaceholder')
     });
   }
+}
+
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener('load', () => {
+      resolve(String(reader.result || '').replace(/^data:[^,]+,/, ''));
+    });
+    reader.addEventListener('error', () => reject(reader.error || new Error('File could not be read')));
+    reader.readAsDataURL(file);
+  });
+}
+
+function formatBytes(value) {
+  const bytes = Number(value) || 0;
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1).replace('.0', '') + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1).replace('.0', '') + ' MB';
+}
+
+async function openMediaLibrary({ context, selectedUrl, onSelect }) {
+  const response = await api.get('/api/admin/media/images');
+  if (behandleNichtAutorisierteAntwort(response, context.navigateTo)) {
+    return;
+  }
+  if (!response.ok) {
+    showError(response.data?.error || t('general.error'));
+    return;
+  }
+
+  let images = Array.isArray(response.data) ? response.data : [];
+  const overlay = openModal({
+    title: 'Mediathek',
+    size: 'wide',
+    content: `
+      <div class="media-library">
+        <div class="media-library-toolbar">
+          <p>Wähle ein vorhandenes Bild aus oder entferne ungenutzte Dateien.</p>
+          <button type="button" class="btn btn-sekundaer" data-media-cleanup>
+            ${icon('trash', 14)}
+            <span>Ungenutzte Bilder entfernen</span>
+          </button>
+        </div>
+        <div class="media-library-grid" data-media-grid></div>
+      </div>
+    `,
+    cancelText: t('admin.cancel')
+  });
+
+  const grid = overlay.querySelector('[data-media-grid]');
+  const renderGrid = () => {
+    grid.innerHTML = images.length === 0
+      ? '<p class="feed-form-attachment-empty">Noch keine Bilder hochgeladen.</p>'
+      : images.map((image) => `
+        <article class="media-library-item ${image.url === selectedUrl ? 'aktiv' : ''}">
+          <button type="button" class="media-library-select" data-media-select="${escapeHtml(image.url)}">
+            <img src="${escapeHtml(image.url)}" alt="">
+          </button>
+          <div class="media-library-meta">
+            <strong>${escapeHtml(image.originalName || image.filename)}</strong>
+            <span>${escapeHtml(formatBytes(image.sizeBytes))} · ${image.usageCount || 0} Verwendung${image.usageCount === 1 ? '' : 'en'}</span>
+          </div>
+          <button type="button" class="tab-link tab-link-utility tab-link-icon" data-media-delete="${escapeHtml(image.id)}" title="Bild löschen" aria-label="Bild löschen" ${image.usageCount > 0 ? 'disabled' : ''}>
+            <span class="tab-icon">${icon('trash', 14)}</span>
+          </button>
+        </article>
+      `).join('');
+
+    grid.querySelectorAll('[data-media-select]').forEach((button) => {
+      button.addEventListener('click', () => {
+        onSelect(button.dataset.mediaSelect);
+        overlay.querySelector('.modal-abbrechen')?.click();
+      });
+    });
+
+    grid.querySelectorAll('[data-media-delete]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const result = await api.remove('/api/admin/media/images/' + encodeURIComponent(button.dataset.mediaDelete));
+        if (behandleNichtAutorisierteAntwort(result, context.navigateTo)) {
+          return;
+        }
+        if (!result.ok) {
+          showError(result.data?.error || t('general.error'));
+          return;
+        }
+        images = images.filter((image) => image.id !== button.dataset.mediaDelete);
+        renderGrid();
+        showSuccess('Bild gelöscht');
+      });
+    });
+  };
+
+  overlay.querySelector('[data-media-cleanup]').addEventListener('click', async () => {
+    const result = await api.post('/api/admin/media/images/cleanup', {});
+    if (behandleNichtAutorisierteAntwort(result, context.navigateTo)) {
+      return;
+    }
+    if (!result.ok) {
+      showError(result.data?.error || t('general.error'));
+      return;
+    }
+    const refreshed = await api.get('/api/admin/media/images');
+    images = refreshed.ok && Array.isArray(refreshed.data) ? refreshed.data : images;
+    renderGrid();
+    showSuccess(`${result.data?.removed || 0} Bilder entfernt`);
+  });
+
+  renderGrid();
 }
 
 async function renderConcernsAdmin(container, context) {
@@ -1017,18 +1352,32 @@ function sortiereFeedElemente(items, sortierung) {
   kopie.sort((links, rechts) => {
     switch (sortierung) {
       case 'oldest':
-        return new Date(links.createdAt || 0) - new Date(rechts.createdAt || 0);
+        return compareFeedDate(links, rechts, 'asc');
       case 'title-asc':
         return links.title.localeCompare(rechts.title, getLanguage());
       case 'title-desc':
         return rechts.title.localeCompare(links.title, getLanguage());
       case 'newest':
       default:
-        return new Date(rechts.createdAt || 0) - new Date(links.createdAt || 0);
+        return compareFeedDate(links, rechts, 'desc');
     }
   });
 
   return kopie;
+}
+
+function compareFeedDate(links, rechts, direction) {
+  const leftDate = new Date(links.createdAt || 0).getTime();
+  const rightDate = new Date(rechts.createdAt || 0).getTime();
+  const dateResult = direction === 'asc'
+    ? leftDate - rightDate
+    : rightDate - leftDate;
+
+  if (dateResult !== 0) {
+    return dateResult;
+  }
+
+  return String(links.id || '').localeCompare(String(rechts.id || ''));
 }
 
 function sortiereAnliegen(concerns, sortierung) {

@@ -1,7 +1,7 @@
 interface:
   display_name: "Testprotokoll Inspector"
   short_description: "Analyze German QA Word test protocols"
-  default_prompt: "Use $testprotokoll-inspector to extract and inspect the QA test protocol at the provided .docx path."
+  default_prompt: "Use $testprotokoll-inspector to run the bundled extractor for the provided .docx path, then inspect the generated artifacts."
 
 policy:
   allow_implicit_invocation: true

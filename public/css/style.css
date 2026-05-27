@@ -2153,6 +2153,8 @@ body.modal-offen {
   display: flex;
   flex-direction: column;
   gap: var(--abstand-sm);
+  position: relative;
+  padding-right: 3rem;
 }
 
 .feed-detail-meta {
@@ -2184,6 +2186,12 @@ body.modal-offen {
   max-width: 82ch;
 }
 
+.feed-detail-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
 .feed-detail-page .feed-detail-image {
   width: 100%;
   max-height: 460px;
@@ -2212,6 +2220,62 @@ body.modal-offen {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+}
+
+.feed-detail-attachments {
+  display: grid;
+  gap: var(--abstand-sm);
+}
+
+.feed-detail-attachments h2 {
+  margin: 0;
+  font-size: var(--schrift-md);
+  font-weight: var(--gewicht-semi);
+  color: var(--farbe-text);
+}
+
+.feed-detail-attachment-list {
+  display: flex;
+  gap: var(--abstand-sm);
+  flex-wrap: wrap;
+}
+
+.feed-detail-attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid var(--farbe-rahmen);
+  border-radius: var(--radius-md);
+  color: var(--farbe-text);
+  background: var(--farbe-karte);
+  text-decoration: none;
+  font-weight: var(--gewicht-semi);
+  transition:
+    border-color var(--uebergang-schnell),
+    color var(--uebergang-schnell),
+    transform var(--uebergang-schnell);
+}
+
+.feed-detail-attachment:hover {
+  border-color: var(--farbe-primaer);
+  color: var(--farbe-primaer);
+  transform: translateY(-1px);
+}
+
+.feed-detail-attachment span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feed-detail-attachment small {
+  color: var(--farbe-text-gedaempft);
+  font-size: var(--schrift-xs);
+  font-weight: var(--gewicht-mittel);
+  white-space: nowrap;
 }
 
 .feed-detail-external {
@@ -3139,6 +3203,220 @@ body.modal-offen {
   color: var(--farbe-text-gedaempft);
   margin-bottom: var(--abstand-xs, 0.4rem);
 }
+
+.feed-form-attachments {
+  display: grid;
+  gap: var(--abstand-sm);
+  padding-top: var(--abstand-md);
+  border-top: 1px solid var(--farbe-rand-subtil);
+}
+
+.feed-form-attachments-header {
+  display: grid;
+  gap: 2px;
+}
+
+.feed-form-attachments-header span,
+.feed-form-attachment-empty {
+  color: var(--farbe-text-gedaempft);
+  font-size: var(--schrift-sm);
+  margin: 0;
+}
+
+.feed-form-attachment-list {
+  display: grid;
+  gap: var(--abstand-xs);
+}
+
+.feed-form-attachment-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--abstand-sm);
+  padding: 9px 10px;
+  border: 1px solid var(--farbe-rand-subtil);
+  border-radius: var(--radius-md);
+  background: var(--farbe-bg-subtil);
+}
+
+.feed-form-attachment-row .icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--farbe-rand-subtil);
+  border-radius: var(--radius-md);
+  background: var(--farbe-bg-erhoeht);
+  color: var(--farbe-text-gedaempft);
+  cursor: pointer;
+  transition:
+    color var(--uebergang-schnell),
+    border-color var(--uebergang-schnell),
+    background var(--uebergang-schnell);
+}
+
+.feed-form-attachment-row .icon-button:hover {
+  color: var(--farbe-fehler);
+  border-color: var(--farbe-rand-hover);
+  background: var(--farbe-hover-subtil);
+}
+
+.feed-form-attachment-row strong,
+.feed-form-attachment-row span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feed-form-attachment-row span {
+  color: var(--farbe-text-gedaempft);
+  font-size: var(--schrift-xs);
+}
+
+.feed-form-attachment-upload {
+  display: grid;
+  gap: var(--abstand-xs);
+}
+
+.attachment-file-picker {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 5px;
+  border: 1px solid var(--farbe-rand);
+  border-radius: var(--radius-md);
+  background: var(--farbe-bg-erhoeht);
+}
+
+.attachment-file-picker input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.attachment-file-picker span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: calc(var(--radius-md) - 2px);
+  background: var(--farbe-text);
+  color: var(--farbe-bg);
+  font-size: var(--schrift-sm);
+  font-weight: var(--gewicht-semi);
+  cursor: pointer;
+}
+
+.attachment-file-picker em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--farbe-text-gedaempft);
+  font-size: var(--schrift-sm);
+  font-style: normal;
+}
+
+.feed-image-picker {
+  margin-top: var(--abstand-xs);
+}
+
+.feed-form-attachment-upload .btn {
+  justify-content: center;
+}
+
+.feed-image-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+  margin-top: var(--abstand-xs);
+}
+
+.media-library {
+  display: grid;
+  gap: var(--abstand-lg);
+}
+
+.media-library-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--abstand-md);
+  flex-wrap: wrap;
+}
+
+.media-library-toolbar p {
+  margin: 0;
+  color: var(--farbe-text-gedaempft);
+  font-size: var(--schrift-sm);
+}
+
+.media-library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--abstand-md);
+  max-height: min(56vh, 560px);
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.media-library-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--abstand-sm);
+  align-items: start;
+  border: 1px solid var(--farbe-rand-subtil);
+  border-radius: var(--radius-md);
+  padding: var(--abstand-sm);
+  background: var(--farbe-bg-erhoeht);
+}
+
+.media-library-item.aktiv {
+  border-color: var(--farbe-primaer);
+}
+
+.media-library-select {
+  grid-column: 1 / -1;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.media-library-select img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: calc(var(--radius-md) - 2px);
+  background: var(--farbe-hover-subtil);
+}
+
+.media-library-meta {
+  min-width: 0;
+}
+
+.media-library-meta strong,
+.media-library-meta span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.media-library-meta strong {
+  font-size: var(--schrift-sm);
+}
+
+.media-library-meta span {
+  color: var(--farbe-text-gedaempft);
+  font-size: var(--schrift-xs);
+}
+
 @media (max-width: 960px) {
   .modal-inhalt-breit {
     width: 100%;
