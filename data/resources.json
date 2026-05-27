@@ -34,15 +34,15 @@
       "comparison"
     ],
     "detailContent": "Vergleich aktueller MCP-Hosts und Clients mit ihren unterstuetzten Faehigkeiten.",
-    "imageUrl": "",
+    "imageUrl": "https://www.muse-case.com/_next/image?url=https%3A%2F%2Fcdn.sanity.io%2Fimages%2Fqnbxd1h1%2Fproduction%2Fb8a991763ca9735fe177f10604ffb35c96712c51-2560x1440.jpg&w=3840&q=75",
     "featured": false,
-    "updatedAt": "2026-05-21T11:01:46.963Z"
+    "updatedAt": "2026-05-26T06:42:09.274Z"
   },
   {
     "id": "openai-codex-for-work",
     "createdAt": "2026-05-20T15:31:00.000Z",
     "title": "OpenAI Academy: Codex for work",
-    "description": "Guidance for coding, tasks, and workflows with Codex.",
+    "description": "Ein guter Startpunkt fuer praktische Codex-Workflows im Arbeitsalltag.",
     "summary": "Ein guter Startpunkt fuer praktische Codex-Workflows im Arbeitsalltag.",
     "url": "https://openai.com/academy/codex-for-work/",
     "category": "tutorial",
@@ -50,10 +50,15 @@
     "subtype": "tutorial",
     "source": "openai",
     "tags": [
+      "tutorial",
       "openai",
       "codex",
       "workflow"
-    ]
+    ],
+    "detailContent": "Guidance for coding, tasks, and workflows with Codex.",
+    "imageUrl": "https://images.ctfassets.net/kftzwdyauwt9/4a0UlJKsQXDLL6k7khzEmr/ddac544c58137463e3963b22de3317c5/Cover-codex.png?w=1200&q=90&fm=webp",
+    "featured": false,
+    "updatedAt": "2026-05-26T06:40:08.051Z"
   },
   {
     "id": "claude-skills",
