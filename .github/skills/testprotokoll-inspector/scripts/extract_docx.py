@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""testprotokoll-analyzer -- DOCX extractor for German QA/QS test protocols.
+"""testprotokoll-inspector -- DOCX extractor for German QA/QS test protocols.
 
 Extracts body text, tables, headers, footers, embedded images (DrawingML + VML),
 and Office charts from a Word .docx file into agent-friendly artifacts.
@@ -18,9 +18,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
-EXTRACTOR_NAME = "testprotokoll-analyzer"
+EXTRACTOR_NAME = "testprotokoll-inspector"
 EXTRACTOR_VERSION = "0.2.0"
-MARKER_FILENAME = ".extracted-by-testprotokoll-analyzer"
+MARKER_FILENAME = ".extracted-by-testprotokoll-inspector"
 
 TRANSIENT_FOLDER_NAMES = {
     "inbox", "eingang", "archive", "archiv",
@@ -304,6 +304,7 @@ class DocxExtractor:
                 "errors": len(error_index),
             },
         }
+        manifest["warnings"] = self.build_warnings(manifest)
 
         self.write_output_files(manifest)
         (self.output_dir / MARKER_FILENAME).write_text(
@@ -313,6 +314,19 @@ class DocxExtractor:
             encoding="utf-8",
         )
         return manifest
+
+    def build_warnings(self, manifest: dict[str, object]) -> list[str]:
+        counts = manifest.get("counts") or {}
+        body_items = manifest.get("body") or []
+        warnings: list[str] = []
+
+        if body_items and counts.get("errors") == 0:
+            warnings.append(
+                "No defect entries were indexed. If this is a test protocol with defects, "
+                "inspect document.md and verify whether the heading format changed."
+            )
+
+        return warnings
 
     def archive_names(self) -> set[str]:
         if self.archive is None:
@@ -945,6 +959,12 @@ class DocxExtractor:
                 suffix = f" ({n} image{'s' if n != 1 else ''})" if n else ""
                 lines.append(f"- **{protocol_id}**: {error['title']}{suffix}")
 
+        warnings = manifest.get("warnings") or []
+        if warnings:
+            lines += ["", "## Warnings", ""]
+            for warning in warnings:
+                lines.append(f"- {warning}")
+
         metadata = manifest.get("metadata") or {}
         if metadata:
             lines += ["", "## Metadata", ""]
@@ -1102,7 +1122,7 @@ def main(argv: list[str] | None = None) -> int:
         "--artifact-root",
         help=(
             "Root directory for artifacts. "
-            "Artifacts go to <root>\\.copilot-artifacts\\testprotokoll-analyzer\\<name>\\."
+            "Artifacts go to <root>\\.copilot-artifacts\\testprotokoll-inspector\\<name>\\."
         ),
     )
     parser.add_argument(
@@ -1128,6 +1148,7 @@ def main(argv: list[str] | None = None) -> int:
                 "json_path": str(output_dir / "document.json"),
                 "errors_path": str(output_dir / "errors.json"),
                 "counts": manifest["counts"],
+                "warnings": manifest.get("warnings", []),
             }
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0
@@ -1148,6 +1169,7 @@ def main(argv: list[str] | None = None) -> int:
         "json_path": str(Path(manifest["output_dir"]) / "document.json"),
         "errors_path": str(Path(manifest["output_dir"]) / "errors.json"),
         "counts": manifest["counts"],
+        "warnings": manifest.get("warnings", []),
     }
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0

@@ -323,14 +323,14 @@ async function renderSurveysAdmin(container, context) {
       <tbody>
         ${pagination.elemente.map((survey) => `
           <tr>
-            <td>${escapeHtml(survey.title)}</td>
-            <td>
+            <td data-label="${escapeHtml(t('admin.title'))}">${escapeHtml(survey.title)}</td>
+            <td data-label="${escapeHtml(t('admin.status'))}">
               <span class="status-badge ${survey.active ? 'status-open' : 'status-done'}">
                 ${survey.active ? t('admin.active') : t('admin.inactive')}
               </span>
             </td>
-            <td>${(survey.responses || []).length}</td>
-            <td class="tabelle-aktionen">
+            <td data-label="${escapeHtml(t('admin.responses'))}">${(survey.responses || []).length}</td>
+            <td class="tabelle-aktionen" data-label="${escapeHtml(t('general.actions'))}">
               <button class="btn btn-klein btn-sekundaer" data-action="toggle" data-id="${survey.id}">
                 ${survey.active ? icon('pause', 16) : icon('play', 16)}
               </button>
@@ -586,14 +586,14 @@ async function renderFeedAdmin(container, context) {
       <tbody>
         ${pagination.elemente.map((item) => `
           <tr>
-            <td>
+            <td data-label="${escapeHtml(t('admin.title'))}">
               ${escapeHtml(item.title)}
               ${item.featured ? `<span class="status-badge status-open">${t('admin.featured')}</span>` : ''}
             </td>
-            <td><span class="status-badge">${getFeedKindLabel(item.kind)}</span></td>
-            <td><span class="karte-kategorie">${TYPE_LABELS[item.type] || item.type}</span></td>
-            <td>${formatDate(item.createdAt)}</td>
-            <td class="tabelle-aktionen">
+            <td data-label="${escapeHtml(t('admin.feedKind'))}"><span class="status-badge">${getFeedKindLabel(item.kind)}</span></td>
+            <td data-label="${escapeHtml(t('admin.category'))}"><span class="karte-kategorie">${TYPE_LABELS[item.type] || item.type}</span></td>
+            <td data-label="${escapeHtml(t('admin.date'))}">${formatDate(item.createdAt)}</td>
+            <td class="tabelle-aktionen" data-label="${escapeHtml(t('general.actions'))}">
               ${item.url ? `<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener" class="btn btn-klein btn-sekundaer">${icon('externalLink', 14)}</a>` : ''}
               <button class="btn btn-klein btn-sekundaer feed-edit-button" data-id="${item.id}">
                 ${icon('edit', 16)}
@@ -912,9 +912,9 @@ async function renderConcernsAdmin(container, context) {
       <tbody>
         ${pagination.elemente.map((concern) => `
           <tr>
-            <td title="${escapeHtml(concern.description || '')}">${escapeHtml(concern.title)}</td>
-            <td>${concern.name ? escapeHtml(concern.name) : '<em>' + escapeHtml(t('admin.anonymous')) + '</em>'}</td>
-            <td data-concern-status-cell="${escapeHtml(concern.id)}">
+            <td data-label="${escapeHtml(t('admin.title'))}" title="${escapeHtml(concern.description || '')}">${escapeHtml(concern.title)}</td>
+            <td data-label="${escapeHtml(t('admin.name'))}">${concern.name ? escapeHtml(concern.name) : '<em>' + escapeHtml(t('admin.anonymous')) + '</em>'}</td>
+            <td data-label="${escapeHtml(t('admin.status'))}" data-concern-status-cell="${escapeHtml(concern.id)}">
               ${renderSelect({
                 name: 'concern-status-' + concern.id,
                 value: concern.status,
@@ -927,8 +927,8 @@ async function renderConcernsAdmin(container, context) {
                 ariaLabel: t('admin.status')
               })}
             </td>
-            <td>${formatDate(concern.createdAt)}</td>
-            <td class="tabelle-aktionen">
+            <td data-label="${escapeHtml(t('admin.date'))}">${formatDate(concern.createdAt)}</td>
+            <td class="tabelle-aktionen" data-label="${escapeHtml(t('general.actions'))}">
               <button class="btn btn-klein btn-gefahr concern-delete-button" data-id="${concern.id}">
                 ${icon('trash', 16)}
               </button>

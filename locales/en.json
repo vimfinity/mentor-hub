@@ -201,6 +201,7 @@
     "loading": "Loading...",
     "error": "An error occurred.",
     "close": "Close",
+    "actions": "Actions",
     "sort": "Sort",
     "sortNewest": "Newest first",
     "sortOldest": "Oldest first",

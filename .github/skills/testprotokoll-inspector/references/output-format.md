@@ -1,16 +1,17 @@
 # Output Format Reference
 
-The extractor produces these artifacts under `.copilot-artifacts\testprotokoll-analyzer\<document-name>\`:
+The extractor produces these artifacts under `.copilot-artifacts\testprotokoll-inspector\<document-name>\`:
 
 | File | Purpose |
 |---|---|
 | `document.md` | Primary agent-readable view: metadata, error index, ordered paragraphs, tables, image refs, chart summaries |
 | `document.json` | Full structured manifest including extractor metadata, body array, and error index |
 | `errors.json` | **Primary defect lookup**: `1.3.5` -> title, status, qualifier, date, login, paragraph range, related image paths |
+| `warnings` | Non-fatal extraction warnings included in `document.json`, command JSON output, and `document.md` |
 | `images\*` | Binary image files extracted from `word/media/*`; raster (PNG/JPG) preferred over vector (EMF/WMF) |
 | `charts\*.json` | Parsed Office chart data (series, categories, values) |
 | `charts\*.xml` | Raw Office chart XML for debugging or deeper inspection |
-| `.extracted-by-testprotokoll-analyzer` | Safety marker — proves the directory was created by this tool |
+| `.extracted-by-testprotokoll-inspector` | Safety marker — proves the directory was created by this tool |
 
 ## Recommended Agent Flow
 
@@ -24,7 +25,7 @@ The extractor produces these artifacts under `.copilot-artifacts\testprotokoll-a
 
 ## Required No-Cache Behavior
 
-Missing `.copilot-artifacts\testprotokoll-analyzer\...` output is the normal trigger to create it now.
+Missing `.copilot-artifacts\testprotokoll-inspector\...` output is the normal trigger to create it now.
 
 - Do not treat a missing cache as a reason to stop.
 - Do not say the `.docx` cannot be processed in the current session.
@@ -33,13 +34,13 @@ Missing `.copilot-artifacts\testprotokoll-analyzer\...` output is the normal tri
 ## Recommended Command Pattern
 
 ```powershell
-python "C:\Users\vincent_m\.copilot\skills\testprotokoll-analyzer\scripts\extract_docx.py" "<source>" --reuse-if-current
+python .\scripts\extract_docx.py "<source>" --reuse-if-current
 ```
 
 For inbox-style folders, use:
 
 ```powershell
-python "C:\Users\vincent_m\.copilot\skills\testprotokoll-analyzer\scripts\extract_docx.py" "J:\dev\docs\testprotokolle\inbox" --latest --reuse-if-current
+python .\scripts\extract_docx.py "J:\dev\docs\testprotokolle\inbox" --latest --reuse-if-current
 ```
 
 ## `errors.json` Structure
@@ -70,19 +71,20 @@ python "C:\Users\vincent_m\.copilot\skills\testprotokoll-analyzer\scripts\extrac
 ```json
 {
   "extractor": {
-    "name": "testprotokoll-analyzer",
+    "name": "testprotokoll-inspector",
     "version": "0.2.0"
   },
   "source": {
     "path": "J:\\dev\\docs\\testprotokolle\\inbox\\Testprotokoll-103429.docx",
     "modified_utc": "2026-05-21T17:51:30.401801+00:00"
-  }
+  },
+  "warnings": []
 }
 ```
 
 ## Notes
 
-- The `.extracted-by-testprotokoll-analyzer` marker must be present before the extractor will overwrite the output directory. Without it the extractor aborts with a clear error message.
+- The `.extracted-by-testprotokoll-inspector` marker must be present before the extractor will overwrite the output directory. Without it the extractor aborts with a clear error message.
 - Raster screenshot formats are preferred over EMF/WMF fallback images when both representations exist for the same visual occurrence.
 - Images are extracted from body paragraphs, table cells, headers, and footers.
 - Office charts are converted into text summaries and JSON when possible.
