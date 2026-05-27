@@ -72,12 +72,11 @@ function registerRoutes(router) {
         return;
       }
 
-      const salt = auth.generateSalt();
-      const hash = auth.hashPassword(password, salt);
+      const hash = auth.hashPassword(password);
 
       saveLocalConfig({
         adminPasswordHash: hash,
-        adminPasswordSalt: salt
+        adminPasswordSalt: ''
       });
 
       sendJson(res, 200, { success: true, message: 'Admin password saved' });
@@ -111,6 +110,17 @@ function registerRoutes(router) {
         return;
       }
 
+      if (auth.needsRehash(config.adminPasswordHash)) {
+        try {
+          saveLocalConfig({
+            adminPasswordHash: auth.hashPassword(password),
+            adminPasswordSalt: ''
+          });
+        } catch (error) {
+          console.warn('Admin password hash upgrade failed:', error.message);
+        }
+      }
+
       const token = auth.createSession();
       sendJson(res, 200, { token });
     });
@@ -136,12 +146,11 @@ function registerRoutes(router) {
         return;
       }
 
-      const salt = auth.generateSalt();
-      const hash = auth.hashPassword(newPassword, salt);
+      const hash = auth.hashPassword(newPassword);
 
       saveLocalConfig({
         adminPasswordHash: hash,
-        adminPasswordSalt: salt
+        adminPasswordSalt: ''
       });
 
       sendJson(res, 200, { success: true });
@@ -295,8 +304,12 @@ function registerRoutes(router) {
         sendJson(res, 400, { error: 'URL is too long (max 2000 characters)' });
         return;
       }
-      if (description !== undefined && description.length > 5000) {
-        sendJson(res, 400, { error: 'Description is too long (max 5000 characters)' });
+      if (description !== undefined && description.length > 50000) {
+        sendJson(res, 400, { error: 'Description is too long (max 50000 characters)' });
+        return;
+      }
+      if (body.detailContent !== undefined && String(body.detailContent).length > 200000) {
+        sendJson(res, 400, { error: 'Detail content is too long (max 200000 characters)' });
         return;
       }
 
@@ -389,8 +402,12 @@ function registerRoutes(router) {
         sendJson(res, 400, { error: 'Title is too long (max 200 characters)' });
         return;
       }
-      if (content.length > 5000) {
-        sendJson(res, 400, { error: 'Content is too long (max 5000 characters)' });
+      if (content.length > 50000) {
+        sendJson(res, 400, { error: 'Content is too long (max 50000 characters)' });
+        return;
+      }
+      if (body.detailContent !== undefined && String(body.detailContent).length > 200000) {
+        sendJson(res, 400, { error: 'Detail content is too long (max 200000 characters)' });
         return;
       }
       if (!NEWS_TYPES.includes(type)) {
@@ -435,8 +452,12 @@ function registerRoutes(router) {
         sendJson(res, 400, { error: 'Title is too long (max 200 characters)' });
         return;
       }
-      if (content !== undefined && content.length > 5000) {
-        sendJson(res, 400, { error: 'Content is too long (max 5000 characters)' });
+      if (content !== undefined && content.length > 50000) {
+        sendJson(res, 400, { error: 'Content is too long (max 50000 characters)' });
+        return;
+      }
+      if (body.detailContent !== undefined && String(body.detailContent).length > 200000) {
+        sendJson(res, 400, { error: 'Detail content is too long (max 200000 characters)' });
         return;
       }
       if (url !== undefined && url.length > 2000) {

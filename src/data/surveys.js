@@ -117,13 +117,6 @@ function update(id, changes) {
  * @returns {boolean} True if successful
  */
 function addResponse(surveyId, response) {
-  const surveys = loadSurveys();
-  const index = surveys.findIndex((survey) => survey.id === surveyId);
-
-  if (index === -1 || !surveys[index].active) {
-    return false;
-  }
-
   const newResponse = {
     id: store.createId(),
     name: response.name || null,
@@ -131,9 +124,30 @@ function addResponse(surveyId, response) {
     submittedAt: new Date().toISOString()
   };
 
-  surveys[index].responses.push(newResponse);
-  store.writeDataFile(FILE_NAME, surveys);
-  return true;
+  return store.mutateDataFile(FILE_NAME, (surveys) => {
+    const index = surveys.findIndex((survey) => survey.id === surveyId);
+    if (index === -1) {
+      return { changed: false, result: false };
+    }
+
+    const normalizedSurvey = normalizeSurvey(surveys[index]);
+    if (!normalizedSurvey.active) {
+      return { changed: false, result: false };
+    }
+
+    surveys[index] = {
+      id: normalizedSurvey.id,
+      title: normalizedSurvey.title,
+      description: normalizedSurvey.description,
+      questions: normalizedSurvey.questions,
+      active: normalizedSurvey.active,
+      responses: [...normalizedSurvey.responses, newResponse],
+      createdAt: normalizedSurvey.createdAt,
+      updatedAt: new Date().toISOString()
+    };
+
+    return { changed: true, result: true };
+  });
 }
 
 /**

@@ -6,7 +6,7 @@ const path = require('path');
 // Base path for persisted JSON data files.
 const dataDirectory = path.join(__dirname, '..', '..', 'data');
 
-// Simple per-file write locks to avoid concurrent writes.
+// Simple per-file write locks to keep read-modify-write cycles atomic per process.
 const writeLocks = new Map();
 
 /**
@@ -34,7 +34,6 @@ function readDataFile(fileName) {
  */
 function writeDataFile(fileName, data) {
   const filePath = path.join(dataDirectory, fileName);
-  const tempFilePath = filePath + '.tmp';
 
   if (writeLocks.get(fileName)) {
     throw new Error(`Write operation for ${fileName} is already active`);
@@ -42,9 +41,45 @@ function writeDataFile(fileName, data) {
 
   writeLocks.set(fileName, true);
   try {
-    const json = JSON.stringify(data, null, 2);
-    fs.writeFileSync(tempFilePath, json, 'utf-8');
-    fs.renameSync(tempFilePath, filePath);
+    writeJsonAtomically(filePath, data);
+  } finally {
+    writeLocks.set(fileName, false);
+  }
+}
+
+function writeJsonAtomically(filePath, data) {
+  const tempFilePath = filePath + '.tmp';
+  const json = JSON.stringify(data, null, 2);
+  fs.writeFileSync(tempFilePath, json, 'utf-8');
+  fs.renameSync(tempFilePath, filePath);
+}
+
+/**
+ * Reads, mutates and persists a JSON file within one critical section.
+ * @param {string} fileName - JSON file name
+ * @param {Function} mutator - Receives mutable records and returns metadata
+ * @returns {*} Mutation result
+ */
+function mutateDataFile(fileName, mutator) {
+  const filePath = path.join(dataDirectory, fileName);
+
+  if (writeLocks.get(fileName)) {
+    throw new Error(`Write operation for ${fileName} is already active`);
+  }
+
+  writeLocks.set(fileName, true);
+  try {
+    const records = readDataFile(fileName);
+    const mutation = mutator(records) || {};
+    const changed = mutation.changed !== undefined ? mutation.changed : true;
+
+    if (changed) {
+      writeJsonAtomically(filePath, records);
+    }
+
+    return Object.prototype.hasOwnProperty.call(mutation, 'result')
+      ? mutation.result
+      : records;
   } finally {
     writeLocks.set(fileName, false);
   }
@@ -68,14 +103,17 @@ function findById(fileName, id) {
  * @returns {Object} Persisted record
  */
 function addItem(fileName, entry) {
-  const records = readDataFile(fileName);
   const createdItem = {
     id: createId(),
     createdAt: new Date().toISOString(),
     ...entry
   };
-  records.push(createdItem);
-  writeDataFile(fileName, records);
+
+  mutateDataFile(fileName, (records) => {
+    records.push(createdItem);
+    return { changed: true, result: createdItem };
+  });
+
   return createdItem;
 }
 
@@ -87,22 +125,24 @@ function addItem(fileName, entry) {
  * @returns {Object|null} Updated record or null
  */
 function updateItem(fileName, id, changes) {
-  const records = readDataFile(fileName);
-  const index = records.findIndex((record) => record.id === id);
-  if (index === -1) {
-    return null;
-  }
-  records[index] = {
-    ...records[index],
-    ...changes,
-    id: records[index].id,
-    createdAt: records[index].createdAt || records[index].erstelltAm || new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
-  delete records[index].erstelltAm;
-  delete records[index].aktualisiertAm;
-  writeDataFile(fileName, records);
-  return records[index];
+  return mutateDataFile(fileName, (records) => {
+    const index = records.findIndex((record) => record.id === id);
+    if (index === -1) {
+      return { changed: false, result: null };
+    }
+
+    records[index] = {
+      ...records[index],
+      ...changes,
+      id: records[index].id,
+      createdAt: records[index].createdAt || records[index].erstelltAm || new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    delete records[index].erstelltAm;
+    delete records[index].aktualisiertAm;
+
+    return { changed: true, result: records[index] };
+  });
 }
 
 /**
@@ -112,14 +152,15 @@ function updateItem(fileName, id, changes) {
  * @returns {boolean} True if deleted, otherwise false
  */
 function deleteItem(fileName, id) {
-  const records = readDataFile(fileName);
-  const originalLength = records.length;
-  const filteredRecords = records.filter((record) => record.id !== id);
-  if (filteredRecords.length === originalLength) {
-    return false;
-  }
-  writeDataFile(fileName, filteredRecords);
-  return true;
+  return mutateDataFile(fileName, (records) => {
+    const index = records.findIndex((record) => record.id === id);
+    if (index === -1) {
+      return { changed: false, result: false };
+    }
+
+    records.splice(index, 1);
+    return { changed: true, result: true };
+  });
 }
 
 /**
@@ -134,6 +175,7 @@ function createId() {
 module.exports = {
   readDataFile,
   writeDataFile,
+  mutateDataFile,
   findById,
   addItem,
   updateItem,

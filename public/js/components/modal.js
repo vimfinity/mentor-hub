@@ -8,13 +8,20 @@
  * @param {string} [options.cancelText] - Cancel button label
  * @returns {HTMLElement} Modal element
  */
+let modalScrollPosition = 0;
+
 function openModal(options) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
 
+  const sizeClass = options.size === 'wide' ? ' modal-inhalt-breit' : '';
+  const persistent = options.persistent === true;
   const contentHtml = `
-    <div class="modal-inhalt">
-      <h2 class="modal-titel">${escapeHtml(options.title)}</h2>
+    <div class="modal-inhalt${sizeClass}">
+      <header class="modal-kopf">
+        <h2 class="modal-titel">${escapeHtml(options.title)}</h2>
+        <button class="modal-schliessen" type="button" aria-label="Schließen">×</button>
+      </header>
       <div class="modal-body">${options.content}</div>
       <div class="modal-aktionen">
         <button class="btn btn-sekundaer modal-abbrechen">
@@ -31,6 +38,7 @@ function openModal(options) {
 
   overlay.innerHTML = contentHtml;
   document.body.appendChild(overlay);
+  lockPageScroll();
 
   const cancelButton = overlay.querySelector('.modal-abbrechen');
   cancelButton.addEventListener('click', () => closeModal(overlay));
@@ -47,18 +55,25 @@ function openModal(options) {
     });
   }
 
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) {
-      closeModal(overlay);
-    }
-  });
+  const closeButton = overlay.querySelector('.modal-schliessen');
+  if (closeButton) {
+    closeButton.addEventListener('click', () => closeModal(overlay));
+  }
+
+  if (!persistent) {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        closeModal(overlay);
+      }
+    });
+  }
 
   const escapeHandler = (e) => {
-    if (e.key === 'Escape') {
+    if (e.key === 'Escape' && !persistent) {
       closeModal(overlay);
-      document.removeEventListener('keydown', escapeHandler);
     }
   };
+  overlay._escapeHandler = escapeHandler;
   document.addEventListener('keydown', escapeHandler);
 
   return overlay;
@@ -70,8 +85,40 @@ function openModal(options) {
  */
 function closeModal(overlay) {
   if (overlay && overlay.parentNode) {
+    if (overlay._escapeHandler) {
+      document.removeEventListener('keydown', overlay._escapeHandler);
+    }
     overlay.parentNode.removeChild(overlay);
   }
+  if (!document.querySelector('.modal-overlay')) {
+    unlockPageScroll();
+  }
+}
+
+function lockPageScroll() {
+  if (document.body.classList.contains('modal-offen')) {
+    return;
+  }
+
+  modalScrollPosition = window.scrollY || document.documentElement.scrollTop || 0;
+  document.documentElement.classList.add('modal-offen');
+  document.body.classList.add('modal-offen');
+  document.body.style.position = 'fixed';
+  document.body.style.top = `-${modalScrollPosition}px`;
+  document.body.style.left = '0';
+  document.body.style.right = '0';
+  document.body.style.width = '100%';
+}
+
+function unlockPageScroll() {
+  document.documentElement.classList.remove('modal-offen');
+  document.body.classList.remove('modal-offen');
+  document.body.style.position = '';
+  document.body.style.top = '';
+  document.body.style.left = '';
+  document.body.style.right = '';
+  document.body.style.width = '';
+  window.scrollTo(0, modalScrollPosition);
 }
 
 /**

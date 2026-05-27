@@ -3,6 +3,7 @@ import { holeAbfrage } from '../services/query-cache.js';
 import { t } from '../services/i18n.js';
 import { escapeHtml } from './modal.js';
 import { icon } from './icons.js';
+import { mountRichDocument } from '../services/rich-content.js';
 
 const DETAIL_CACHE_TTL_MS = 60 * 1000;
 
@@ -54,9 +55,7 @@ async function render(container, context = {}) {
       ${item.imageUrl ? `<img class="feed-detail-image" src="${escapeHtml(item.imageUrl)}" alt="">` : ''}
 
       ${detailContent ? `
-        <div class="feed-detail-content">
-          ${renderRichContent(detailContent)}
-        </div>
+        <div class="feed-detail-content" data-rich-host></div>
       ` : `
         <p class="feed-detail-empty">${escapeHtml(t('feed.detailEmpty'))}</p>
       `}
@@ -76,6 +75,11 @@ async function render(container, context = {}) {
       ` : ''}
     </article>
   `;
+
+  const richHost = container.querySelector('[data-rich-host]');
+  if (richHost && detailContent) {
+    mountRichDocument(richHost, detailContent, { minHeight: 240, className: 'feed-detail-iframe' });
+  }
 
   const backLink = container.querySelector('[data-back="1"]');
   if (backLink) {
@@ -140,17 +144,6 @@ function extractIdFromPath(path) {
   } catch (error) {
     return match[1];
   }
-}
-
-function renderRichContent(text) {
-  const safe = escapeHtml(text);
-  const linkified = safe.replace(/(https?:\/\/[^\s<]+)/g, (match) => {
-    return `<a href="${match}" target="_blank" rel="noopener noreferrer" class="feed-inline-link">${match}</a>`;
-  });
-  return linkified
-    .split(/\n{2,}/)
-    .map((paragraph) => `<p>${paragraph.replace(/\n/g, '<br>')}</p>`)
-    .join('');
 }
 
 function formatDate(value) {

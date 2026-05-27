@@ -4,18 +4,18 @@ const crypto = require('crypto');
 
 // Active sessions: Map<token, { createdAt: number }>
 const sessions = new Map();
+const PASSWORD_SCHEME = 'scrypt';
+const PASSWORD_KEY_LENGTH = 64;
 
 /**
- * Creates a SHA-256 password hash with salt.
+ * Creates a password hash with an embedded algorithm marker and salt.
  * @param {string} password - Plain text password
- * @param {string} salt - Random salt
- * @returns {string} Hex-encoded hash
+ * @param {string} [salt] - Optional random salt
+ * @returns {string} Encoded password hash
  */
-function hashPassword(password, salt) {
-  return crypto
-    .createHash('sha256')
-    .update(salt + ':' + password)
-    .digest('hex');
+function hashPassword(password, salt = generateSalt()) {
+  const derivedKey = crypto.scryptSync(password, salt, PASSWORD_KEY_LENGTH).toString('hex');
+  return `${PASSWORD_SCHEME}$${salt}$${derivedKey}`;
 }
 
 /**
@@ -34,12 +34,56 @@ function generateSalt() {
  * @returns {boolean} True if the password matches
  */
 function verifyPassword(password, hash, salt) {
-  const computedHash = hashPassword(password, salt);
-  // Use a timing-safe comparison to avoid leaking information.
-  return crypto.timingSafeEqual(
-    Buffer.from(computedHash, 'hex'),
-    Buffer.from(hash, 'hex')
-  );
+  if (typeof hash !== 'string' || hash.length === 0) {
+    return false;
+  }
+
+  if (hash.startsWith(PASSWORD_SCHEME + '$')) {
+    return verifyScryptPassword(password, hash);
+  }
+
+  if (typeof salt !== 'string' || salt.length === 0) {
+    return false;
+  }
+
+  return compareHexStrings(hashLegacyPassword(password, salt), hash);
+}
+
+function verifyScryptPassword(password, encodedHash) {
+  const parts = encodedHash.split('$');
+  if (parts.length !== 3) {
+    return false;
+  }
+
+  const [, salt, expectedHash] = parts;
+  const computedHash = crypto.scryptSync(password, salt, PASSWORD_KEY_LENGTH).toString('hex');
+  return compareHexStrings(computedHash, expectedHash);
+}
+
+function hashLegacyPassword(password, salt) {
+  return crypto
+    .createHash('sha256')
+    .update(salt + ':' + password)
+    .digest('hex');
+}
+
+function compareHexStrings(left, right) {
+  try {
+    const leftBuffer = Buffer.from(left, 'hex');
+    const rightBuffer = Buffer.from(right, 'hex');
+
+    if (leftBuffer.length === 0 || rightBuffer.length === 0 || leftBuffer.length !== rightBuffer.length) {
+      return false;
+    }
+
+    return crypto.timingSafeEqual(leftBuffer, rightBuffer);
+  } catch (error) {
+    return false;
+  }
+}
+
+function needsRehash(hash) {
+  return typeof hash !== 'string' || !hash.startsWith(PASSWORD_SCHEME + '$');
 }
 
 /**
@@ -96,6 +140,7 @@ module.exports = {
   hashPassword,
   generateSalt,
   verifyPassword,
+  needsRehash,
   createSession,
   verifySession,
   endSession,

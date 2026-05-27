@@ -195,23 +195,49 @@ function sendJson(res, statusCode, data) {
  */
 function readBody(req, res, callback) {
   let body = '';
-  const maxSize = 1024 * 100;
+  let receivedBytes = 0;
+  let responseSent = false;
+  const maxSize = 1024 * 512;
+
+  function sendError(statusCode, payload) {
+    if (responseSent) {
+      return;
+    }
+
+    responseSent = true;
+    sendJson(res, statusCode, payload);
+  }
 
   req.on('data', (chunk) => {
-    body += chunk;
-    if (body.length > maxSize) {
-      req.destroy();
-      sendJson(res, 413, { error: 'Request entity too large' });
+    if (responseSent) {
+      return;
     }
+
+    receivedBytes += chunk.length;
+    if (receivedBytes > maxSize) {
+      sendError(413, { error: 'Request entity too large' });
+      req.destroy();
+      return;
+    }
+
+    body += chunk;
   });
 
   req.on('end', () => {
+    if (responseSent) {
+      return;
+    }
+
     try {
       const parsedBody = JSON.parse(body);
       callback(parsedBody);
     } catch (error) {
-      sendJson(res, 400, { error: 'Invalid JSON payload' });
+      sendError(400, { error: 'Invalid JSON payload' });
     }
+  });
+
+  req.on('error', () => {
+    sendError(400, { error: 'Invalid request payload' });
   });
 }
 

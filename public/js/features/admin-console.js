@@ -8,6 +8,7 @@ import { renderAdminSection, renderAdminPanel, renderAdminEmptyState } from '../
 import { renderListensteuerung, verbindeListensteuerung } from '../components/list-controls.js';
 import { icon } from '../components/icons.js';
 import { renderSelect, bindSelect } from '../components/select.js';
+import { mountMarkdownEditor } from '../components/markdown-editor.js';
 
 const SESSION_CACHE_KEY = 'admin:session';
 const SURVEYS_CACHE_KEY = 'admin:surveys';
@@ -680,12 +681,13 @@ async function renderFeedAdmin(container, context) {
 function openFeedForm({ context, mode, item = null }) {
   const isEdit = mode === 'edit';
   const typeLabels = getFeedTypeLabels();
+  let editor = null;
   const selectedKind = FEED_KIND_OPTIONS.includes(item?.kind) ? item.kind : 'update';
   const selectedType = item?.subtype || item?.type || FEED_SUBTYPES_BY_KIND[selectedKind][0];
   const titleValue = escapeHtml(item?.title || '');
   const urlValue = escapeHtml(item?.url || '');
   const summaryValue = escapeHtml(item?.summary || item?.content || item?.description || '');
-  const contentValue = escapeHtml(item?.detailContent || item?.content || item?.description || '');
+  const contentValueRaw = item?.detailContent || item?.content || item?.description || '';
   const imageValue = escapeHtml(item?.imageUrl || '');
   const sourceValue = escapeHtml(item?.source || '');
   const tagValue = escapeHtml(Array.isArray(item?.tags) ? item.tags.join(', ') : '');
@@ -699,56 +701,73 @@ function openFeedForm({ context, mode, item = null }) {
   }));
 
   openModal({
+    size: 'wide',
+    persistent: true,
     title: (isEdit ? t('admin.edit') : t('admin.create')) + ': ' + t('admin.feed'),
     content: `
-      <div class="formular-gruppe">
-        <label class="formular-label" for="feed-form-title">${t('admin.title')} *</label>
-        <input type="text" class="formular-eingabe" id="feed-form-title" maxlength="200" required value="${titleValue}">
+      <div class="feed-form-layout">
+        <aside class="feed-form-side">
+          <div class="formular-gruppe">
+            <label class="formular-label" for="feed-form-title">${t('admin.title')} *</label>
+            <input type="text" class="formular-eingabe" id="feed-form-title" maxlength="200" required value="${titleValue}">
+          </div>
+          <div class="feed-form-row">
+            <div class="formular-gruppe">
+              <label class="formular-label">${t('admin.feedKind')}</label>
+              ${renderSelect({
+                name: 'feed-form-kind',
+                value: selectedKind,
+                options: kindSelectOptions,
+                disabled: isEdit,
+                ariaLabel: t('admin.feedKind')
+              })}
+            </div>
+            <div class="formular-gruppe">
+              <label class="formular-label">${t('admin.category')}</label>
+              <div id="feed-form-subtype-host"></div>
+            </div>
+          </div>
+          <div class="formular-gruppe">
+            <label class="formular-label" for="feed-form-summary">${t('admin.summary')}</label>
+            <textarea class="formular-textarea" id="feed-form-summary" maxlength="1000" rows="3" placeholder="Kurze Beschreibung, erscheint auf der Karte im Feed">${summaryValue}</textarea>
+          </div>
+          <div class="formular-gruppe">
+            <label class="formular-label" for="feed-form-image">${t('admin.imageUrl')}</label>
+            <input type="url" class="formular-eingabe" id="feed-form-image" maxlength="2000" placeholder="https://..." value="${imageValue}">
+          </div>
+          <div class="formular-gruppe">
+            <label class="formular-label" for="feed-form-url">${t('admin.url')}</label>
+            <input type="url" class="formular-eingabe" id="feed-form-url" maxlength="2000" placeholder="https://..." value="${urlValue}">
+          </div>
+          <div class="feed-form-row">
+            <div class="formular-gruppe">
+              <label class="formular-label" for="feed-form-source">${t('admin.source')}</label>
+              <input type="text" class="formular-eingabe" id="feed-form-source" maxlength="100" value="${sourceValue}">
+            </div>
+            <div class="formular-gruppe">
+              <label class="formular-label" for="feed-form-tags">${t('admin.tags')}</label>
+              <input type="text" class="formular-eingabe" id="feed-form-tags" placeholder="mcp, codex" value="${tagValue}">
+            </div>
+          </div>
+          <label class="checkbox-label">
+            <input type="checkbox" id="feed-form-featured" ${item?.featured ? 'checked' : ''}>
+            <span>${t('admin.featured')}</span>
+          </label>
+          <div class="feed-form-card-preview">
+            <div class="feed-form-card-preview-label">${t('admin.preview') || 'Karten-Vorschau'}</div>
+            <div class="feed-admin-vorschau" id="feed-form-preview"></div>
+          </div>
+        </aside>
+        <section class="feed-form-main">
+          <div class="formular-gruppe formular-gruppe-fuell">
+            <label class="formular-label feed-form-editor-label">
+              ${t('admin.detailContent')}
+              <span class="feed-form-editor-sub">${t('admin.detailContentPlaceholder')}</span>
+            </label>
+            <div id="feed-form-content-host" class="feed-form-editor-host"></div>
+          </div>
+        </section>
       </div>
-      <div class="formular-gruppe">
-        <label class="formular-label">${t('admin.feedKind')}</label>
-        ${renderSelect({
-          name: 'feed-form-kind',
-          value: selectedKind,
-          options: kindSelectOptions,
-          disabled: isEdit,
-          ariaLabel: t('admin.feedKind')
-        })}
-      </div>
-      <div class="formular-gruppe">
-        <label class="formular-label">${t('admin.category')}</label>
-        <div id="feed-form-subtype-host"></div>
-      </div>
-      <div class="formular-gruppe">
-        <label class="formular-label" for="feed-form-summary">${t('admin.summary')}</label>
-        <textarea class="formular-textarea" id="feed-form-summary" maxlength="1000" rows="2">${summaryValue}</textarea>
-      </div>
-      <div class="formular-gruppe">
-        <label class="formular-label" for="feed-form-content">${t('admin.detailContent')}</label>
-        <textarea class="formular-textarea" id="feed-form-content" maxlength="10000" rows="6">${contentValue}</textarea>
-      </div>
-      <div class="formular-gruppe">
-        <label class="formular-label" for="feed-form-url">${t('admin.url')}</label>
-        <input type="url" class="formular-eingabe" id="feed-form-url" maxlength="2000" placeholder="https://..." value="${urlValue}">
-      </div>
-      <div class="formular-gruppe">
-        <label class="formular-label" for="feed-form-image">${t('admin.imageUrl')}</label>
-        <input type="url" class="formular-eingabe" id="feed-form-image" maxlength="2000" placeholder="https://..." value="${imageValue}">
-      </div>
-      <div class="formular-gruppe">
-        <label class="formular-label" for="feed-form-source">${t('admin.source')}</label>
-        <input type="text" class="formular-eingabe" id="feed-form-source" maxlength="100" value="${sourceValue}">
-      </div>
-      <div class="formular-gruppe">
-        <label class="formular-label" for="feed-form-tags">${t('admin.tags')}</label>
-        <input type="text" class="formular-eingabe" id="feed-form-tags" placeholder="mcp, codex, workflow" value="${tagValue}">
-      </div>
-      <label class="checkbox-label">
-        <input type="checkbox" id="feed-form-featured" ${item?.featured ? 'checked' : ''}>
-        ${t('admin.featured')}
-      </label>
-      <div class="feed-admin-vorschau" id="feed-form-preview"></div>
-      <p class="formular-hilfe">${t('admin.feedFormHint')}</p>
     `,
     confirmText: t('admin.save'),
     cancelText: t('admin.cancel'),
@@ -762,7 +781,7 @@ function openFeedForm({ context, mode, item = null }) {
       const subtype = overlay.querySelector('[data-select="feed-form-subtype"]').dataset.value;
       const url = overlay.querySelector('#feed-form-url').value.trim();
       const summary = overlay.querySelector('#feed-form-summary').value.trim();
-      const content = overlay.querySelector('#feed-form-content').value.trim();
+      const content = (editor?.getValue() || '').trim();
       const imageUrl = overlay.querySelector('#feed-form-image').value.trim();
       const source = overlay.querySelector('#feed-form-source').value.trim();
       const tags = overlay.querySelector('#feed-form-tags').value.split(',').map((tag) => tag.trim()).filter(Boolean);
@@ -840,6 +859,14 @@ function openFeedForm({ context, mode, item = null }) {
     overlay.querySelector('#' + id).addEventListener('input', refreshPreview);
   });
   renderSubtypeSelect();
+
+  const editorHost = overlay.querySelector('#feed-form-content-host');
+  if (editorHost) {
+    editor = mountMarkdownEditor(editorHost, {
+      value: contentValueRaw,
+      placeholder: t('admin.detailContentPlaceholder')
+    });
+  }
 }
 
 async function renderConcernsAdmin(container, context) {

@@ -1,5 +1,4 @@
 config.local.json
-.github/skills/
 data/*.tmp
 node_modules/
 *.log
