@@ -37,11 +37,6 @@ async function render(container, context = {}) {
 
   container.innerHTML = `
     <article class="feed-detail-page">
-      <a class="feed-detail-back" href="/" data-back="1">
-        ${icon('externalLink', 14)}
-        <span>${escapeHtml(t('feed.backToFeed'))}</span>
-      </a>
-
       <header class="feed-detail-header">
         <div class="feed-detail-meta">
           <span class="feed-card-type ${escapeHtml(config.accent)}">${escapeHtml(t(config.labelKey))}</span>
@@ -78,19 +73,7 @@ async function render(container, context = {}) {
 
   const richHost = container.querySelector('[data-rich-host]');
   if (richHost && detailContent) {
-    mountRichDocument(richHost, detailContent, { minHeight: 240, className: 'feed-detail-iframe' });
-  }
-
-  const backLink = container.querySelector('[data-back="1"]');
-  if (backLink) {
-    backLink.addEventListener('click', (event) => {
-      if (event.defaultPrevented || event.button !== 0
-        || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
-        return;
-      }
-      event.preventDefault();
-      context.navigateTo?.('/');
-    });
+    mountRichDocument(richHost, detailContent, { minHeight: 0, className: 'feed-detail-iframe' });
   }
 }
 
