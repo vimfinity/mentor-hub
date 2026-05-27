@@ -1,0 +1,33 @@
+{
+  "defaultProfile": "dev1",
+  "profiles": [
+    {
+      "name": "dev1",
+      "aliases": ["gfos2025_dev1", "hg-dev1", "default"],
+      "description": "HG datasource for gfos2025_dev1",
+      "configPath": "J:/dev/appserver/wildfly/wildfly36/profiles/hg/standalone-2025-dev1.xml",
+      "jndiName": "java:/jdbc/gfos"
+    },
+    {
+      "name": "mhg1",
+      "aliases": ["gfos2025_mhg1", "hg-mhg1"],
+      "description": "HG datasource for gfos2025_mhg1",
+      "configPath": "J:/dev/appserver/wildfly/wildfly36/profiles/hg/standalone-2025-mhg1.xml",
+      "jndiName": "java:/jdbc/gfos"
+    },
+    {
+      "name": "web-dev1",
+      "aliases": ["gfosweb-dev1", "web-gfos2025_dev1"],
+      "description": "Web datasource for gfos2025_dev1",
+      "configPath": "J:/dev/appserver/wildfly/wildfly36/profiles/web/standalone-2025-dev1.xml",
+      "jndiName": "java:/jdbc/gfosweb"
+    },
+    {
+      "name": "web-mhg1",
+      "aliases": ["gfosweb-mhg1", "web-gfos2025_mhg1"],
+      "description": "Web datasource for gfos2025_mhg1",
+      "configPath": "J:/dev/appserver/wildfly/wildfly36/profiles/web/standalone-2025-mhg1.xml",
+      "jndiName": "java:/jdbc/gfosweb"
+    }
+  ]
+}
