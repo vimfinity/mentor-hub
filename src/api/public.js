@@ -10,7 +10,7 @@ const newsItems = require('../data/news');
 
 const localesDirectory = path.join(__dirname, '..', '..', 'locales');
 const resourceUploadDirectory = path.join(__dirname, '..', '..', 'data', 'uploads', 'resources');
-const imageUploadDirectory = path.join(__dirname, '..', '..', 'data', 'uploads', 'images');
+const imageUploadDirectory = path.join(__dirname, '..', '..', 'public', 'uploads', 'images');
 const imageMimeTypes = {
   '.png': 'image/png',
   '.jpg': 'image/jpeg',

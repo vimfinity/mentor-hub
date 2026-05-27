@@ -7,7 +7,7 @@ const newsItems = require('./news');
 const resources = require('./resources');
 
 const FILE_NAME = 'media.json';
-const IMAGE_UPLOAD_ROOT = path.join(__dirname, '..', '..', 'data', 'uploads', 'images');
+const IMAGE_UPLOAD_ROOT = path.join(__dirname, '..', '..', 'public', 'uploads', 'images');
 
 function normalizeMediaItem(item) {
   return {
@@ -18,7 +18,7 @@ function normalizeMediaItem(item) {
     mimeType: item.mimeType || 'application/octet-stream',
     sizeBytes: Number.isFinite(Number(item.sizeBytes || item.size)) ? Number(item.sizeBytes || item.size) : 0,
     sha256: item.sha256 || '',
-    url: item.url || (item.filename ? `/api/uploads/images/${encodeURIComponent(item.filename)}` : ''),
+    url: item.url || (item.filename ? `/uploads/images/${encodeURIComponent(item.filename)}` : ''),
     createdAt: item.createdAt || new Date().toISOString()
   };
 }
@@ -57,7 +57,7 @@ function addImage(data) {
     mimeType: data.mimeType,
     sizeBytes: data.sizeBytes,
     sha256: data.sha256,
-    url: `/api/uploads/images/${encodeURIComponent(data.filename)}`,
+    url: `/uploads/images/${encodeURIComponent(data.filename)}`,
     createdAt: new Date().toISOString()
   };
 
@@ -122,7 +122,7 @@ function removeUnusedImages() {
 function getUsageMap() {
   const usage = new Map();
   const add = (url, entry) => {
-    if (!url || !String(url).startsWith('/api/uploads/images/')) {
+    if (!url || !String(url).startsWith('/uploads/images/')) {
       return;
     }
     if (!usage.has(url)) {

@@ -1,0 +1,24 @@
+[
+  {
+    "id": "b5b0cd32-8296-4bba-bcb0-cfebac347e0f",
+    "kind": "image",
+    "filename": "7f38b510eaee0eceb90a45be6732fba5b52b94530dc36b5c74c15ee849a4d3c4.png",
+    "originalName": "00df7d94-51c4-4a98-b934-252f79ee2ac6.png",
+    "mimeType": "image/png",
+    "sizeBytes": 3225202,
+    "sha256": "7f38b510eaee0eceb90a45be6732fba5b52b94530dc36b5c74c15ee849a4d3c4",
+    "url": "/uploads/images/7f38b510eaee0eceb90a45be6732fba5b52b94530dc36b5c74c15ee849a4d3c4.png",
+    "createdAt": "2026-05-27T20:53:01.767Z"
+  },
+  {
+    "id": "706c57b2-7882-4ef1-849f-93ba3c6e51f9",
+    "kind": "image",
+    "filename": "56ef14a71c3b348830495efc685361bf61063aa34f65413ee793db91774b2379.png",
+    "originalName": "9b30ab11-7b6b-4732-a5d2-2ee4d7e15435.png",
+    "mimeType": "image/png",
+    "sizeBytes": 3161870,
+    "sha256": "56ef14a71c3b348830495efc685361bf61063aa34f65413ee793db91774b2379",
+    "url": "/uploads/images/56ef14a71c3b348830495efc685361bf61063aa34f65413ee793db91774b2379.png",
+    "createdAt": "2026-05-27T20:53:01.777Z"
+  }
+]
