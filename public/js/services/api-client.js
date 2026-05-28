@@ -36,7 +36,8 @@ async function remove(path) {
 
 function createHeaders() {
   const headers = {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    'Accept-Language': document.documentElement.lang || 'de-DE'
   };
 
   const token = getToken();

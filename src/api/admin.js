@@ -10,6 +10,7 @@ const resources = require('../data/resources');
 const concerns = require('../data/concerns');
 const newsItems = require('../data/news');
 const media = require('../data/media');
+const { hasLocalizedText, localizedLength, trimLocalizedValue, normalizeLocale } = require('../data/localization');
 const { createImageVariants } = require('../image-optimizer');
 const { sendJson, readBody } = require('./public');
 
@@ -169,6 +170,16 @@ function safeImageUploadPath(filename) {
   }
 
   return resolvedTarget;
+}
+
+function getRequestLocale(req) {
+  if (req.query?.locale) {
+    return normalizeLocale(req.query.locale);
+  }
+
+  const acceptLanguage = String(req.headers['accept-language'] || '');
+  const firstLanguage = acceptLanguage.split(',')[0]?.trim();
+  return normalizeLocale(firstLanguage);
 }
 
 /**
@@ -396,7 +407,7 @@ function registerRoutes(router) {
       return;
     }
 
-    sendJson(res, 200, surveys.getAll());
+    sendJson(res, 200, surveys.getAll(getRequestLocale(req)));
   });
 
   router.post('/api/admin/surveys', (req, res) => {
@@ -409,11 +420,11 @@ function registerRoutes(router) {
       const description = body?.description || body?.beschreibung || '';
       const questions = body?.questions || body?.fragen;
 
-      if (!title || title.trim().length === 0) {
+      if (!hasLocalizedText(title)) {
         sendJson(res, 400, { error: 'Title is required' });
         return;
       }
-      if (title.length > 200) {
+      if (localizedLength(title) > 200) {
         sendJson(res, 400, { error: 'Title is too long (max 200 characters)' });
         return;
       }
@@ -423,8 +434,8 @@ function registerRoutes(router) {
       }
 
       const created = surveys.create({
-        title: title.trim(),
-        description: description.trim(),
+        title: trimLocalizedValue(title),
+        description: trimLocalizedValue(description),
         questions
       });
 
@@ -495,11 +506,11 @@ function registerRoutes(router) {
       const kind = body?.kind || body?.art || 'agent-asset';
       const subtype = body?.subtype || body?.untertyp || category;
 
-      if (!title || title.trim().length === 0) {
+      if (!hasLocalizedText(title)) {
         sendJson(res, 400, { error: 'Title is required' });
         return;
       }
-      if (title.length > 200) {
+      if (localizedLength(title) > 200) {
         sendJson(res, 400, { error: 'Title is too long (max 200 characters)' });
         return;
       }
@@ -523,15 +534,15 @@ function registerRoutes(router) {
       }
 
       const created = resources.create({
-        title: title.trim(),
+        title: trimLocalizedValue(title),
         url: (body.url || '').trim(),
-        description: description.trim(),
-        detailContent: (body.detailContent || body.content || '').trim(),
+        description: trimLocalizedValue(description),
+        detailContent: trimLocalizedValue(body.detailContent || body.content || ''),
         imageUrl: (body.imageUrl || '').trim(),
         category: subtype,
         kind,
         subtype,
-        summary: (body.summary || description).trim(),
+        summary: trimLocalizedValue(body.summary || description),
         source: (body.source || '').trim(),
         tags: body.tags,
         featured: body.featured || false,
@@ -549,16 +560,16 @@ function registerRoutes(router) {
 
     readBody(req, res, (body) => {
       const title = body?.title || body?.titel;
-      const description = body?.description || body?.beschreibung || '';
+      const description = body?.description !== undefined ? body.description : body?.beschreibung;
       const category = body?.category || body?.kategorie;
       const kind = body?.kind || body?.art;
       const subtype = body?.subtype || body?.untertyp || category;
 
-      if (title !== undefined && title.trim().length === 0) {
+      if (title !== undefined && !hasLocalizedText(title)) {
         sendJson(res, 400, { error: 'Title is required' });
         return;
       }
-      if (title !== undefined && title.length > 200) {
+      if (title !== undefined && localizedLength(title) > 200) {
         sendJson(res, 400, { error: 'Title is too long (max 200 characters)' });
         return;
       }
@@ -566,11 +577,11 @@ function registerRoutes(router) {
         sendJson(res, 400, { error: 'URL is too long (max 2000 characters)' });
         return;
       }
-      if (description !== undefined && description.length > 50000) {
+      if (description !== undefined && localizedLength(description) > 50000) {
         sendJson(res, 400, { error: 'Description is too long (max 50000 characters)' });
         return;
       }
-      if (body.detailContent !== undefined && String(body.detailContent).length > 200000) {
+      if (body.detailContent !== undefined && localizedLength(body.detailContent) > 200000) {
         sendJson(res, 400, { error: 'Detail content is too long (max 200000 characters)' });
         return;
       }
@@ -743,19 +754,19 @@ function registerRoutes(router) {
       const type = body?.type || 'announcement';
       const featured = body?.featured || false;
 
-      if (!title || title.trim().length === 0) {
+      if (!hasLocalizedText(title)) {
         sendJson(res, 400, { error: 'Title is required' });
         return;
       }
-      if (title.length > 200) {
+      if (localizedLength(title) > 200) {
         sendJson(res, 400, { error: 'Title is too long (max 200 characters)' });
         return;
       }
-      if (content.length > 50000) {
+      if (localizedLength(content) > 50000) {
         sendJson(res, 400, { error: 'Content is too long (max 50000 characters)' });
         return;
       }
-      if (body.detailContent !== undefined && String(body.detailContent).length > 200000) {
+      if (body.detailContent !== undefined && localizedLength(body.detailContent) > 200000) {
         sendJson(res, 400, { error: 'Detail content is too long (max 200000 characters)' });
         return;
       }
@@ -770,14 +781,14 @@ function registerRoutes(router) {
       }
 
       const created = newsItems.create({
-        title: title.trim(),
-        content: content.trim(),
-        detailContent: (body.detailContent || content).trim(),
+        title: trimLocalizedValue(title),
+        content: trimLocalizedValue(content),
+        detailContent: trimLocalizedValue(body.detailContent || content),
         imageUrl: (body.imageUrl || '').trim(),
         url: url.trim(),
         type,
         subtype: type,
-        summary: (body.summary || content).trim(),
+        summary: trimLocalizedValue(body.summary || content),
         source: (body.source || '').trim(),
         tags: body.tags,
         featured,
@@ -799,19 +810,19 @@ function registerRoutes(router) {
       const url = body?.url;
       const type = body?.type;
 
-      if (title !== undefined && title.trim().length === 0) {
+      if (title !== undefined && !hasLocalizedText(title)) {
         sendJson(res, 400, { error: 'Title is required' });
         return;
       }
-      if (title !== undefined && title.length > 200) {
+      if (title !== undefined && localizedLength(title) > 200) {
         sendJson(res, 400, { error: 'Title is too long (max 200 characters)' });
         return;
       }
-      if (content !== undefined && content.length > 50000) {
+      if (content !== undefined && localizedLength(content) > 50000) {
         sendJson(res, 400, { error: 'Content is too long (max 50000 characters)' });
         return;
       }
-      if (body.detailContent !== undefined && String(body.detailContent).length > 200000) {
+      if (body.detailContent !== undefined && localizedLength(body.detailContent) > 200000) {
         sendJson(res, 400, { error: 'Detail content is too long (max 200000 characters)' });
         return;
       }

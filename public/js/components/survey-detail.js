@@ -1,6 +1,6 @@
 import * as api from '../services/api-client.js';
 import { holeAbfrage, invalidiereAbfrage } from '../services/query-cache.js';
-import { t } from '../services/i18n.js';
+import { t, getLocale } from '../services/i18n.js';
 import { escapeHtml } from './modal.js';
 import { icon } from './icons.js';
 import { showError, showSuccess } from './toast.js';
@@ -15,7 +15,7 @@ async function render(container, context = {}) {
   }
 
   const response = await holeAbfrage({
-    schluessel: ['survey-detail', id],
+    schluessel: ['survey-detail', getLocale(), id],
     abrufFunktion: () => getSurveyById(id),
     ttlMs: DETAIL_CACHE_TTL_MS
   });
@@ -74,7 +74,7 @@ function preload(context = {}) {
     return Promise.resolve();
   }
   return holeAbfrage({
-    schluessel: ['survey-detail', id],
+    schluessel: ['survey-detail', getLocale(), id],
     abrufFunktion: () => getSurveyById(id),
     ttlMs: DETAIL_CACHE_TTL_MS
   });
@@ -135,8 +135,8 @@ function renderQuestion(question, index) {
         <div class="auswahl-gruppe frage-eingabe" data-index="${index}" data-wert="">
           ${(question.options || []).map((option) => `
             <label class="auswahl-option">
-              <input type="radio" name="frage_${index}" value="${escapeHtml(option)}">
-              <span>${escapeHtml(option)}</span>
+              <input type="radio" name="frage_${index}" value="${escapeHtml(getOptionValue(option))}">
+              <span>${escapeHtml(getOptionLabel(option))}</span>
             </label>
           `).join('')}
         </div>
@@ -147,8 +147,8 @@ function renderQuestion(question, index) {
         <div class="auswahl-gruppe frage-eingabe" data-index="${index}" data-wert="">
           ${(question.options || []).map((option) => `
             <label class="auswahl-option">
-              <input type="checkbox" name="frage_${index}" value="${escapeHtml(option)}">
-              <span>${escapeHtml(option)}</span>
+              <input type="checkbox" name="frage_${index}" value="${escapeHtml(getOptionValue(option))}">
+              <span>${escapeHtml(getOptionLabel(option))}</span>
             </label>
           `).join('')}
         </div>
@@ -235,7 +235,7 @@ async function submitSurvey(form, surveyId) {
   submitButton.disabled = false;
 
   if (result.ok) {
-    invalidiereAbfrage(['survey-detail', surveyId]);
+    invalidiereAbfrage(['survey-detail', getLocale(), surveyId]);
     showSuccess(t('survey.success'));
     form.reset();
     form.querySelectorAll('.stern').forEach((star) => star.classList.remove('aktiv'));
@@ -276,7 +276,7 @@ function extractIdFromPath(path) {
   if (!path) {
     return null;
   }
-  const match = String(path).match(/^\/surveys\/([^/?#]+)/);
+  const match = String(path).match(/^(?:\/(?:de-DE|en-US))?\/surveys\/([^/?#]+)/);
   if (!match) {
     return null;
   }
@@ -291,8 +291,8 @@ function formatDate(value) {
   if (!value) {
     return '';
   }
-  const lang = document.documentElement.lang || 'de';
-  return new Date(value).toLocaleDateString(lang === 'de' ? 'de-DE' : 'en-US', {
+  const lang = document.documentElement.lang || 'de-DE';
+  return new Date(value).toLocaleDateString(lang.startsWith('de') ? 'de-DE' : 'en-US', {
     day: 'numeric',
     month: 'long',
     year: 'numeric'
@@ -300,8 +300,16 @@ function formatDate(value) {
 }
 
 async function copySurveyLink(id) {
-  await copyToClipboard(new URL('/surveys/' + encodeURIComponent(id), window.location.origin).href);
+  await copyToClipboard(new URL('/' + getLocale() + '/surveys/' + encodeURIComponent(id), window.location.origin).href);
   showSuccess(t('survey.linkCopied'));
+}
+
+function getOptionLabel(option) {
+  return option && typeof option === 'object' ? option.label || option.id || '' : option;
+}
+
+function getOptionValue(option) {
+  return option && typeof option === 'object' ? option.id || option.label || '' : option;
 }
 
 async function copyToClipboard(text) {

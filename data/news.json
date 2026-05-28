@@ -2,16 +2,28 @@
   {
     "id": "e887a6ce-6cf5-4ee6-adf8-2c631cbe395e",
     "createdAt": "2026-05-20T15:10:00.000Z",
-    "title": "Using Claude Code: The Unreasonable Effectiveness of HTML",
-    "content": "HTML als eine Alternative für den Output eines LLM's zu Markdown.",
+    "title": {
+      "de-DE": "Using Claude Code: The Unreasonable Effectiveness of HTML",
+      "en-US": "Using Claude Code: The Unreasonable Effectiveness of HTML"
+    },
+    "content": {
+      "de-DE": "HTML als eine Alternative für den Output eines LLM's zu Markdown.",
+      "en-US": "HTML as an alternative to Markdown for LLM output."
+    },
     "url": "https://x.com/trq212/status/2052809885763747935?s=20",
     "type": "article",
     "featured": false,
     "updatedAt": "2026-05-28T00:12:01.168Z",
-    "detailContent": "HTML als eine Alternative für den Output eines LLM's zu Markdown.",
+    "detailContent": {
+      "de-DE": "HTML als eine Alternative für den Output eines LLM's zu Markdown.",
+      "en-US": "HTML as an alternative to Markdown for LLM output."
+    },
     "imageUrl": "/uploads/images/e74024911bf9641338815bdf1fe361aba001f7703cf26848704be2da11a6a1b7.jpg",
     "subtype": "article",
-    "summary": "HTML als eine Alternative für den Output eines LLM's zu Markdown.",
+    "summary": {
+      "de-DE": "HTML als eine Alternative für den Output eines LLM's zu Markdown.",
+      "en-US": "HTML as an alternative to Markdown for LLM output."
+    },
     "source": "x.com",
     "tags": [
       "article"
@@ -20,16 +32,28 @@
   {
     "id": "da7dc7e9-c76e-439f-8e84-a8def5881041",
     "createdAt": "2026-05-27T20:24:00.000Z",
-    "title": "Gemini 3.5: frontier intelligence with action",
-    "content": "Vorstellung von Gemini 3.5 Flash",
+    "title": {
+      "de-DE": "Gemini 3.5: frontier intelligence with action",
+      "en-US": "Gemini 3.5: frontier intelligence with action"
+    },
+    "content": {
+      "de-DE": "Vorstellung von Gemini 3.5 Flash",
+      "en-US": "Introduction of Gemini 3.5 Flash."
+    },
     "url": "https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-3-5/",
     "type": "release",
     "featured": true,
     "updatedAt": "2026-05-27T23:20:59.506Z",
-    "detailContent": "Vorstellung von Gemini 3.5 Flash",
+    "detailContent": {
+      "de-DE": "Vorstellung von Gemini 3.5 Flash",
+      "en-US": "Introduction of Gemini 3.5 Flash."
+    },
     "imageUrl": "/uploads/images/f526bc91e388abb4d750225ce7e1a578d8a690006779d6bfc1e85a84c710838f.webp",
     "subtype": "release",
-    "summary": "Vorstellung von Gemini 3.5 Flash",
+    "summary": {
+      "de-DE": "Vorstellung von Gemini 3.5 Flash",
+      "en-US": "Introduction of Gemini 3.5 Flash."
+    },
     "source": "Google Blog",
     "tags": [
       "release"
@@ -38,14 +62,26 @@
   {
     "id": "042e857d-829b-4d9d-ba05-27c9a2aadf26",
     "createdAt": "2026-05-27T20:19:00.000Z",
-    "title": "Introducing Claude Opus 4.7",
-    "content": "Release of Anthropics new frontier model: Claude Opus 4.7",
-    "detailContent": "Release of Anthropics new frontier model: Claude Opus 4.7",
+    "title": {
+      "de-DE": "Introducing Claude Opus 4.7",
+      "en-US": "Introducing Claude Opus 4.7"
+    },
+    "content": {
+      "de-DE": "Release of Anthropics new frontier model: Claude Opus 4.7",
+      "en-US": "Release of Anthropic's new frontier model: Claude Opus 4.7."
+    },
+    "detailContent": {
+      "de-DE": "Release of Anthropics new frontier model: Claude Opus 4.7",
+      "en-US": "Release of Anthropic's new frontier model: Claude Opus 4.7."
+    },
     "imageUrl": "/uploads/images/0897708868e20cc1bc5d238ff2bcc804dc2ed7b130a6ddec0826b6ce11005225.webp",
     "url": "https://www.anthropic.com/news/claude-opus-4-7",
     "type": "release",
     "subtype": "release",
-    "summary": "Release of Anthropics new frontier model: Claude Opus 4.7",
+    "summary": {
+      "de-DE": "Release of Anthropics new frontier model: Claude Opus 4.7",
+      "en-US": "Release of Anthropic's new frontier model: Claude Opus 4.7."
+    },
     "source": "Anthropic News",
     "tags": [
       "release",
@@ -59,14 +95,26 @@
   {
     "id": "13b77219-b97e-4f72-817b-cb0f37a1dc5d",
     "createdAt": "2026-05-27T20:22:00.000Z",
-    "title": "Entdecke GPT‑5.5",
-    "content": "Einführung des neusten Models aus dem Hause OpenAI: GPT-5.5",
-    "detailContent": "Einführung des neusten Models aus dem Hause OpenAI: GPT-5.5",
+    "title": {
+      "de-DE": "Entdecke GPT‑5.5",
+      "en-US": "Discover GPT-5.5"
+    },
+    "content": {
+      "de-DE": "Einführung des neusten Models aus dem Hause OpenAI: GPT-5.5",
+      "en-US": "Introduction of OpenAI's newest model: GPT-5.5."
+    },
+    "detailContent": {
+      "de-DE": "Einführung des neusten Models aus dem Hause OpenAI: GPT-5.5",
+      "en-US": "Introduction of OpenAI's newest model: GPT-5.5."
+    },
     "imageUrl": "/uploads/images/d362805585d51640c371df86038befa6100c94a5b46918b94d969fd6a580aa17.webp",
     "url": "https://openai.com/de-DE/index/introducing-gpt-5-5/",
     "type": "release",
     "subtype": "release",
-    "summary": "Einführung des neusten Models aus dem Hause OpenAI: GPT-5.5",
+    "summary": {
+      "de-DE": "Einführung des neusten Models aus dem Hause OpenAI: GPT-5.5",
+      "en-US": "Introduction of OpenAI's newest model: GPT-5.5."
+    },
     "source": "OpenAI News",
     "tags": [
       "release",

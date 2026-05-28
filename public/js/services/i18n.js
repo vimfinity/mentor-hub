@@ -1,23 +1,48 @@
 let translations = {};
-let currentLanguage = 'de';
+let currentLocale = 'de-DE';
 const languageListeners = [];
+const SUPPORTED_LOCALES = ['de-DE', 'en-US'];
+
+function normalizeLocale(value) {
+  const locale = String(value || '').trim();
+  if (SUPPORTED_LOCALES.includes(locale)) {
+    return locale;
+  }
+
+  const lower = locale.toLowerCase();
+  if (lower === 'de' || lower === 'de-de') return 'de-DE';
+  if (lower === 'en' || lower === 'en-us') return 'en-US';
+  return 'de-DE';
+}
+
+function getLocaleFromPath(pathname = window.location.pathname) {
+  const segment = String(pathname || '').split('/').filter(Boolean)[0];
+  return SUPPORTED_LOCALES.includes(segment) ? segment : null;
+}
+
+function getLanguageFromLocale(locale) {
+  return normalizeLocale(locale).slice(0, 2);
+}
 
 async function loadLanguage(language) {
-  const response = await fetch('/api/i18n/' + language);
+  const locale = normalizeLocale(language);
+  const baseLanguage = getLanguageFromLocale(locale);
+  const response = await fetch('/api/i18n/' + locale);
   if (!response.ok) {
-    throw new Error('Failed to load locale: ' + language);
+    throw new Error('Failed to load locale: ' + locale);
   }
 
   translations = await response.json();
-  currentLanguage = language;
+  currentLocale = locale;
 
   try {
-    localStorage.setItem('mentor-hub-language', language);
+    localStorage.setItem('mentor-hub-language', baseLanguage);
+    localStorage.setItem('mentor-hub-locale', locale);
   } catch (error) {
     // Ignore localStorage access failures.
   }
 
-  languageListeners.forEach((listener) => listener(language));
+  languageListeners.forEach((listener) => listener(baseLanguage, locale));
 }
 
 function t(key) {
@@ -36,12 +61,16 @@ function t(key) {
 }
 
 async function toggleLanguage() {
-  const nextLanguage = currentLanguage === 'de' ? 'en' : 'de';
+  const nextLanguage = getLanguage() === 'de' ? 'en-US' : 'de-DE';
   await loadLanguage(nextLanguage);
 }
 
 function getLanguage() {
-  return currentLanguage;
+  return getLanguageFromLocale(currentLocale);
+}
+
+function getLocale() {
+  return currentLocale;
 }
 
 function onLanguageChange(listener) {
@@ -49,9 +78,12 @@ function onLanguageChange(listener) {
 }
 
 async function initI18n() {
-  let storedLanguage = 'de';
+  let storedLanguage = getLocaleFromPath() || 'de-DE';
   try {
-    storedLanguage = localStorage.getItem('mentor-hub-language') || 'de';
+    storedLanguage = getLocaleFromPath()
+      || localStorage.getItem('mentor-hub-locale')
+      || localStorage.getItem('mentor-hub-language')
+      || 'de-DE';
   } catch (error) {
     // Ignore localStorage access failures.
   }
@@ -59,4 +91,4 @@ async function initI18n() {
   await loadLanguage(storedLanguage);
 }
 
-export { t, toggleLanguage, getLanguage, onLanguageChange, initI18n };
+export { t, toggleLanguage, getLanguage, getLocale, getLocaleFromPath, normalizeLocale, onLanguageChange, initI18n };

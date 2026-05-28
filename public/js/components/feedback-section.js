@@ -1,6 +1,6 @@
 import * as api from '../services/api-client.js';
 import { holeAbfrage } from '../services/query-cache.js';
-import { t } from '../services/i18n.js';
+import { t, getLocale } from '../services/i18n.js';
 import { escapeHtml } from './modal.js';
 import { icon } from './icons.js';
 import { showError, showSuccess } from './toast.js';
@@ -10,7 +10,7 @@ const UMFRAGEN_CACHE_TTL_MS = 60 * 1000;
 
 async function render(container, context = {}) {
   const response = await holeAbfrage({
-    schluessel: UMFRAGEN_CACHE_KEY,
+    schluessel: [...UMFRAGEN_CACHE_KEY, getLocale()],
     abrufFunktion: () => api.get('/api/surveys'),
     ttlMs: UMFRAGEN_CACHE_TTL_MS
   });
@@ -46,7 +46,7 @@ async function render(container, context = {}) {
 
 function preload() {
   return holeAbfrage({
-    schluessel: UMFRAGEN_CACHE_KEY,
+    schluessel: [...UMFRAGEN_CACHE_KEY, getLocale()],
     abrufFunktion: () => api.get('/api/surveys'),
     ttlMs: UMFRAGEN_CACHE_TTL_MS
   });
@@ -113,7 +113,7 @@ function renderSurvey(survey) {
 }
 
 function formatDate(value) {
-  const locale = document.documentElement.lang === 'de' ? 'de-DE' : 'en-US';
+  const locale = document.documentElement.lang.startsWith('de') ? 'de-DE' : 'en-US';
   return new Date(value).toLocaleDateString(locale, {
     day: '2-digit',
     month: '2-digit',

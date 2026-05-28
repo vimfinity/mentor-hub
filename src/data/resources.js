@@ -1,25 +1,39 @@
 'use strict';
 
 const store = require('./store');
+const {
+  DEFAULT_LOCALE,
+  resolveLocalizedValue,
+  toLocalizedValue,
+  trimLocalizedValue
+} = require('./localization');
 
 const FILE_NAME = 'resources.json';
 
-function normalizeResource(resource) {
+function normalizeResource(resource, locale = DEFAULT_LOCALE) {
   const normalizedCategory = normalizeCategory(resource.category || resource.kategorie || 'article');
+  const title = resource.title || resource.titel || '';
+  const description = resource.description || resource.beschreibung || '';
+  const detailContent = resource.detailContent || resource.detailInhalt || resource.content || resource.inhalt || '';
+  const summary = resource.summary || resource.zusammenfassung || resource.description || resource.beschreibung || '';
   return {
     id: resource.id,
-    title: resource.title || resource.titel || '',
+    title: resolveLocalizedValue(title, locale),
+    titleLocalized: toLocalizedValue(title),
     url: resource.url || '',
-    description: resource.description || resource.beschreibung || '',
-    detailContent: resource.detailContent || resource.detailInhalt || resource.content || resource.inhalt || '',
+    description: resolveLocalizedValue(description, locale),
+    descriptionLocalized: toLocalizedValue(description),
+    detailContent: resolveLocalizedValue(detailContent, locale),
+    detailContentLocalized: toLocalizedValue(detailContent),
     imageUrl: resource.imageUrl || resource.bildUrl || resource.thumbnailUrl || '',
     category: normalizedCategory,
     kind: normalizeKind(resource.kind || resource.art || normalizedCategory),
     subtype: normalizeSubtype(resource.subtype || resource.untertyp || normalizedCategory),
-    summary: resource.summary || resource.zusammenfassung || resource.description || resource.beschreibung || '',
+    summary: resolveLocalizedValue(summary, locale),
+    summaryLocalized: toLocalizedValue(summary),
     source: resource.source || resource.quelle || detectSource(resource.url || ''),
     tags: normalizeTags(resource.tags || resource.schlagwoerter, normalizedCategory),
-    attachments: normalizeAttachments(resource.attachments || resource.anhaenge, resource.id),
+    attachments: normalizeAttachments(resource.attachments || resource.anhaenge, resource.id, locale),
     featured: resource.featured || false,
     createdAt: resource.createdAt || resource.erstelltAm || new Date().toISOString(),
     updatedAt: resource.updatedAt || resource.aktualisiertAm || null
@@ -76,7 +90,7 @@ function normalizeTags(tags, fallbackCategory) {
   return Array.from(new Set(normalized));
 }
 
-function normalizeAttachments(attachments, resourceId) {
+function normalizeAttachments(attachments, resourceId, locale = DEFAULT_LOCALE) {
   if (!Array.isArray(attachments)) {
     return [];
   }
@@ -90,10 +104,12 @@ function normalizeAttachments(attachments, resourceId) {
       const id = String(attachment.id);
       const filename = attachment.filename || attachment.dateiname || attachment.originalName || attachment.name || '';
       const originalName = attachment.originalName || attachment.name || filename;
+      const label = attachment.label || attachment.title || originalName || filename || 'Download';
 
       return {
         id,
-        label: attachment.label || attachment.title || originalName || filename || 'Download',
+        label: resolveLocalizedValue(label, locale),
+        labelLocalized: toLocalizedValue(label),
         filename,
         originalName,
         mimeType: attachment.mimeType || attachment.type || 'application/octet-stream',
@@ -127,9 +143,9 @@ function detectSource(url) {
   }
 }
 
-function loadResources() {
+function loadResources(locale = DEFAULT_LOCALE) {
   return store.readDataFile(FILE_NAME).map((resource) => {
-    const normalizedResource = normalizeResource(resource);
+    const normalizedResource = normalizeResource(resource, locale);
     normalizedResource.category = normalizeCategory(normalizedResource.category);
     return normalizedResource;
   });
@@ -139,8 +155,8 @@ function loadResources() {
  * Returns all resources sorted by newest first.
  * @returns {Array} Resource list
  */
-function getAll() {
-  const resources = loadResources();
+function getAll(locale = DEFAULT_LOCALE) {
+  const resources = loadResources(locale);
   return resources.sort((a, b) =>
     new Date(b.createdAt) - new Date(a.createdAt)
   );
@@ -151,8 +167,8 @@ function getAll() {
  * @param {string} category - Category filter
  * @returns {Array} Filtered resources
  */
-function getByCategory(category) {
-  const resources = getAll();
+function getByCategory(category, locale = DEFAULT_LOCALE) {
+  const resources = getAll(locale);
   return resources.filter((resource) => resource.category === normalizeCategory(category));
 }
 
@@ -163,15 +179,15 @@ function getByCategory(category) {
  */
 function create(data) {
   const resource = {
-    title: data.title,
+    title: trimLocalizedValue(data.title),
     url: data.url,
-    description: data.description || '',
-    detailContent: data.detailContent || data.content || '',
+    description: trimLocalizedValue(data.description || ''),
+    detailContent: trimLocalizedValue(data.detailContent || data.content || ''),
     imageUrl: data.imageUrl || '',
     category: normalizeCategory(data.category || data.subtype || 'article'),
     kind: normalizeKind(data.kind || data.category || data.subtype || 'agent-asset'),
     subtype: normalizeSubtype(data.subtype || data.category || 'article'),
-    summary: data.summary || data.description || '',
+    summary: trimLocalizedValue(data.summary || data.description || ''),
     source: data.source || detectSource(data.url || ''),
     tags: normalizeTags(data.tags, data.subtype || data.category || 'article'),
     attachments: normalizeAttachments(data.attachments, null),
@@ -191,22 +207,22 @@ function update(id, changes) {
   const filteredChanges = {};
 
   if (changes.title !== undefined || changes.titel !== undefined) {
-    filteredChanges.title = changes.title !== undefined ? changes.title : changes.titel;
+    filteredChanges.title = trimLocalizedValue(changes.title !== undefined ? changes.title : changes.titel);
   }
   if (changes.url !== undefined) {
     filteredChanges.url = changes.url;
   }
   if (changes.description !== undefined || changes.beschreibung !== undefined) {
-    filteredChanges.description = changes.description !== undefined ? changes.description : changes.beschreibung;
+    filteredChanges.description = trimLocalizedValue(changes.description !== undefined ? changes.description : changes.beschreibung);
   }
   if (changes.detailContent !== undefined || changes.detailInhalt !== undefined || changes.content !== undefined || changes.inhalt !== undefined) {
-    filteredChanges.detailContent = changes.detailContent !== undefined
+    filteredChanges.detailContent = trimLocalizedValue(changes.detailContent !== undefined
       ? changes.detailContent
       : changes.detailInhalt !== undefined
         ? changes.detailInhalt
         : changes.content !== undefined
           ? changes.content
-          : changes.inhalt;
+          : changes.inhalt);
   }
   if (changes.imageUrl !== undefined || changes.bildUrl !== undefined || changes.thumbnailUrl !== undefined) {
     filteredChanges.imageUrl = changes.imageUrl !== undefined
@@ -227,7 +243,7 @@ function update(id, changes) {
     filteredChanges.category = normalizeCategory(subtype);
   }
   if (changes.summary !== undefined || changes.zusammenfassung !== undefined) {
-    filteredChanges.summary = changes.summary !== undefined ? changes.summary : changes.zusammenfassung;
+    filteredChanges.summary = trimLocalizedValue(changes.summary !== undefined ? changes.summary : changes.zusammenfassung);
   }
   if (changes.source !== undefined || changes.quelle !== undefined) {
     filteredChanges.source = changes.source !== undefined ? changes.source : changes.quelle;

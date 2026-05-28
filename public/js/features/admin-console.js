@@ -1,5 +1,5 @@
 import * as api from '../services/api-client.js';
-import { holeAbfrage, invalidiereAbfrage } from '../services/query-cache.js';
+import { holeAbfrage, invalidiereAbfrage, invalidiereAbfragenMitPraefix } from '../services/query-cache.js';
 import { t, getLanguage } from '../services/i18n.js';
 import { normalisiereAuswahl, paginiereElemente } from '../services/view-state.js';
 import { showError, showSuccess } from '../components/toast.js';
@@ -17,6 +17,51 @@ const SURVEYS_CACHE_KEY = 'admin:surveys';
 const FEED_ADMIN_CACHE_KEY = 'admin:feed';
 const CONCERNS_CACHE_KEY = 'admin:concerns';
 const ADMIN_PRO_SEITE = 8;
+const CONTENT_LOCALES = ['de-DE', 'en-US'];
+
+function getLocalizedField(item, field, locale) {
+  const localized = item?.[field + 'Localized'];
+  if (localized && typeof localized === 'object') {
+    return localized[locale] || '';
+  }
+
+  return locale === 'de-DE' ? (item?.[field] || '') : '';
+}
+
+function renderLocalizedInput({ idBase, label, value = {}, required = false, textarea = false, rows = 3, maxlength = 200, placeholder = '' }) {
+  return `
+    <div class="formular-gruppe">
+      <label class="formular-label">${label}${required ? ' *' : ''}</label>
+      <div class="feed-form-row">
+        ${CONTENT_LOCALES.map((locale) => {
+          const inputId = `${idBase}-${locale}`;
+          const text = escapeHtml(value[locale] || '');
+          const localeLabel = locale === 'de-DE' ? 'DE' : 'EN';
+          return `
+            <div class="formular-gruppe">
+              <label class="formular-label" for="${inputId}">${localeLabel}</label>
+              ${textarea
+                ? `<textarea class="formular-textarea" id="${inputId}" rows="${rows}" maxlength="${maxlength}" placeholder="${escapeHtml(placeholder)}">${text}</textarea>`
+                : `<input type="text" class="formular-eingabe" id="${inputId}" maxlength="${maxlength}" value="${text}" placeholder="${escapeHtml(placeholder)}">`
+              }
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function readLocalizedField(overlay, idBase) {
+  return {
+    'de-DE': (overlay.querySelector(`#${idBase}-de-DE`)?.value || '').trim(),
+    'en-US': (overlay.querySelector(`#${idBase}-en-US`)?.value || '').trim()
+  };
+}
+
+function hasAnyLocalizedText(value) {
+  return CONTENT_LOCALES.some((locale) => String(value?.[locale] || '').trim().length > 0);
+}
 
 const SECTION_META = {
   feed: { key: 'feed', path: '/admin/feed', icon: 'newspaper' },
@@ -114,12 +159,14 @@ function invalidiereAdminSitzung() {
 
 function invalidiereAdminSurveys() {
   invalidiereAbfrage(SURVEYS_CACHE_KEY);
-  invalidiereAbfrage(['surveys']);
+  invalidiereAbfragenMitPraefix([SURVEYS_CACHE_KEY]);
+  invalidiereAbfragenMitPraefix(['surveys']);
 }
 
 function invalidiereAdminFeed() {
   invalidiereAbfrage(FEED_ADMIN_CACHE_KEY);
-  invalidiereAbfrage(['feed']);
+  invalidiereAbfragenMitPraefix([FEED_ADMIN_CACHE_KEY]);
+  invalidiereAbfragenMitPraefix(['feed']);
 }
 
 function invalidiereAdminConcerns() {
@@ -316,7 +363,7 @@ async function renderAdminShell(container, context, section) {
 
 async function renderSurveysAdmin(container, context) {
   const response = await holeAbfrage({
-    schluessel: SURVEYS_CACHE_KEY,
+    schluessel: [SURVEYS_CACHE_KEY, getLanguage()],
     ttlMs: 30 * 1000,
     abrufFunktion: () => api.get('/api/admin/surveys')
   });
@@ -496,14 +543,8 @@ function openSurveyForm(container, context) {
     title: t('admin.create') + ': ' + t('admin.surveys'),
     content: `
       <form id="new-survey-form">
-        <div class="formular-gruppe">
-          <label class="formular-label">${t('admin.title')} *</label>
-          <input type="text" class="formular-eingabe" id="new-survey-title" required maxlength="200">
-        </div>
-        <div class="formular-gruppe">
-          <label class="formular-label">${t('admin.description')}</label>
-          <textarea class="formular-textarea" id="new-survey-description"></textarea>
-        </div>
+        ${renderLocalizedInput({ idBase: 'new-survey-title', label: t('admin.title'), required: true })}
+        ${renderLocalizedInput({ idBase: 'new-survey-description', label: t('admin.description'), textarea: true, maxlength: 2000 })}
         <div class="formular-gruppe">
           <label class="formular-label">${t('admin.questions')}</label>
           <div id="question-list"></div>
@@ -514,8 +555,8 @@ function openSurveyForm(container, context) {
     confirmText: t('admin.save'),
     cancelText: t('admin.cancel'),
     onConfirm: async (overlay) => {
-      const title = overlay.querySelector('#new-survey-title').value.trim();
-      if (!title) {
+      const title = readLocalizedField(overlay, 'new-survey-title');
+      if (!hasAnyLocalizedText(title)) {
         return;
       }
 
@@ -525,7 +566,7 @@ function openSurveyForm(container, context) {
         return;
       }
 
-      const description = overlay.querySelector('#new-survey-description').value.trim();
+      const description = readLocalizedField(overlay, 'new-survey-description');
       const result = await api.post('/api/admin/surveys', { title, description, questions });
       if (behandleNichtAutorisierteAntwort(result, context.navigateTo)) {
         return;
@@ -550,8 +591,7 @@ function openSurveyForm(container, context) {
     const wrapper = document.createElement('div');
     wrapper.className = 'admin-question-item';
     wrapper.innerHTML = `
-      <input type="text" class="formular-eingabe question-text-input"
-        placeholder="${t('admin.question')} ${questionCounter}" style="margin-bottom:0.5rem">
+      ${renderLocalizedInput({ idBase: 'question-text-' + questionCounter, label: t('admin.question') + ' ' + questionCounter, required: true, maxlength: 500 })}
       ${renderSelect({
         name: 'question-type-' + questionCounter,
         value: 'free_text',
@@ -564,6 +604,7 @@ function openSurveyForm(container, context) {
         ariaLabel: t('admin.question')
       })}
     `;
+    wrapper.dataset.questionId = String(questionCounter);
     wrapper.querySelector('[data-select]').classList.add('question-type-select');
     questionList.appendChild(wrapper);
     bindSelect(wrapper.querySelector('.question-type-select'), () => {});
@@ -577,10 +618,10 @@ function collectQuestionsFromForm(overlay) {
   const items = overlay.querySelectorAll('.admin-question-item');
 
   items.forEach((item) => {
-    const input = item.querySelector('.question-text-input');
+    const questionId = item.dataset.questionId;
     const typeSelect = item.querySelector('.question-type-select');
-    const text = input ? input.value.trim() : '';
-    if (!text) {
+    const text = readLocalizedField(item, 'question-text-' + questionId);
+    if (!hasAnyLocalizedText(text)) {
       return;
     }
     questions.push({
@@ -617,7 +658,7 @@ function openSurveyDetails(survey) {
 
 async function renderFeedAdmin(container, context) {
   const response = await holeAbfrage({
-    schluessel: FEED_ADMIN_CACHE_KEY,
+    schluessel: [FEED_ADMIN_CACHE_KEY, getLanguage()],
     ttlMs: 30 * 1000,
     abrufFunktion: () => api.get('/api/feed')
   });
@@ -762,13 +803,22 @@ async function renderFeedAdmin(container, context) {
 function openFeedForm({ context, mode, item = null }) {
   const isEdit = mode === 'edit';
   const typeLabels = getFeedTypeLabels();
-  let editor = null;
+  const editors = {};
   const selectedKind = FEED_KIND_OPTIONS.includes(item?.kind) ? item.kind : 'update';
   const selectedType = item?.subtype || item?.type || FEED_SUBTYPES_BY_KIND[selectedKind][0];
-  const titleValue = escapeHtml(item?.title || '');
+  const titleValue = {
+    'de-DE': getLocalizedField(item, 'title', 'de-DE'),
+    'en-US': getLocalizedField(item, 'title', 'en-US')
+  };
   const urlValue = escapeHtml(item?.url || '');
-  const summaryValue = escapeHtml(item?.summary || item?.content || item?.description || '');
-  const contentValueRaw = item?.detailContent || item?.content || item?.description || '';
+  const summaryValue = {
+    'de-DE': getLocalizedField(item, 'summary', 'de-DE') || getLocalizedField(item, 'content', 'de-DE') || getLocalizedField(item, 'description', 'de-DE'),
+    'en-US': getLocalizedField(item, 'summary', 'en-US') || getLocalizedField(item, 'content', 'en-US') || getLocalizedField(item, 'description', 'en-US')
+  };
+  const contentValue = {
+    'de-DE': getLocalizedField(item, 'detailContent', 'de-DE') || getLocalizedField(item, 'content', 'de-DE') || getLocalizedField(item, 'description', 'de-DE'),
+    'en-US': getLocalizedField(item, 'detailContent', 'en-US') || getLocalizedField(item, 'content', 'en-US') || getLocalizedField(item, 'description', 'en-US')
+  };
   const imageValue = escapeHtml(item?.imageUrl || '');
   const sourceValue = escapeHtml(item?.source || '');
   const tagValue = escapeHtml(Array.isArray(item?.tags) ? item.tags.join(', ') : '');
@@ -791,10 +841,7 @@ function openFeedForm({ context, mode, item = null }) {
     content: `
       <div class="feed-form-layout">
         <aside class="feed-form-side">
-          <div class="formular-gruppe">
-            <label class="formular-label" for="feed-form-title">${t('admin.title')} *</label>
-            <input type="text" class="formular-eingabe" id="feed-form-title" maxlength="200" required value="${titleValue}">
-          </div>
+          ${renderLocalizedInput({ idBase: 'feed-form-title', label: t('admin.title'), value: titleValue, required: true })}
           <div class="feed-form-row">
             <div class="formular-gruppe">
               <label class="formular-label">${t('admin.feedKind')}</label>
@@ -811,10 +858,7 @@ function openFeedForm({ context, mode, item = null }) {
               <div id="feed-form-subtype-host"></div>
             </div>
           </div>
-          <div class="formular-gruppe">
-            <label class="formular-label" for="feed-form-summary">${t('admin.summary')}</label>
-            <textarea class="formular-textarea" id="feed-form-summary" maxlength="1000" rows="3" placeholder="Kurze Beschreibung, erscheint auf der Karte im Feed">${summaryValue}</textarea>
-          </div>
+          ${renderLocalizedInput({ idBase: 'feed-form-summary', label: t('admin.summary'), value: summaryValue, textarea: true, rows: 3, maxlength: 1000, placeholder: 'Kurze Beschreibung, erscheint auf der Karte im Feed' })}
           <div class="formular-gruppe">
             <label class="formular-label" for="feed-form-image">${t('admin.imageUrl')}</label>
             <input type="url" class="formular-eingabe" id="feed-form-image" maxlength="2000" placeholder="https://..." value="${imageValue}">
@@ -888,7 +932,16 @@ function openFeedForm({ context, mode, item = null }) {
               ${t('admin.detailContent')}
               <span class="feed-form-editor-sub">${t('admin.detailContentPlaceholder')}</span>
             </label>
-            <div id="feed-form-content-host" class="feed-form-editor-host"></div>
+            <div class="feed-form-row">
+              <div class="formular-gruppe formular-gruppe-fuell">
+                <label class="formular-label">DE</label>
+                <div id="feed-form-content-host-de-DE" class="feed-form-editor-host"></div>
+              </div>
+              <div class="formular-gruppe formular-gruppe-fuell">
+                <label class="formular-label">EN</label>
+                <div id="feed-form-content-host-en-US" class="feed-form-editor-host"></div>
+              </div>
+            </div>
           </div>
         </section>
       </div>
@@ -896,16 +949,19 @@ function openFeedForm({ context, mode, item = null }) {
     confirmText: t('admin.save'),
     cancelText: t('admin.cancel'),
     onConfirm: async (overlay) => {
-      const title = overlay.querySelector('#feed-form-title').value.trim();
-      if (!title) {
+      const title = readLocalizedField(overlay, 'feed-form-title');
+      if (!hasAnyLocalizedText(title)) {
         return;
       }
 
       const kind = overlay.querySelector('[data-select="feed-form-kind"]').dataset.value;
       const subtype = overlay.querySelector('[data-select="feed-form-subtype"]').dataset.value;
       const url = overlay.querySelector('#feed-form-url').value.trim();
-      const summary = overlay.querySelector('#feed-form-summary').value.trim();
-      const content = (editor?.getValue() || '').trim();
+      const summary = readLocalizedField(overlay, 'feed-form-summary');
+      const content = {
+        'de-DE': (editors['de-DE']?.getValue() || '').trim(),
+        'en-US': (editors['en-US']?.getValue() || '').trim()
+      };
       const imageUrl = overlay.querySelector('#feed-form-image').value.trim();
       const source = overlay.querySelector('#feed-form-source').value.trim();
       const createdAt = parseDateTimeInput(overlay.querySelector('#feed-form-date').value);
@@ -949,8 +1005,9 @@ function openFeedForm({ context, mode, item = null }) {
 
   const refreshPreview = () => {
     const imageUrl = overlay.querySelector('#feed-form-image').value.trim();
-    const title = overlay.querySelector('#feed-form-title').value.trim();
-    const summary = overlay.querySelector('#feed-form-summary').value.trim();
+    const activeLocale = getLanguage() === 'de' ? 'de-DE' : 'en-US';
+    const title = readLocalizedField(overlay, 'feed-form-title')[activeLocale] || readLocalizedField(overlay, 'feed-form-title')['de-DE'] || readLocalizedField(overlay, 'feed-form-title')['en-US'];
+    const summary = readLocalizedField(overlay, 'feed-form-summary')[activeLocale] || readLocalizedField(overlay, 'feed-form-summary')['de-DE'] || readLocalizedField(overlay, 'feed-form-summary')['en-US'];
     const subtypeRoot = subtypeHost.querySelector('[data-select="feed-form-subtype"]');
     const subtypeValue = subtypeRoot ? subtypeRoot.dataset.value : '';
     preview.innerHTML = `
@@ -991,8 +1048,8 @@ function openFeedForm({ context, mode, item = null }) {
   };
 
   bindSelect(kindSelect, () => renderSubtypeSelect());
-  ['feed-form-title', 'feed-form-summary', 'feed-form-image'].forEach((id) => {
-    overlay.querySelector('#' + id).addEventListener('input', refreshPreview);
+  ['feed-form-title-de-DE', 'feed-form-title-en-US', 'feed-form-summary-de-DE', 'feed-form-summary-en-US', 'feed-form-image'].forEach((id) => {
+    overlay.querySelector('#' + id)?.addEventListener('input', refreshPreview);
   });
   renderSubtypeSelect();
 
@@ -1148,13 +1205,15 @@ function openFeedForm({ context, mode, item = null }) {
     });
   }
 
-  const editorHost = overlay.querySelector('#feed-form-content-host');
-  if (editorHost) {
-    editor = mountMarkdownEditor(editorHost, {
-      value: contentValueRaw,
-      placeholder: t('admin.detailContentPlaceholder')
-    });
-  }
+  CONTENT_LOCALES.forEach((locale) => {
+    const editorHost = overlay.querySelector('#feed-form-content-host-' + locale);
+    if (editorHost) {
+      editors[locale] = mountMarkdownEditor(editorHost, {
+        value: contentValue[locale] || '',
+        placeholder: t('admin.detailContentPlaceholder')
+      });
+    }
+  });
 }
 
 function readFileAsBase64(file) {

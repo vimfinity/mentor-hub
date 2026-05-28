@@ -1,6 +1,6 @@
 import * as api from '../services/api-client.js';
 import { holeAbfrage } from '../services/query-cache.js';
-import { t } from '../services/i18n.js';
+import { t, getLocale } from '../services/i18n.js';
 import { escapeHtml } from './modal.js';
 import { icon } from './icons.js';
 import { mountRichDocument } from '../services/rich-content.js';
@@ -20,7 +20,7 @@ async function render(container, context = {}) {
   }
 
   const response = await holeAbfrage({
-    schluessel: ['feed-detail', id],
+    schluessel: ['feed-detail', getLocale(), id],
     abrufFunktion: () => api.get('/api/feed/' + encodeURIComponent(id)),
     ttlMs: DETAIL_CACHE_TTL_MS
   });
@@ -104,7 +104,7 @@ async function render(container, context = {}) {
   const copyButton = container.querySelector('[data-copy-article-link]');
   if (copyButton) {
     copyButton.addEventListener('click', async () => {
-      await copyToClipboard(new URL('/feed/' + encodeURIComponent(item.id), window.location.origin).href);
+      await copyToClipboard(new URL('/' + getLocale() + '/feed/' + encodeURIComponent(item.id), window.location.origin).href);
       showSuccess('Link wurde kopiert');
     });
   }
@@ -116,7 +116,7 @@ function preload(context = {}) {
     return Promise.resolve();
   }
   return holeAbfrage({
-    schluessel: ['feed-detail', id],
+    schluessel: ['feed-detail', getLocale(), id],
     abrufFunktion: () => api.get('/api/feed/' + encodeURIComponent(id)),
     ttlMs: DETAIL_CACHE_TTL_MS
   });
@@ -151,7 +151,7 @@ function extractIdFromPath(path) {
   if (!path) {
     return null;
   }
-  const match = String(path).match(/^\/feed\/([^/?#]+)/);
+  const match = String(path).match(/^(?:\/(?:de-DE|en-US))?\/feed\/([^/?#]+)/);
   if (!match) {
     return null;
   }
@@ -166,8 +166,8 @@ function formatDate(value) {
   if (!value) {
     return '';
   }
-  const lang = document.documentElement.lang || 'de';
-  return new Date(value).toLocaleDateString(lang === 'de' ? 'de-DE' : 'en-US', {
+  const lang = document.documentElement.lang || 'de-DE';
+  return new Date(value).toLocaleDateString(lang.startsWith('de') ? 'de-DE' : 'en-US', {
     day: 'numeric',
     month: 'long',
     year: 'numeric'

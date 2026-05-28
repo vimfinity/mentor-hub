@@ -1,6 +1,6 @@
 import * as api from '../services/api-client.js';
 import { holeAbfrage } from '../services/query-cache.js';
-import { t } from '../services/i18n.js';
+import { t, getLocale } from '../services/i18n.js';
 import { normalisiereAuswahl, paginiereElemente } from '../services/view-state.js';
 import { escapeHtml } from './modal.js';
 import { icon } from './icons.js';
@@ -13,7 +13,7 @@ const NEWS_PRO_SEITE = 5;
 
 async function render(container, context = {}) {
   const response = await holeAbfrage({
-    schluessel: NEWS_CACHE_KEY,
+    schluessel: [...NEWS_CACHE_KEY, getLocale()],
     abrufFunktion: () => api.get('/api/news'),
     ttlMs: NEWS_CACHE_TTL_MS
   });
@@ -68,14 +68,14 @@ async function render(container, context = {}) {
 
 function preload() {
   return holeAbfrage({
-    schluessel: NEWS_CACHE_KEY,
+    schluessel: [...NEWS_CACHE_KEY, getLocale()],
     abrufFunktion: () => api.get('/api/news'),
     ttlMs: NEWS_CACHE_TTL_MS
   });
 }
 
 function renderEntry(entry) {
-  const locale = document.documentElement.lang === 'de' ? 'de-DE' : 'en-US';
+  const locale = document.documentElement.lang.startsWith('de') ? 'de-DE' : 'en-US';
   const date = new Date(entry.createdAt).toLocaleDateString(locale, {
     day: '2-digit',
     month: '2-digit',

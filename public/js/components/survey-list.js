@@ -89,8 +89,8 @@ function renderQuestion(question, index) {
         <div class="auswahl-gruppe frage-eingabe" data-index="${index}" data-wert="">
           ${(question.options || []).map(option => `
             <label class="auswahl-option">
-              <input type="radio" name="frage_${index}" value="${escapeHtml(option)}">
-              <span>${escapeHtml(option)}</span>
+              <input type="radio" name="frage_${index}" value="${escapeHtml(getOptionValue(option))}">
+              <span>${escapeHtml(getOptionLabel(option))}</span>
             </label>
           `).join('')}
         </div>
@@ -101,8 +101,8 @@ function renderQuestion(question, index) {
         <div class="auswahl-gruppe frage-eingabe" data-index="${index}" data-wert="">
           ${(question.options || []).map(option => `
             <label class="auswahl-option">
-              <input type="checkbox" name="frage_${index}" value="${escapeHtml(option)}">
-              <span>${escapeHtml(option)}</span>
+              <input type="checkbox" name="frage_${index}" value="${escapeHtml(getOptionValue(option))}">
+              <span>${escapeHtml(getOptionLabel(option))}</span>
             </label>
           `).join('')}
         </div>
@@ -202,6 +202,14 @@ async function submitSurvey(form) {
   } else {
     showError(t('survey.error'));
   }
+}
+
+function getOptionLabel(option) {
+  return option && typeof option === 'object' ? option.label || option.id || '' : option;
+}
+
+function getOptionValue(option) {
+  return option && typeof option === 'object' ? option.id || option.label || '' : option;
 }
 
 export { render };

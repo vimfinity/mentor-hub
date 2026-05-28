@@ -8,6 +8,7 @@ const resources = require('../data/resources');
 const concerns = require('../data/concerns');
 const newsItems = require('../data/news');
 const media = require('../data/media');
+const { normalizeLocale } = require('../data/localization');
 
 const localesDirectory = path.join(__dirname, '..', '..', 'locales');
 const resourceUploadDirectory = path.join(__dirname, '..', '..', 'data', 'uploads', 'resources');
@@ -35,12 +36,13 @@ function registerRoutes(router) {
   });
 
   router.get('/api/i18n/:locale', (req, res, params) => {
-    const locale = params.locale;
-    if (!/^[a-z]{2}$/.test(locale)) {
+    const requestedLocale = params.locale;
+    if (!/^[a-z]{2}(-[A-Z]{2})?$/.test(requestedLocale)) {
       sendJson(res, 400, { error: 'Invalid locale code' });
       return;
     }
 
+    const locale = normalizeLocale(requestedLocale).slice(0, 2);
     const filePath = path.join(localesDirectory, locale + '.json');
     try {
       const fileContents = fs.readFileSync(filePath, 'utf-8');
@@ -51,11 +53,11 @@ function registerRoutes(router) {
   });
 
   router.get('/api/surveys', (req, res) => {
-    sendJson(res, 200, surveys.getActive());
+    sendJson(res, 200, surveys.getActive(getRequestLocale(req)));
   });
 
   router.get('/api/surveys/:id', (req, res, params) => {
-    const survey = surveys.getActiveById(params.id);
+    const survey = surveys.getActiveById(params.id, getRequestLocale(req));
     if (!survey) {
       sendJson(res, 404, { error: 'Survey not found or inactive' });
       return;
@@ -92,7 +94,7 @@ function registerRoutes(router) {
   });
 
   router.get('/api/resources', (req, res) => {
-    sendJson(res, 200, resources.getAll().map(withImageMetadata));
+    sendJson(res, 200, resources.getAll(getRequestLocale(req)).map(withImageMetadata));
   });
 
   router.get('/api/uploads/images/:filename', (req, res, params) => {
@@ -172,11 +174,12 @@ function registerRoutes(router) {
   });
 
   router.get('/api/news', (req, res) => {
-    sendJson(res, 200, newsItems.getAll());
+    sendJson(res, 200, newsItems.getAll(getRequestLocale(req)));
   });
 
   router.get('/api/feed', (req, res) => {
-    const news = newsItems.getAll().map((item) => withImageMetadata({
+    const locale = getRequestLocale(req);
+    const news = newsItems.getAll(locale).map((item) => withImageMetadata({
       ...item,
       feedSource: 'news',
       kind: item.kind || 'update',
@@ -187,7 +190,7 @@ function registerRoutes(router) {
       imageUrl: item.imageUrl || '',
       tags: Array.isArray(item.tags) ? item.tags : []
     }));
-    const allResources = resources.getAll().map((item) => withImageMetadata({
+    const allResources = resources.getAll(locale).map((item) => withImageMetadata({
       ...item,
       feedSource: 'resource',
       kind: item.kind || 'agent-asset',
@@ -205,8 +208,9 @@ function registerRoutes(router) {
   });
 
   router.get('/api/feed/:id', (req, res, params) => {
+    const locale = getRequestLocale(req);
     const merged = [
-      ...newsItems.getAll().map((item) => withImageMetadata({
+      ...newsItems.getAll(locale).map((item) => withImageMetadata({
         ...item,
         feedSource: 'news',
         kind: item.kind || 'update',
@@ -217,7 +221,7 @@ function registerRoutes(router) {
         imageUrl: item.imageUrl || '',
         tags: Array.isArray(item.tags) ? item.tags : []
       })),
-      ...resources.getAll().map((item) => withImageMetadata({
+      ...resources.getAll(locale).map((item) => withImageMetadata({
         ...item,
         feedSource: 'resource',
         kind: item.kind || 'agent-asset',
@@ -248,6 +252,16 @@ function registerRoutes(router) {
 function sendJson(res, statusCode, data) {
   res.writeHead(statusCode, { 'Content-Type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify(data));
+}
+
+function getRequestLocale(req) {
+  if (req.query?.locale) {
+    return normalizeLocale(req.query.locale);
+  }
+
+  const acceptLanguage = String(req.headers['accept-language'] || '');
+  const firstLanguage = acceptLanguage.split(',')[0]?.trim();
+  return normalizeLocale(firstLanguage);
 }
 
 function withImageMetadata(item) {

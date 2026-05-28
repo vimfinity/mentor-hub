@@ -1,11 +1,20 @@
 [
   {
     "id": "8f79ea4a-a856-4ff5-800f-b7c03f335311",
-    "title": "KI-Hub Bewertung",
-    "description": "Eine kleine Bewertung zu dem neuen KI-Hub",
+    "title": {
+      "de-DE": "KI-Hub Bewertung",
+      "en-US": "AI Hub Rating"
+    },
+    "description": {
+      "de-DE": "Eine kleine Bewertung zu dem neuen KI-Hub",
+      "en-US": "A short rating for the new AI Hub."
+    },
     "questions": [
       {
-        "text": "Gefällt euch das neue KI-Hub?",
+        "text": {
+          "de-DE": "Gefällt euch das neue KI-Hub?",
+          "en-US": "Do you like the new AI Hub?"
+        },
         "type": "rating",
         "options": []
       }
@@ -26,32 +35,80 @@
   },
   {
     "id": "3b4fbd4f-57f6-4a17-ab47-52da73afb7d5",
-    "title": "Ideen für Microsoft Copilot Agent Kontext",
-    "description": "Wir sammeln Feedback, welche Informationen und Quellen der Microsoft Copilot Agent für die Entwicklung kennen sollte. Ziel ist es, den Agenten mit hilfreichem Kontext aus z. B. SharePoint, Mails, Dokumentation und Team-Wissen besser an unsere Arbeitsweise anzupassen.",
+    "title": {
+      "de-DE": "Ideen für Microsoft Copilot Agent Kontext",
+      "en-US": "Ideas for Microsoft Copilot Agent Context"
+    },
+    "description": {
+      "de-DE": "Wir sammeln Feedback, welche Informationen und Quellen der Microsoft Copilot Agent für die Entwicklung kennen sollte. Ziel ist es, den Agenten mit hilfreichem Kontext aus z. B. SharePoint, Mails, Dokumentation und Team-Wissen besser an unsere Arbeitsweise anzupassen.",
+      "en-US": "We are collecting feedback on which information and sources the Microsoft Copilot agent should know for development. The goal is to enrich the agent with useful context from sources such as SharePoint, mail, documentation, and team knowledge so it better fits the way we work."
+    },
     "questions": [
       {
-        "text": "Welche Informationen sollte der Copilot Agent unbedingt kennen, damit er euch in der Entwicklung besser unterstützen kann?",
+        "text": {
+          "de-DE": "Welche Informationen sollte der Copilot Agent unbedingt kennen, damit er euch in der Entwicklung besser unterstützen kann?",
+          "en-US": "Which information should the Copilot agent definitely know so it can support you better in development?"
+        },
         "type": "free_text",
         "options": []
       },
       {
-        "text": "Aus welchen Quellen wäre Kontext besonders hilfreich?",
+        "text": {
+          "de-DE": "Aus welchen Quellen wäre Kontext besonders hilfreich?",
+          "en-US": "Which sources would provide especially helpful context?"
+        },
         "type": "multiple_choice",
         "options": [
-          "SharePoint / interne Dokumentation",
-          "Mailing / relevante Abstimmungen",
-          "Code-Repositories / Architektur",
-          "Tickets / Anforderungen",
-          "Sonstiges"
+          {
+            "id": "sharepoint-interne-dokumentation",
+            "label": {
+              "de-DE": "SharePoint / interne Dokumentation",
+              "en-US": "SharePoint / internal documentation"
+            }
+          },
+          {
+            "id": "mailing-relevante-abstimmungen",
+            "label": {
+              "de-DE": "Mailing / relevante Abstimmungen",
+              "en-US": "Mail / relevant alignments"
+            }
+          },
+          {
+            "id": "code-repositories-architektur",
+            "label": {
+              "de-DE": "Code-Repositories / Architektur",
+              "en-US": "Code repositories / architecture"
+            }
+          },
+          {
+            "id": "tickets-anforderungen",
+            "label": {
+              "de-DE": "Tickets / Anforderungen",
+              "en-US": "Tickets / requirements"
+            }
+          },
+          {
+            "id": "sonstiges",
+            "label": {
+              "de-DE": "Sonstiges",
+              "en-US": "Other"
+            }
+          }
         ]
       },
       {
-        "text": "Welche Aufgaben würdet ihr gerne mit Unterstützung des Copilot Agenten bearbeiten?",
+        "text": {
+          "de-DE": "Welche Aufgaben würdet ihr gerne mit Unterstützung des Copilot Agenten bearbeiten?",
+          "en-US": "Which tasks would you like to work on with support from the Copilot agent?"
+        },
         "type": "free_text",
         "options": []
       },
       {
-        "text": "Wie hilfreich wäre zusätzlicher Kontext im Copilot Agenten für eure tägliche Arbeit?",
+        "text": {
+          "de-DE": "Wie hilfreich wäre zusätzlicher Kontext im Copilot Agenten für eure tägliche Arbeit?",
+          "en-US": "How helpful would additional context in the Copilot agent be for your daily work?"
+        },
         "type": "rating",
         "options": []
       }

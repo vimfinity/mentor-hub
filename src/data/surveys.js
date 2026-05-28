@@ -1,14 +1,40 @@
 'use strict';
 
 const store = require('./store');
+const {
+  DEFAULT_LOCALE,
+  resolveLocalizedValue,
+  toLocalizedValue,
+  trimLocalizedValue
+} = require('./localization');
 
 const FILE_NAME = 'surveys.json';
 
-function normalizeQuestion(question) {
+function normalizeOption(option, locale = DEFAULT_LOCALE) {
+  if (option && typeof option === 'object' && !Array.isArray(option)) {
+    const label = option.label || option.text || option.value || '';
+    return {
+      id: String(option.id || option.value || resolveLocalizedValue(label, locale)).trim(),
+      label: resolveLocalizedValue(label, locale),
+      labelLocalized: toLocalizedValue(label)
+    };
+  }
+
+  const text = typeof option === 'string' ? option : '';
   return {
-    text: question.text,
+    id: text,
+    label: text,
+    labelLocalized: toLocalizedValue(text)
+  };
+}
+
+function normalizeQuestion(question, locale = DEFAULT_LOCALE) {
+  const text = question.text || question.frage || '';
+  return {
+    text: resolveLocalizedValue(text, locale),
+    textLocalized: toLocalizedValue(text),
     type: question.type || question.typ || 'free_text',
-    options: question.options || question.optionen || []
+    options: (question.options || question.optionen || []).map((option) => normalizeOption(option, locale))
   };
 }
 
@@ -21,14 +47,18 @@ function normalizeResponse(response) {
   };
 }
 
-function normalizeSurvey(survey, index = 0) {
+function normalizeSurvey(survey, index = 0, locale = DEFAULT_LOCALE) {
   const sortOrder = Number(survey.sortOrder ?? survey.reihenfolge);
+  const title = survey.title || survey.titel || '';
+  const description = survey.description || survey.beschreibung || '';
 
   return {
     id: survey.id,
-    title: survey.title || survey.titel || '',
-    description: survey.description || survey.beschreibung || '',
-    questions: (survey.questions || survey.fragen || []).map(normalizeQuestion),
+    title: resolveLocalizedValue(title, locale),
+    titleLocalized: toLocalizedValue(title),
+    description: resolveLocalizedValue(description, locale),
+    descriptionLocalized: toLocalizedValue(description),
+    questions: (survey.questions || survey.fragen || []).map((question) => normalizeQuestion(question, locale)),
     active: survey.active !== undefined ? survey.active : !!survey.aktiv,
     responses: (survey.responses || survey.antworten || []).map(normalizeResponse),
     sortOrder: Number.isFinite(sortOrder) ? sortOrder : index,
@@ -37,8 +67,8 @@ function normalizeSurvey(survey, index = 0) {
   };
 }
 
-function loadSurveys() {
-  return store.readDataFile(FILE_NAME).map((survey, index) => normalizeSurvey(survey, index));
+function loadSurveys(locale = DEFAULT_LOCALE) {
+  return store.readDataFile(FILE_NAME).map((survey, index) => normalizeSurvey(survey, index, locale));
 }
 
 function compareSurveyOrder(left, right) {
@@ -53,8 +83,8 @@ function compareSurveyOrder(left, right) {
  * Returns all active surveys without responses.
  * @returns {Array} List of active surveys
  */
-function getActive() {
-  return loadSurveys()
+function getActive(locale = DEFAULT_LOCALE) {
+  return loadSurveys(locale)
     .filter((survey) => survey.active)
     .sort(compareSurveyOrder)
     .map((survey) => ({
@@ -67,16 +97,16 @@ function getActive() {
     }));
 }
 
-function getActiveById(id) {
-  return getActive().find((survey) => survey.id === id) || null;
+function getActiveById(id, locale = DEFAULT_LOCALE) {
+  return getActive(locale).find((survey) => survey.id === id) || null;
 }
 
 /**
  * Returns all surveys including responses.
  * @returns {Array} All surveys
  */
-function getAll() {
-  return loadSurveys();
+function getAll(locale = DEFAULT_LOCALE) {
+  return loadSurveys(locale);
 }
 
 /**
@@ -87,9 +117,21 @@ function getAll() {
 function create(data) {
   const existing = loadSurveys();
   const survey = {
-    title: data.title,
-    description: data.description || '',
-    questions: (data.questions || []).map(normalizeQuestion),
+    title: trimLocalizedValue(data.title),
+    description: trimLocalizedValue(data.description || ''),
+    questions: (data.questions || []).map((question) => ({
+      text: trimLocalizedValue(question.text),
+      type: question.type || question.typ || 'free_text',
+      options: (question.options || question.optionen || []).map((option) => {
+        if (option && typeof option === 'object' && !Array.isArray(option)) {
+          return {
+            id: String(option.id || option.value || '').trim(),
+            label: trimLocalizedValue(option.label || option.text || option.value || '')
+          };
+        }
+        return option;
+      })
+    })),
     active: true,
     sortOrder: existing.length > 0
       ? Math.max(...existing.map((item) => Number(item.sortOrder) || 0)) + 1
@@ -110,13 +152,25 @@ function update(id, changes) {
   const filteredChanges = {};
 
   if (changes.title !== undefined || changes.titel !== undefined) {
-    filteredChanges.title = changes.title !== undefined ? changes.title : changes.titel;
+    filteredChanges.title = trimLocalizedValue(changes.title !== undefined ? changes.title : changes.titel);
   }
   if (changes.description !== undefined || changes.beschreibung !== undefined) {
-    filteredChanges.description = changes.description !== undefined ? changes.description : changes.beschreibung;
+    filteredChanges.description = trimLocalizedValue(changes.description !== undefined ? changes.description : changes.beschreibung);
   }
   if (changes.questions !== undefined || changes.fragen !== undefined) {
-    filteredChanges.questions = (changes.questions || changes.fragen || []).map(normalizeQuestion);
+    filteredChanges.questions = (changes.questions || changes.fragen || []).map((question) => ({
+      text: trimLocalizedValue(question.text),
+      type: question.type || question.typ || 'free_text',
+      options: (question.options || question.optionen || []).map((option) => {
+        if (option && typeof option === 'object' && !Array.isArray(option)) {
+          return {
+            id: String(option.id || option.value || '').trim(),
+            label: trimLocalizedValue(option.label || option.text || option.value || '')
+          };
+        }
+        return option;
+      })
+    }));
   }
   if (changes.active !== undefined || changes.aktiv !== undefined) {
     filteredChanges.active = changes.active !== undefined ? changes.active : changes.aktiv;
@@ -141,29 +195,32 @@ function move(id, direction) {
   const step = direction === 'down' || direction === 'runter' ? 1 : -1;
 
   return store.mutateDataFile(FILE_NAME, (records) => {
-    const normalized = records
-      .map((survey, index) => normalizeSurvey(survey, index))
-      .sort(compareSurveyOrder);
-    const index = normalized.findIndex((survey) => survey.id === id);
+    const ordered = records
+      .map((survey, index) => ({
+        raw: survey,
+        normalized: normalizeSurvey(survey, index)
+      }))
+      .sort((left, right) => compareSurveyOrder(left.normalized, right.normalized));
+    const index = ordered.findIndex((entry) => entry.normalized.id === id);
     const targetIndex = index + step;
 
-    if (index === -1 || targetIndex < 0 || targetIndex >= normalized.length) {
+    if (index === -1 || targetIndex < 0 || targetIndex >= ordered.length) {
       return { changed: false, result: null };
     }
 
-    const [survey] = normalized.splice(index, 1);
-    normalized.splice(targetIndex, 0, survey);
+    const [entry] = ordered.splice(index, 1);
+    ordered.splice(targetIndex, 0, entry);
 
     records.length = 0;
-    normalized.forEach((item, sortOrder) => {
+    ordered.forEach((item, sortOrder) => {
       records.push({
-        ...item,
+        ...item.raw,
         sortOrder,
-        updatedAt: item.id === id ? new Date().toISOString() : item.updatedAt
+        updatedAt: item.normalized.id === id ? new Date().toISOString() : item.raw.updatedAt
       });
     });
 
-    return { changed: true, result: records.find((surveyItem) => surveyItem.id === id) };
+    return { changed: true, result: normalizeSurvey(records.find((surveyItem) => surveyItem.id === id)) };
   });
 }
 
@@ -193,14 +250,8 @@ function addResponse(surveyId, response) {
     }
 
     surveys[index] = {
-      id: normalizedSurvey.id,
-      title: normalizedSurvey.title,
-      description: normalizedSurvey.description,
-      questions: normalizedSurvey.questions,
-      active: normalizedSurvey.active,
+      ...surveys[index],
       responses: [...normalizedSurvey.responses, newResponse],
-      sortOrder: normalizedSurvey.sortOrder,
-      createdAt: normalizedSurvey.createdAt,
       updatedAt: new Date().toISOString()
     };
 

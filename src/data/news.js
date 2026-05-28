@@ -1,22 +1,36 @@
 'use strict';
 
 const store = require('./store');
+const {
+  DEFAULT_LOCALE,
+  resolveLocalizedValue,
+  toLocalizedValue,
+  trimLocalizedValue
+} = require('./localization');
 
 const FILE_NAME = 'news.json';
 
-function normalizeNewsItem(item) {
+function normalizeNewsItem(item, locale = DEFAULT_LOCALE) {
   const normalizedType = normalizeType(item.type || item.art || 'announcement');
+  const title = item.title || item.titel || '';
+  const content = item.content || item.inhalt || '';
+  const detailContent = item.detailContent || item.detailInhalt || item.content || item.inhalt || '';
+  const summary = item.summary || item.zusammenfassung || item.content || item.inhalt || '';
   return {
     id: item.id,
-    title: item.title || item.titel || '',
-    content: item.content || item.inhalt || '',
-    detailContent: item.detailContent || item.detailInhalt || item.content || item.inhalt || '',
+    title: resolveLocalizedValue(title, locale),
+    titleLocalized: toLocalizedValue(title),
+    content: resolveLocalizedValue(content, locale),
+    contentLocalized: toLocalizedValue(content),
+    detailContent: resolveLocalizedValue(detailContent, locale),
+    detailContentLocalized: toLocalizedValue(detailContent),
     imageUrl: item.imageUrl || item.bildUrl || item.thumbnailUrl || '',
     url: item.url || '',
     type: normalizedType,
     kind: 'update',
     subtype: normalizedType,
-    summary: item.summary || item.zusammenfassung || item.content || item.inhalt || '',
+    summary: resolveLocalizedValue(summary, locale),
+    summaryLocalized: toLocalizedValue(summary),
     source: item.source || item.quelle || detectSource(item.url || ''),
     tags: normalizeTags(item.tags || item.schlagwoerter, normalizedType),
     featured: item.featured || false,
@@ -72,16 +86,16 @@ function detectSource(url) {
   }
 }
 
-function loadNewsItems() {
-  return store.readDataFile(FILE_NAME).map(normalizeNewsItem);
+function loadNewsItems(locale = DEFAULT_LOCALE) {
+  return store.readDataFile(FILE_NAME).map((item) => normalizeNewsItem(item, locale));
 }
 
 /**
  * Returns all news items sorted by newest first.
  * @returns {Array} News list
  */
-function getAll() {
-  const newsItems = loadNewsItems();
+function getAll(locale = DEFAULT_LOCALE) {
+  const newsItems = loadNewsItems(locale);
   return newsItems.sort((a, b) =>
     new Date(b.createdAt) - new Date(a.createdAt)
   );
@@ -94,14 +108,14 @@ function getAll() {
  */
 function create(data) {
   const newsItem = {
-    title: data.title,
-    content: data.content || '',
-    detailContent: data.detailContent || data.content || '',
+    title: trimLocalizedValue(data.title),
+    content: trimLocalizedValue(data.content || ''),
+    detailContent: trimLocalizedValue(data.detailContent || data.content || ''),
     imageUrl: data.imageUrl || '',
     url: data.url || '',
     type: data.type || 'announcement',
     subtype: data.subtype || data.type || 'announcement',
-    summary: data.summary || data.content || '',
+    summary: trimLocalizedValue(data.summary || data.content || ''),
     source: data.source || detectSource(data.url || ''),
     tags: normalizeTags(data.tags, data.type || 'announcement'),
     featured: data.featured || false,
@@ -120,13 +134,13 @@ function update(id, changes) {
   const filteredChanges = {};
 
   if (changes.title !== undefined || changes.titel !== undefined) {
-    filteredChanges.title = changes.title !== undefined ? changes.title : changes.titel;
+    filteredChanges.title = trimLocalizedValue(changes.title !== undefined ? changes.title : changes.titel);
   }
   if (changes.content !== undefined || changes.inhalt !== undefined) {
-    filteredChanges.content = changes.content !== undefined ? changes.content : changes.inhalt;
+    filteredChanges.content = trimLocalizedValue(changes.content !== undefined ? changes.content : changes.inhalt);
   }
   if (changes.detailContent !== undefined || changes.detailInhalt !== undefined) {
-    filteredChanges.detailContent = changes.detailContent !== undefined ? changes.detailContent : changes.detailInhalt;
+    filteredChanges.detailContent = trimLocalizedValue(changes.detailContent !== undefined ? changes.detailContent : changes.detailInhalt);
   }
   if (changes.imageUrl !== undefined || changes.bildUrl !== undefined || changes.thumbnailUrl !== undefined) {
     filteredChanges.imageUrl = changes.imageUrl !== undefined
@@ -146,7 +160,7 @@ function update(id, changes) {
     filteredChanges.type = changes.subtype;
   }
   if (changes.summary !== undefined || changes.zusammenfassung !== undefined) {
-    filteredChanges.summary = changes.summary !== undefined ? changes.summary : changes.zusammenfassung;
+    filteredChanges.summary = trimLocalizedValue(changes.summary !== undefined ? changes.summary : changes.zusammenfassung);
   }
   if (changes.source !== undefined || changes.quelle !== undefined) {
     filteredChanges.source = changes.source !== undefined ? changes.source : changes.quelle;

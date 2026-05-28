@@ -68,9 +68,12 @@ function invalidiereAbfrage(schluessel) {
 
 function invalidiereAbfragenMitPraefix(praefix) {
   const normalisiertesPraefix = normalisiereSchluessel(praefix);
+  const arrayPraefix = Array.isArray(praefix)
+    ? normalisiertesPraefix.replace(/\]$/, ',')
+    : normalisiertesPraefix;
 
   for (const schluessel of abfragen.keys()) {
-    if (schluessel.startsWith(normalisiertesPraefix)) {
+    if (schluessel.startsWith(normalisiertesPraefix) || schluessel.startsWith(arrayPraefix)) {
       abfragen.delete(schluessel);
     }
   }

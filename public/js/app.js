@@ -1,4 +1,4 @@
-import { initI18n, t, onLanguageChange, toggleLanguage, getLanguage } from './services/i18n.js';
+import { initI18n, t, onLanguageChange, toggleLanguage, getLanguage, getLocale, getLocaleFromPath } from './services/i18n.js';
 import { createRouter } from './services/client-router.js';
 import { startDevReload } from './services/dev-reload.js';
 import { installRoutePrefetch } from './services/route-prefetch.js';
@@ -36,6 +36,9 @@ const NAVIGATION_ITEMS = [
 
 Object.values(ROUTES).forEach((route) => {
   router.registerRoute(route.path, route);
+  ['de-DE', 'en-US'].forEach((locale) => {
+    router.registerRoute(withLocalePrefix(route.path, locale), route);
+  });
 });
 
 async function start() {
@@ -46,6 +49,10 @@ async function start() {
     await initI18n();
   } catch (error) {
     console.error('i18n initialization failed:', error);
+  }
+
+  if (!getLocaleFromPath(window.location.pathname)) {
+    router.replacePath(localizePath(window.location.pathname + window.location.search));
   }
 
   const currentState = router.getCurrentState();
@@ -72,6 +79,13 @@ async function start() {
   router.start();
 
   onLanguageChange(() => {
+    const currentUrl = new URL(window.location.href);
+    const barePath = stripLocalePrefix(currentUrl.pathname);
+    const localizedPath = withLocalePrefix(barePath, getLocale()) + currentUrl.search + currentUrl.hash;
+    if (localizedPath !== window.location.pathname + window.location.search) {
+      router.replacePath(localizedPath);
+    }
+
     updatePageChrome();
     renderNavigation();
 
@@ -83,7 +97,7 @@ async function start() {
 }
 
 function updatePageChrome() {
-  document.documentElement.lang = getLanguage();
+  document.documentElement.lang = getLocale();
   const currentState = router.getCurrentState();
   const currentPage = currentState.route;
   const title = currentPage && currentPage.titleKey
@@ -113,7 +127,7 @@ function renderNavigation() {
 
   const mainItems = NAVIGATION_ITEMS.map((item) => `
     <a class="tab-link ${item.key === activeRoute ? 'aktiv' : ''}"
-      href="${item.path}" data-route="${item.key}"
+      href="${localizePath(item.path)}" data-route="${item.key}"
       aria-current="${item.key === activeRoute ? 'page' : 'false'}">
       <span class="tab-icon">${icon(item.icon, 18)}</span>
       <span class="tab-label">${t('nav.' + item.key)}</span>
@@ -147,7 +161,7 @@ function renderNavigation() {
       }
 
       event.preventDefault();
-      router.navigateTo(link.getAttribute('href'));
+      router.navigateTo(localizePath(link.getAttribute('href')));
     });
   });
 
@@ -191,9 +205,10 @@ async function renderRoute(route) {
       path: router.getCurrentState().path,
       searchParams: router.getCurrentState().searchParams,
       params: route.params || {},
-      navigateTo: (path, options) => router.navigateTo(path, options),
+      navigateTo: (path, options) => router.navigateTo(localizePath(path), options),
       setSearchParams: (values, options) => router.setSearchParams(values, options)
     });
+    localizeInternalLinks(section);
   } catch (error) {
     console.error('Route rendering failed:', error);
 
@@ -224,12 +239,51 @@ function setViewClasses(route) {
 }
 
 function findRouteByPath(pathname) {
+  const localizedPathname = localizePath(pathname);
   for (const route of Object.values(ROUTES)) {
-    if (route.path === pathname) {
+    if (route.path === pathname || withLocalePrefix(route.path, getLocale()) === pathname || withLocalePrefix(route.path, getLocale()) === localizedPathname) {
       return route;
     }
   }
   return null;
+}
+
+function withLocalePrefix(pathname, locale = getLocale()) {
+  const path = pathname || '/';
+  if (path === '/') {
+    return '/' + locale;
+  }
+  return '/' + locale + (path.startsWith('/') ? path : '/' + path);
+}
+
+function stripLocalePrefix(pathname) {
+  const path = pathname || '/';
+  const match = path.match(/^\/(de-DE|en-US)(\/.*)?$/);
+  if (!match) {
+    return path;
+  }
+  return match[2] || '/';
+}
+
+function localizePath(target) {
+  const url = new URL(target || '/', window.location.origin);
+  if (getLocaleFromPath(url.pathname)) {
+    return url.pathname + url.search + url.hash;
+  }
+
+  const barePath = stripLocalePrefix(url.pathname);
+  const localizedPath = withLocalePrefix(barePath, getLocale());
+  return localizedPath + url.search + url.hash;
+}
+
+function localizeInternalLinks(container) {
+  container.querySelectorAll('a[href^="/"]').forEach((anchor) => {
+    const href = anchor.getAttribute('href') || '';
+    if (href.startsWith('/api/') || href.startsWith('/uploads/') || getLocaleFromPath(href)) {
+      return;
+    }
+    anchor.setAttribute('href', localizePath(href));
+  });
 }
 
 function renderAdminRoute(container, context) {

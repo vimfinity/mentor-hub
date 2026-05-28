@@ -1,6 +1,6 @@
 import * as api from '../services/api-client.js';
 import { holeAbfrage } from '../services/query-cache.js';
-import { t } from '../services/i18n.js';
+import { t, getLocale } from '../services/i18n.js';
 import { escapeHtml } from './modal.js';
 import { icon } from './icons.js';
 import { renderSelect, bindSelect } from './select.js';
@@ -43,7 +43,7 @@ const VALID_LAYOUTS = ['grid', 'list'];
 
 async function render(container, context = {}) {
   const response = await holeAbfrage({
-    schluessel: FEED_CACHE_KEY,
+    schluessel: [...FEED_CACHE_KEY, getLocale()],
     abrufFunktion: () => api.get('/api/feed'),
     ttlMs: FEED_CACHE_TTL_MS
   });
@@ -99,7 +99,7 @@ async function render(container, context = {}) {
 
 function preload() {
   return holeAbfrage({
-    schluessel: FEED_CACHE_KEY,
+    schluessel: [...FEED_CACHE_KEY, getLocale()],
     abrufFunktion: () => api.get('/api/feed'),
     ttlMs: FEED_CACHE_TTL_MS
   });
@@ -423,14 +423,15 @@ function formatRelativeTime(dateStr) {
   const diffH = Math.floor(diffMs / 3600000);
   const diffD = Math.floor(diffMs / 86400000);
 
-  const lang = document.documentElement.lang || 'de';
+  const lang = document.documentElement.lang || 'de-DE';
+  const isGerman = lang.startsWith('de');
 
-  if (diffMin < 1) return lang === 'de' ? 'Gerade eben' : 'Just now';
-  if (diffMin < 60) return lang === 'de' ? `vor ${diffMin} Min.` : `${diffMin}m ago`;
-  if (diffH < 24) return lang === 'de' ? `vor ${diffH} Std.` : `${diffH}h ago`;
-  if (diffD < 7) return lang === 'de' ? `vor ${diffD} Tag${diffD > 1 ? 'en' : ''}` : `${diffD}d ago`;
+  if (diffMin < 1) return isGerman ? 'Gerade eben' : 'Just now';
+  if (diffMin < 60) return isGerman ? `vor ${diffMin} Min.` : `${diffMin}m ago`;
+  if (diffH < 24) return isGerman ? `vor ${diffH} Std.` : `${diffH}h ago`;
+  if (diffD < 7) return isGerman ? `vor ${diffD} Tag${diffD > 1 ? 'en' : ''}` : `${diffD}d ago`;
 
-  return date.toLocaleDateString(lang === 'de' ? 'de-DE' : 'en-US', {
+  return date.toLocaleDateString(isGerman ? 'de-DE' : 'en-US', {
     day: 'numeric',
     month: 'short',
     year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
