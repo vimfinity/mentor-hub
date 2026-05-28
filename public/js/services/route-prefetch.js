@@ -21,10 +21,10 @@ function installRoutePrefetch(navigation, routeResolver) {
     });
   };
 
-  const links = Array.from(navigation.querySelectorAll('.tab-link'));
+  const left = Array.from(navigation.querySelectorAll('.tab-link'));
   const disposers = [];
 
-  links.forEach((link) => {
+  left.forEach((link) => {
     const onHover = () => prefetch(link);
     const onFocus = () => prefetch(link);
     link.addEventListener('mouseenter', onHover);
@@ -49,7 +49,7 @@ function installRoutePrefetch(navigation, routeResolver) {
       threshold: 0.01
     });
 
-    links.forEach((link) => observer.observe(link));
+    left.forEach((link) => observer.observe(link));
     disposers.push(() => observer.disconnect());
   }
 

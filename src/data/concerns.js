@@ -5,28 +5,22 @@ const store = require('./store');
 const PRIMARY_FILE_NAME = 'concerns.json';
 const LEGACY_FILE_NAME = 'painpoints.json';
 
-const STATUS_BY_LEGACY_VALUE = {
-  offen: 'open',
-  in_bearbeitung: 'in_progress',
-  erledigt: 'done'
-};
-
 const VALID_STATUSES = ['open', 'in_progress', 'done'];
 
 function normalizeStatus(status) {
-  return STATUS_BY_LEGACY_VALUE[status] || status || 'open';
+  return VALID_STATUSES.includes(status) ? status : 'open';
 }
 
 function normalizeConcern(concern) {
   return {
     id: concern.id,
-    title: concern.title || concern.titel || '',
-    description: concern.description || concern.beschreibung || '',
+    title: concern.title || '',
+    description: concern.description || '',
     name: concern.name || null,
     status: normalizeStatus(concern.status),
-    adminComment: concern.adminComment || concern.adminKommentar || '',
-    createdAt: concern.createdAt || concern.erstelltAm || new Date().toISOString(),
-    updatedAt: concern.updatedAt || concern.aktualisiertAm || null
+    adminComment: concern.adminComment || '',
+    createdAt: concern.createdAt || new Date().toISOString(),
+    updatedAt: concern.updatedAt || null
   };
 }
 
@@ -82,10 +76,8 @@ function update(id, changes) {
       filteredChanges.status = normalizedStatus;
     }
   }
-  if (changes.adminComment !== undefined || changes.adminKommentar !== undefined) {
-    filteredChanges.adminComment = changes.adminComment !== undefined
-      ? changes.adminComment
-      : changes.adminKommentar;
+  if (changes.adminComment !== undefined) {
+    filteredChanges.adminComment = changes.adminComment;
   }
 
   if (Object.keys(filteredChanges).length === 0) {

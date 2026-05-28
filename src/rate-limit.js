@@ -11,27 +11,27 @@ const POLICIES = {
   dev: { name: 'dev', capacity: 600, refillPerSecond: 10 }
 };
 
-function normalisierePfad(url) {
+function normalizePath(url) {
   return String(url || '/').split('?')[0] || '/';
 }
 
-function istStatischeDatei(pfad) {
-  return /\.[a-z0-9]+$/i.test(pfad) && !pfad.startsWith('/api/');
+function isStaticFile(path) {
+  return /\.[a-z0-9]+$/i.test(path) && !path.startsWith('/api/');
 }
 
-function istSchreibenderRequest(method) {
+function isWriteRequest(method) {
   return method === 'POST' || method === 'PUT' || method === 'DELETE' || method === 'PATCH';
 }
 
-function waehlePolicy(req) {
+function selectPolicy(req) {
   const method = String(req.method || 'GET').toUpperCase();
-  const path = normalisierePfad(req.url);
+  const path = normalizePath(req.url);
 
   if (path === '/api/dev/events') {
     return { policy: POLICIES.dev, scope: 'dev-events' };
   }
 
-  if (istStatischeDatei(path)) {
+  if (isStaticFile(path)) {
     return null;
   }
 
@@ -39,7 +39,7 @@ function waehlePolicy(req) {
     return { policy: POLICIES.page, scope: 'page' };
   }
 
-  if (!istSchreibenderRequest(method)) {
+  if (!isWriteRequest(method)) {
     return { policy: POLICIES.apiRead, scope: path.startsWith('/api/admin/') ? 'admin-read' : 'public-read' };
   }
 
@@ -65,7 +65,7 @@ function refillBucket(bucket, policy, now) {
 }
 
 function checkRequest(req, ip) {
-  const selection = waehlePolicy(req);
+  const selection = selectPolicy(req);
   if (!selection) {
     return {
       allowed: true,

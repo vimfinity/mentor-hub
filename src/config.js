@@ -36,14 +36,14 @@ function normalizeConfig(config) {
   };
 
   return {
-    title: config.title || config.titel || 'KI-Hub',
-    defaultLanguage: config.defaultLanguage || config.standardSprache || 'de',
+    title: config.title || 'KI-Hub',
+    defaultLanguage: config.defaultLanguage || 'de',
     host: config.host || '127.0.0.1',
     port: config.port || 3000,
-    sessionDurationMs: config.sessionDurationMs || config.sitzungsDauerMs || 86400000,
-    adminPasswordHash: config.adminPasswordHash || config.adminPasswortHash || '',
-    adminPasswordSalt: config.adminPasswordSalt || config.adminPasswortSalt || '',
-    devReloadEnabled: readBoolean('devReloadEnabled', 'devReloadAktiviert', 'devMode', 'entwicklungsModus')
+    sessionDurationMs: config.sessionDurationMs || 86400000,
+    adminPasswordHash: config.adminPasswordHash || '',
+    adminPasswordSalt: config.adminPasswordSalt || '',
+    devReloadEnabled: readBoolean('devReloadEnabled', 'devMode')
   };
 }
 

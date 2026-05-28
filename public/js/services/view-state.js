@@ -1,34 +1,34 @@
-function normalisiereAuswahl(wert, erlaubteWerte, standardWert) {
-  return erlaubteWerte.includes(wert) ? wert : standardWert;
+function normalizeSelection(value, allowedValues, defaultValue) {
+  return allowedValues.includes(value) ? value : defaultValue;
 }
 
-function normalisiereSeite(wert) {
-  const geparsteSeite = Number.parseInt(wert, 10);
+function normalizePage(value) {
+  const parsedPage = Number.parseInt(value, 10);
 
-  if (!Number.isFinite(geparsteSeite) || geparsteSeite < 1) {
+  if (!Number.isFinite(parsedPage) || parsedPage < 1) {
     return 1;
   }
 
-  return geparsteSeite;
+  return parsedPage;
 }
 
-function paginiereElemente(elemente, angeforderteSeite, elementeProSeite) {
-  const gesamtElemente = elemente.length;
-  const gesamtSeiten = Math.max(1, Math.ceil(gesamtElemente / elementeProSeite));
-  const aktuelleSeite = Math.min(normalisiereSeite(angeforderteSeite), gesamtSeiten);
-  const startIndex = (aktuelleSeite - 1) * elementeProSeite;
+function paginateItems(items, requestedPage, itemsPerPage) {
+  const totalItems = items.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+  const currentPage = Math.min(normalizePage(requestedPage), totalPages);
+  const startIndex = (currentPage - 1) * itemsPerPage;
 
   return {
-    elemente: elemente.slice(startIndex, startIndex + elementeProSeite),
-    aktuelleSeite,
-    gesamtSeiten,
-    gesamtElemente,
+    items: items.slice(startIndex, startIndex + itemsPerPage),
+    currentPage,
+    totalPages,
+    totalItems,
     startIndex
   };
 }
 
 export {
-  normalisiereAuswahl,
-  normalisiereSeite,
-  paginiereElemente
+  normalizeSelection,
+  normalizePage,
+  paginateItems
 };

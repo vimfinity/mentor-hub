@@ -4,28 +4,28 @@ import { showError, showSuccess } from './toast.js';
 
 function render(container) {
   const html = `
-    <h1 class="sektion-titel">${t('concern.title')}</h1>
-    <p class="sektion-beschreibung">${t('concern.description')}</p>
-    <form class="formular" id="concern-form">
-      <div class="formular-gruppe">
-        <label class="formular-label" for="concern-title">${t('concern.titleLabel')}</label>
-        <input type="text" id="concern-title" class="formular-eingabe"
+    <h1 class="section-title">${t('concern.title')}</h1>
+    <p class="section-description">${t('concern.description')}</p>
+    <form class="form" id="concern-form">
+      <div class="form-group">
+        <label class="form-label" for="concern-title">${t('concern.titleLabel')}</label>
+        <input type="text" id="concern-title" class="form-input"
           placeholder="${t('concern.titlePlaceholder')}"
           maxlength="200" required>
       </div>
-      <div class="formular-gruppe">
-        <label class="formular-label" for="concern-detail">${t('concern.detailLabel')}</label>
-        <textarea id="concern-detail" class="formular-textarea"
+      <div class="form-group">
+        <label class="form-label" for="concern-detail">${t('concern.detailLabel')}</label>
+        <textarea id="concern-detail" class="form-textarea"
           placeholder="${t('concern.detailPlaceholder')}"
           maxlength="2000"></textarea>
       </div>
-      <div class="formular-gruppe">
-        <label class="formular-label" for="concern-name">${t('concern.nameLabel')}</label>
-        <input type="text" id="concern-name" class="formular-eingabe"
+      <div class="form-group">
+        <label class="form-label" for="concern-name">${t('concern.nameLabel')}</label>
+        <input type="text" id="concern-name" class="form-input"
           placeholder="${t('concern.namePlaceholder')}"
           maxlength="100">
       </div>
-      <button type="submit" class="btn btn-primaer">${t('concern.submit')}</button>
+      <button type="submit" class="btn btn-primary">${t('concern.submit')}</button>
     </form>
   `;
 

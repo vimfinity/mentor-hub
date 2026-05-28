@@ -1,28 +1,27 @@
 /**
  * Route-Skeletons.
  *
- * Bilden die tatsächliche Layout-Struktur ab (statt generischer Blöcke) und
- * verwenden die echten Layout-Klassen (`.feed-toolbar`, `.feed-card`, ...),
- * sodass die Skelette exakt an die Stelle springen, an der später der Inhalt
- * erscheint — kein sichtbares Reflow beim Auflösen.
+ * Mirrors the actual layout structure and uses the real layout classes
+ * (`.feed-toolbar`, `.feed-card`, ...) so skeletons occupy the same slots as
+ * the eventual content and avoid visible reflow when they resolve.
  */
 
 function block(extraClasses = '', inlineStyle = '') {
-  return `<div class="skelett-block ${extraClasses}"${inlineStyle ? ` style="${inlineStyle}"` : ''}></div>`;
+  return `<div class="skeleton-block ${extraClasses}"${inlineStyle ? ` style="${inlineStyle}"` : ''}></div>`;
 }
 
 function renderFeedCardSkeleton({ withImage = true } = {}) {
   return `
-    <article class="feed-card skelett-karte" aria-hidden="true">
-      ${withImage ? block('feed-card-image skelett-medienflaeche') : ''}
+    <article class="feed-card skeleton-card" aria-hidden="true">
+      ${withImage ? block('feed-card-image skeleton-media-surface') : ''}
       <div class="feed-card-body">
         <div class="feed-card-meta" style="margin-bottom: 10px;">
-          ${block('skelett-pill', 'width: 4rem;')}
-          ${block('skelett-zeile', 'width: 3rem;')}
+          ${block('skeleton-pill', 'width: 4rem;')}
+          ${block('skeleton-line', 'width: 3rem;')}
         </div>
-        ${block('skelett-ueberschrift', 'margin-bottom: 10px;')}
-        ${block('skelett-zeile', 'margin-bottom: 6px;')}
-        ${block('skelett-zeile skelett-zeile-mittel')}
+        ${block('skeleton-heading', 'margin-bottom: 10px;')}
+        ${block('skeleton-line', 'margin-bottom: 6px;')}
+        ${block('skeleton-line skeleton-line-medium')}
       </div>
     </article>
   `;
@@ -30,15 +29,15 @@ function renderFeedCardSkeleton({ withImage = true } = {}) {
 
 function renderFeedFeaturedSkeleton() {
   return `
-    <article class="feed-featured skelett-karte" aria-hidden="true">
-      ${block('skelett-featured-bild')}
-      <div style="margin-top: var(--abstand-lg); display: flex; flex-direction: column; gap: 12px;">
-        ${block('skelett-titel-gross')}
-        ${block('skelett-zeile skelett-zeile-mittel')}
-        ${block('skelett-zeile', 'width: 60%;')}
+    <article class="feed-featured skeleton-card" aria-hidden="true">
+      ${block('skeleton-featured-image')}
+      <div style="margin-top: var(--space-lg); display: flex; flex-direction: column; gap: 12px;">
+        ${block('skeleton-title-large')}
+        ${block('skeleton-line skeleton-line-medium')}
+        ${block('skeleton-line', 'width: 60%;')}
         <div style="display: inline-flex; gap: 12px; margin-top: 4px;">
-          ${block('skelett-pill', 'width: 4rem;')}
-          ${block('skelett-pill', 'width: 5rem;')}
+          ${block('skeleton-pill', 'width: 4rem;')}
+          ${block('skeleton-pill', 'width: 5rem;')}
         </div>
       </div>
     </article>
@@ -49,16 +48,16 @@ function renderFeedToolbarSkeleton() {
   return `
     <div class="feed-toolbar" aria-hidden="true">
       <div class="feed-category-tabs">
-        ${block('skelett-pill skelett-pill-rechteckig', 'width: 3rem;')}
-        ${block('skelett-pill skelett-pill-rechteckig', 'width: 4.5rem;')}
-        ${block('skelett-pill skelett-pill-rechteckig', 'width: 4rem;')}
-        ${block('skelett-pill skelett-pill-rechteckig', 'width: 5.5rem;')}
+        ${block('skeleton-pill skeleton-pill-rectangular', 'width: 3rem;')}
+        ${block('skeleton-pill skeleton-pill-rectangular', 'width: 4.5rem;')}
+        ${block('skeleton-pill skeleton-pill-rectangular', 'width: 4rem;')}
+        ${block('skeleton-pill skeleton-pill-rectangular', 'width: 5.5rem;')}
       </div>
       <div class="feed-toolbar-actions">
-        ${block('skelett-pill skelett-pill-rechteckig', 'width: 7.5rem;')}
+        ${block('skeleton-pill skeleton-pill-rectangular', 'width: 7.5rem;')}
         <div style="display: inline-flex; gap: 2px;">
-          ${block('skelett-pill skelett-pill-rechteckig', 'width: 32px; height: 32px;')}
-          ${block('skelett-pill skelett-pill-rechteckig', 'width: 32px; height: 32px;')}
+          ${block('skeleton-pill skeleton-pill-rectangular', 'width: 32px; height: 32px;')}
+          ${block('skeleton-pill skeleton-pill-rectangular', 'width: 32px; height: 32px;')}
         </div>
       </div>
     </div>
@@ -67,7 +66,7 @@ function renderFeedToolbarSkeleton() {
 
 function renderFeedSkeleton() {
   return `
-    <div class="feed-page skelett-seite">
+    <div class="feed-page skeleton-page">
       ${renderFeedToolbarSkeleton()}
       <section class="feed-highlights" aria-hidden="true">
         ${renderFeedFeaturedSkeleton()}
@@ -80,8 +79,8 @@ function renderFeedSkeleton() {
       <section class="feed-section" aria-hidden="true">
         <div class="feed-section-header">
           <div style="display: flex; flex-direction: column; gap: 8px;">
-            ${block('skelett-ueberschrift', 'width: 12rem;')}
-            ${block('skelett-zeile skelett-zeile-mittel')}
+            ${block('skeleton-heading', 'width: 12rem;')}
+            ${block('skeleton-line skeleton-line-medium')}
           </div>
         </div>
         <div class="feed-grid">
@@ -97,23 +96,23 @@ function renderFeedSkeleton() {
 
 function renderFeedDetailSkeleton() {
   return `
-    <article class="feed-detail-page skelett-seite" aria-hidden="true">
-      ${block('skelett-zeile', 'width: 8rem;')}
+    <article class="feed-detail-page skeleton-page" aria-hidden="true">
+      ${block('skeleton-line', 'width: 8rem;')}
       <div style="display: flex; flex-direction: column; gap: 12px;">
         <div style="display: inline-flex; gap: 12px;">
-          ${block('skelett-pill', 'width: 4rem;')}
-          ${block('skelett-pill', 'width: 6rem;')}
+          ${block('skeleton-pill', 'width: 4rem;')}
+          ${block('skeleton-pill', 'width: 6rem;')}
         </div>
-        ${block('skelett-titel-gross', 'height: 2.75rem; width: min(28rem, 90%);')}
-        ${block('skelett-zeile skelett-zeile-mittel')}
+        ${block('skeleton-title-large', 'height: 2.75rem; width: min(28rem, 90%);')}
+        ${block('skeleton-line skeleton-line-medium')}
       </div>
       ${block('', 'aspect-ratio: 16/7; width: 100%; max-height: 460px; border-radius: var(--radius-lg);')}
       <div style="display: flex; flex-direction: column; gap: 10px;">
-        ${block('skelett-zeile')}
-        ${block('skelett-zeile')}
-        ${block('skelett-zeile skelett-zeile-mittel')}
-        ${block('skelett-zeile')}
-        ${block('skelett-zeile', 'width: 80%;')}
+        ${block('skeleton-line')}
+        ${block('skeleton-line')}
+        ${block('skeleton-line skeleton-line-medium')}
+        ${block('skeleton-line')}
+        ${block('skeleton-line', 'width: 80%;')}
       </div>
     </article>
   `;
@@ -121,18 +120,18 @@ function renderFeedDetailSkeleton() {
 
 function renderTabelleSkeleton(rows = 6, cols = 4) {
   return `
-    <div class="admin-panel admin-panel-tabelle skelett-tabelle" aria-hidden="true">
-      <div class="listensteuerung">
-        <div class="listensteuerung-kopf">
-          ${block('skelett-zeile', 'width: 8rem; height: 0.625rem;')}
-          ${block('skelett-pill skelett-pill-rechteckig', 'width: 11rem;')}
+    <div class="admin-panel admin-panel-table skeleton-table" aria-hidden="true">
+      <div class="list-controls">
+        <div class="list-controls-header">
+          ${block('skeleton-line', 'width: 8rem; height: 0.625rem;')}
+          ${block('skeleton-pill skeleton-pill-rectangular', 'width: 11rem;')}
         </div>
       </div>
-      <table class="tabelle">
+      <table class="table">
         <thead>
           <tr>
             ${Array.from({ length: cols }).map(() => `
-              <th>${block('skelett-zeile', 'width: 60%; height: 0.5rem;')}</th>
+              <th>${block('skeleton-line', 'width: 60%; height: 0.5rem;')}</th>
             `).join('')}
           </tr>
         </thead>
@@ -140,7 +139,7 @@ function renderTabelleSkeleton(rows = 6, cols = 4) {
           ${Array.from({ length: rows }).map(() => `
             <tr>
               ${Array.from({ length: cols }).map((_, columnIndex) => `
-                <td>${block('skelett-zeile', `width: ${[80, 50, 40, 60][columnIndex] || 60}%;`)}</td>
+                <td>${block('skeleton-line', `width: ${[80, 50, 40, 60][columnIndex] || 60}%;`)}</td>
               `).join('')}
             </tr>
           `).join('')}
@@ -152,22 +151,22 @@ function renderTabelleSkeleton(rows = 6, cols = 4) {
 
 function renderAdminSkeleton() {
   return `
-    <div class="admin-shell skelett-seite" aria-hidden="true">
+    <div class="admin-shell skeleton-page" aria-hidden="true">
       <nav class="sub-nav">
         <div class="sub-nav-tabs">
-          ${block('skelett-pill skelett-pill-rechteckig', 'width: 5rem; height: 32px;')}
-          ${block('skelett-pill skelett-pill-rechteckig', 'width: 5.5rem; height: 32px;')}
-          ${block('skelett-pill skelett-pill-rechteckig', 'width: 5rem; height: 32px;')}
+          ${block('skeleton-pill skeleton-pill-rectangular', 'width: 5rem; height: 32px;')}
+          ${block('skeleton-pill skeleton-pill-rectangular', 'width: 5.5rem; height: 32px;')}
+          ${block('skeleton-pill skeleton-pill-rectangular', 'width: 5rem; height: 32px;')}
         </div>
-        ${block('skelett-pill skelett-pill-rechteckig', 'width: 6rem; height: 32px;')}
+        ${block('skeleton-pill skeleton-pill-rectangular', 'width: 6rem; height: 32px;')}
       </nav>
-      <div class="admin-bereich">
-        <div class="admin-bereich-kopf">
-          <div class="admin-bereich-meta" style="display: flex; flex-direction: column; gap: 10px;">
-            ${block('skelett-titel-gross', 'height: 2rem; width: 14rem;')}
-            ${block('skelett-zeile', 'width: 22rem; max-width: 80%;')}
+      <div class="admin-section">
+        <div class="admin-section-header">
+          <div class="admin-section-meta" style="display: flex; flex-direction: column; gap: 10px;">
+            ${block('skeleton-title-large', 'height: 2rem; width: 14rem;')}
+            ${block('skeleton-line', 'width: 22rem; max-width: 80%;')}
           </div>
-          ${block('skelett-knopf')}
+          ${block('skeleton-button')}
         </div>
         ${renderTabelleSkeleton(6, 4)}
       </div>
@@ -177,25 +176,25 @@ function renderAdminSkeleton() {
 
 function renderFeedbackSkeleton() {
   return `
-    <div class="skelett-seite" aria-hidden="true">
-      ${block('skelett-titel-gross', 'height: 1.75rem;')}
-      <div class="umfrage-karte skelett-karte" style="margin-bottom: var(--abstand-md);">
-        ${block('skelett-ueberschrift', 'width: 14rem; margin-bottom: 10px;')}
-        ${block('skelett-zeile skelett-zeile-mittel', 'margin-bottom: var(--abstand-lg);')}
+    <div class="skeleton-page" aria-hidden="true">
+      ${block('skeleton-title-large', 'height: 1.75rem;')}
+      <div class="survey-card skeleton-card" style="margin-bottom: var(--space-md);">
+        ${block('skeleton-heading', 'width: 14rem; margin-bottom: 10px;')}
+        ${block('skeleton-line skeleton-line-medium', 'margin-bottom: var(--space-lg);')}
         <div style="display: flex; flex-direction: column; gap: 14px;">
-          ${block('skelett-zeile', 'width: 50%;')}
-          ${block('skelett-eingabe')}
-          ${block('skelett-zeile', 'width: 40%;')}
-          ${block('skelett-eingabe skelett-eingabe-gross')}
+          ${block('skeleton-line', 'width: 50%;')}
+          ${block('skeleton-input')}
+          ${block('skeleton-line', 'width: 40%;')}
+          ${block('skeleton-input skeleton-input-large')}
         </div>
-        <div style="margin-top: var(--abstand-lg);">${block('skelett-knopf')}</div>
+        <div style="margin-top: var(--space-lg);">${block('skeleton-button')}</div>
       </div>
-      <div class="anliegen-sektion skelett-panel">
-        ${block('skelett-ueberschrift', 'width: 11rem;')}
-        ${block('skelett-zeile skelett-zeile-mittel')}
-        ${block('skelett-eingabe')}
-        ${block('skelett-eingabe skelett-eingabe-gross')}
-        ${block('skelett-knopf')}
+      <div class="concern-section skeleton-panel">
+        ${block('skeleton-heading', 'width: 11rem;')}
+        ${block('skeleton-line skeleton-line-medium')}
+        ${block('skeleton-input')}
+        ${block('skeleton-input skeleton-input-large')}
+        ${block('skeleton-button')}
       </div>
     </div>
   `;

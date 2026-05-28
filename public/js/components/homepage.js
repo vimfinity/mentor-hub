@@ -1,5 +1,5 @@
 import * as api from '../services/api-client.js';
-import { holeAbfrage } from '../services/query-cache.js';
+import { fetchQuery } from '../services/query-cache.js';
 import { t, getLocale } from '../services/i18n.js';
 import { escapeHtml } from './modal.js';
 import { icon } from './icons.js';
@@ -42,18 +42,18 @@ const VALID_SORTS = ['newest', 'oldest', 'title'];
 const VALID_LAYOUTS = ['grid', 'list'];
 
 async function render(container, context = {}) {
-  const response = await holeAbfrage({
-    schluessel: [...FEED_CACHE_KEY, getLocale()],
-    abrufFunktion: () => api.get('/api/feed'),
+  const response = await fetchQuery({
+    key: [...FEED_CACHE_KEY, getLocale()],
+    fetchFunction: () => api.get('/api/feed'),
     ttlMs: FEED_CACHE_TTL_MS
   });
 
   if (!response.ok || !response.data || response.data.length === 0) {
     container.innerHTML = `
-      <div class="feed-leer">
-        <div class="feed-leer-icon">${icon('newspaper', 56)}</div>
-        <h2 class="feed-leer-titel">${t('feed.emptyTitle')}</h2>
-        <p class="feed-leer-text">${t('feed.emptyText')}</p>
+      <div class="feed-empty">
+        <div class="feed-empty-icon">${icon('newspaper', 56)}</div>
+        <h2 class="feed-empty-title">${t('feed.emptyTitle')}</h2>
+        <p class="feed-empty-text">${t('feed.emptyText')}</p>
       </div>
     `;
     return;
@@ -87,7 +87,7 @@ async function render(container, context = {}) {
       ${sections.map((section, sectionIndex) => renderSection(section, sectionIndex, currentLayout)).join('')}
 
       ${sortedItems.length === 0 ? `
-        <div class="feed-keine-ergebnisse">
+        <div class="feed-no-results">
           <p>${t('feed.noResults')}</p>
         </div>
       ` : ''}
@@ -98,9 +98,9 @@ async function render(container, context = {}) {
 }
 
 function preload() {
-  return holeAbfrage({
-    schluessel: [...FEED_CACHE_KEY, getLocale()],
-    abrufFunktion: () => api.get('/api/feed'),
+  return fetchQuery({
+    key: [...FEED_CACHE_KEY, getLocale()],
+    fetchFunction: () => api.get('/api/feed'),
     ttlMs: FEED_CACHE_TTL_MS
   });
 }
@@ -154,13 +154,13 @@ function selectHighlights(items) {
   };
 }
 
-function sortFeedItems(items, sortierung) {
+function sortFeedItems(items, sortOrder) {
   const sorted = [...items];
   sorted.sort((a, b) => {
-    if (sortierung === 'oldest') {
+    if (sortOrder === 'oldest') {
       return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
     }
-    if (sortierung === 'title') {
+    if (sortOrder === 'title') {
       return a.title.localeCompare(b.title, document.documentElement.lang || 'de');
     }
 
@@ -180,7 +180,7 @@ function renderFeedToolbar({ allItems, currentFilter, currentSort, currentLayout
     <div class="feed-toolbar">
       <nav class="feed-category-tabs" aria-label="${escapeHtml(t('feed.categories'))}">
         ${VALID_FILTERS.filter((value) => value === 'all' || allItems.some((item) => item.kind === value)).map((value) => `
-          <button class="feed-category-tab ${value === currentFilter ? 'aktiv' : ''}" data-kind-filter="${value}">
+          <button class="feed-category-tab ${value === currentFilter ? 'active' : ''}" data-kind-filter="${value}">
             ${t(FILTER_CONFIG[value].labelKey)}
           </button>
         `).join('')}
@@ -195,10 +195,10 @@ function renderFeedToolbar({ allItems, currentFilter, currentSort, currentLayout
           ariaLabel: t('feed.sort')
         })}
         <div class="feed-layout-toggle" aria-label="${escapeHtml(t('feed.layout'))}">
-          <button class="${currentLayout === 'grid' ? 'aktiv' : ''}" data-layout-option="grid" title="${escapeHtml(t('feed.layoutGrid'))}">
+          <button class="${currentLayout === 'grid' ? 'active' : ''}" data-layout-option="grid" title="${escapeHtml(t('feed.layoutGrid'))}">
             ${icon('layoutDashboard', 15)}
           </button>
-          <button class="${currentLayout === 'list' ? 'aktiv' : ''}" data-layout-option="list" title="${escapeHtml(t('feed.layoutList'))}">
+          <button class="${currentLayout === 'list' ? 'active' : ''}" data-layout-option="list" title="${escapeHtml(t('feed.layoutList'))}">
             ${icon('list', 15)}
           </button>
         </div>
@@ -292,11 +292,11 @@ function renderFeatured(item) {
 
   const innerHtml = `
     ${renderFeedImage(item, 'feed-featured-image')}
-    <h2 class="feed-featured-titel">${escapeHtml(item.title)}</h2>
+    <h2 class="feed-featured-title">${escapeHtml(item.title)}</h2>
     ${getItemSummary(item) ? `<p class="feed-featured-text">${linkifyText(escapeHtml(getItemSummary(item)))}</p>` : ''}
     <div class="feed-featured-footer">
       <span>${t(config.labelKey)}</span>
-      <time class="feed-featured-zeit">${formatRelativeTime(item.createdAt)}</time>
+      <time class="feed-featured-time">${formatRelativeTime(item.createdAt)}</time>
       ${target.kind === 'external' ? `<span class="feed-featured-link">${extractDomain(target.url)}</span>` : ''}
     </div>
     ${sourceLabel || visibleTags.length > 0 ? `
@@ -365,9 +365,9 @@ function renderFeedCard(item, index) {
         <span class="feed-card-type ${config.accent}">
           ${t(config.labelKey)}
         </span>
-        <time class="feed-card-zeit">${formatRelativeTime(item.createdAt)}</time>
+        <time class="feed-card-time">${formatRelativeTime(item.createdAt)}</time>
       </div>
-      <h3 class="feed-card-titel">${escapeHtml(item.title)}</h3>
+      <h3 class="feed-card-title">${escapeHtml(item.title)}</h3>
       ${getItemSummary(item) ? `
         <p class="feed-card-text">${linkifyText(escapeHtml(getItemSummary(item)))}</p>
       ` : ''}
@@ -489,7 +489,7 @@ function formatTag(tag) {
   return tag
     .split(/[-_\s]+/)
     .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .map((ptype) => ptype.charAt(0).toUpperCase() + ptype.slice(1))
     .join(' ');
 }
 

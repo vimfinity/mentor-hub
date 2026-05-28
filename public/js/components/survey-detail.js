@@ -1,5 +1,5 @@
 import * as api from '../services/api-client.js';
-import { holeAbfrage, invalidiereAbfrage } from '../services/query-cache.js';
+import { fetchQuery, invalidateQuery } from '../services/query-cache.js';
 import { t, getLocale } from '../services/i18n.js';
 import { escapeHtml } from './modal.js';
 import { icon } from './icons.js';
@@ -14,9 +14,9 @@ async function render(container, context = {}) {
     return;
   }
 
-  const response = await holeAbfrage({
-    schluessel: ['survey-detail', getLocale(), id],
-    abrufFunktion: () => getSurveyById(id),
+  const response = await fetchQuery({
+    key: ['survey-detail', getLocale(), id],
+    fetchFunction: () => getSurveyById(id),
     ttlMs: DETAIL_CACHE_TTL_MS
   });
 
@@ -33,9 +33,9 @@ async function render(container, context = {}) {
       <header class="feed-detail-header">
         <div class="feed-detail-meta">
           <span class="feed-card-type accent-skill">${escapeHtml(t('survey.singleLabel'))}</span>
-          <time class="feed-card-zeit">${escapeHtml(formatDate(survey.createdAt))}</time>
+          <time class="feed-card-time">${escapeHtml(formatDate(survey.createdAt))}</time>
         </div>
-        <h1 class="feed-detail-titel">${escapeHtml(survey.title)}</h1>
+        <h1 class="feed-detail-title">${escapeHtml(survey.title)}</h1>
         ${survey.description ? `<p class="feed-detail-lead">${escapeHtml(survey.description)}</p>` : ''}
         <div class="feed-detail-actions">
           <button class="tab-link tab-link-utility tab-link-icon" type="button" data-copy-survey-link aria-label="${escapeHtml(t('survey.copyLink'))}" title="${escapeHtml(t('survey.copyLink'))}">
@@ -44,13 +44,13 @@ async function render(container, context = {}) {
         </div>
       </header>
 
-      <form class="umfrage-formular survey-detail-form" data-survey-id="${escapeHtml(survey.id)}">
+      <form class="survey-form survey-detail-form" data-survey-id="${escapeHtml(survey.id)}">
         ${questionsHtml}
-        <div class="formular-gruppe">
-          <input type="text" class="formular-eingabe umfrage-name"
+        <div class="form-group">
+          <input type="text" class="form-input survey-name"
             placeholder="${escapeHtml(t('survey.namePlaceholder'))}">
         </div>
-        <button type="submit" class="btn btn-primaer">
+        <button type="submit" class="btn btn-primary">
           ${icon('send', 16)}
           <span>${escapeHtml(t('survey.submit'))}</span>
         </button>
@@ -73,9 +73,9 @@ function preload(context = {}) {
   if (!id) {
     return Promise.resolve();
   }
-  return holeAbfrage({
-    schluessel: ['survey-detail', getLocale(), id],
-    abrufFunktion: () => getSurveyById(id),
+  return fetchQuery({
+    key: ['survey-detail', getLocale(), id],
+    fetchFunction: () => getSurveyById(id),
     ttlMs: DETAIL_CACHE_TTL_MS
   });
 }
@@ -103,7 +103,7 @@ function renderQuestion(question, index) {
   switch (question.type) {
     case 'free_text':
       inputHtml = `
-        <textarea class="formular-textarea frage-eingabe"
+        <textarea class="form-textarea question-input"
           data-index="${index}"
           placeholder="${escapeHtml(t('survey.freeText'))}"
           rows="3"></textarea>
@@ -111,20 +111,20 @@ function renderQuestion(question, index) {
       break;
     case 'rating':
       inputHtml = `
-        <div class="sterne-bewertung frage-eingabe" data-index="${index}" data-wert="0">
+        <div class="star-rating question-input" data-index="${index}" data-value="0">
           ${[1, 2, 3, 4, 5].map((value) => `
-            <span class="stern" data-wert="${value}">${icon('star', 28)}</span>
+            <span class="star" data-value="${value}">${icon('star', 28)}</span>
           `).join('')}
         </div>
       `;
       break;
     case 'yes_no':
       inputHtml = `
-        <div class="ja-nein-auswahl frage-eingabe" data-index="${index}" data-wert="">
-          <button type="button" class="ja-nein-btn" data-wert="yes">
+        <div class="yes-no-choice question-input" data-index="${index}" data-value="">
+          <button type="button" class="yes-no-button" data-value="yes">
             ${icon('thumbsUp', 16)} ${escapeHtml(t('survey.yesLabel'))}
           </button>
-          <button type="button" class="ja-nein-btn" data-wert="no">
+          <button type="button" class="yes-no-button" data-value="no">
             ${icon('thumbsDown', 16)} ${escapeHtml(t('survey.noLabel'))}
           </button>
         </div>
@@ -132,10 +132,10 @@ function renderQuestion(question, index) {
       break;
     case 'choice':
       inputHtml = `
-        <div class="auswahl-gruppe frage-eingabe" data-index="${index}" data-wert="">
+        <div class="option-group question-input" data-index="${index}" data-value="">
           ${(question.options || []).map((option) => `
-            <label class="auswahl-option">
-              <input type="radio" name="frage_${index}" value="${escapeHtml(getOptionValue(option))}">
+            <label class="option-choice">
+              <input type="radio" name="question_${index}" value="${escapeHtml(getOptionValue(option))}">
               <span>${escapeHtml(getOptionLabel(option))}</span>
             </label>
           `).join('')}
@@ -144,10 +144,10 @@ function renderQuestion(question, index) {
       break;
     case 'multiple_choice':
       inputHtml = `
-        <div class="auswahl-gruppe frage-eingabe" data-index="${index}" data-wert="">
+        <div class="option-group question-input" data-index="${index}" data-value="">
           ${(question.options || []).map((option) => `
-            <label class="auswahl-option">
-              <input type="checkbox" name="frage_${index}" value="${escapeHtml(getOptionValue(option))}">
+            <label class="option-choice">
+              <input type="checkbox" name="question_${index}" value="${escapeHtml(getOptionValue(option))}">
               <span>${escapeHtml(getOptionLabel(option))}</span>
             </label>
           `).join('')}
@@ -156,42 +156,42 @@ function renderQuestion(question, index) {
       break;
     default:
       inputHtml = `
-        <input type="text" class="formular-eingabe frage-eingabe"
+        <input type="text" class="form-input question-input"
           data-index="${index}"
           placeholder="${escapeHtml(t('survey.freeText'))}">
       `;
   }
 
   return `
-    <div class="frage-block">
-      <p class="frage-text">${escapeHtml(question.text)}</p>
+    <div class="question-block">
+      <p class="question-text">${escapeHtml(question.text)}</p>
       ${inputHtml}
     </div>
   `;
 }
 
 function registerSurveyEvents(container, surveyId) {
-  container.querySelectorAll('.sterne-bewertung').forEach((rating) => {
-    rating.querySelectorAll('.stern').forEach((star) => {
+  container.querySelectorAll('.star-rating').forEach((rating) => {
+    rating.querySelectorAll('.star').forEach((star) => {
       star.addEventListener('click', () => {
-        const value = parseInt(star.dataset.wert, 10);
-        rating.dataset.wert = value;
+        const value = parseInt(star.dataset.value, 10);
+        rating.dataset.value = value;
         updateStars(rating, value);
       });
     });
   });
 
-  container.querySelectorAll('.ja-nein-auswahl').forEach((choice) => {
-    choice.querySelectorAll('.ja-nein-btn').forEach((button) => {
+  container.querySelectorAll('.yes-no-choice').forEach((choice) => {
+    choice.querySelectorAll('.yes-no-button').forEach((button) => {
       button.addEventListener('click', () => {
-        choice.querySelectorAll('.ja-nein-btn').forEach((element) => element.classList.remove('ausgewaehlt'));
-        button.classList.add('ausgewaehlt');
-        choice.dataset.wert = button.dataset.wert;
+        choice.querySelectorAll('.yes-no-button').forEach((element) => element.classList.remove('selected'));
+        button.classList.add('selected');
+        choice.dataset.value = button.dataset.value;
       });
     });
   });
 
-  container.querySelectorAll('.umfrage-formular').forEach((form) => {
+  container.querySelectorAll('.survey-form').forEach((form) => {
     form.addEventListener('submit', (event) => {
       event.preventDefault();
       submitSurvey(form, surveyId);
@@ -200,29 +200,29 @@ function registerSurveyEvents(container, surveyId) {
 }
 
 function updateStars(rating, value) {
-  rating.querySelectorAll('.stern').forEach((star) => {
-    const starValue = parseInt(star.dataset.wert, 10);
-    star.classList.toggle('aktiv', starValue <= value);
+  rating.querySelectorAll('.star').forEach((star) => {
+    const starValue = parseInt(star.dataset.value, 10);
+    star.classList.toggle('active', starValue <= value);
   });
 }
 
 async function submitSurvey(form, surveyId) {
   const responses = [];
 
-  form.querySelectorAll('.frage-eingabe').forEach((input) => {
+  form.querySelectorAll('.question-input').forEach((input) => {
     if (input.tagName === 'TEXTAREA' || input.tagName === 'INPUT') {
       responses.push(input.value.trim());
-    } else if (input.classList.contains('sterne-bewertung')) {
-      responses.push(parseInt(input.dataset.wert, 10) || 0);
-    } else if (input.classList.contains('ja-nein-auswahl')) {
-      responses.push(input.dataset.wert || '');
-    } else if (input.classList.contains('auswahl-gruppe')) {
+    } else if (input.classList.contains('star-rating')) {
+      responses.push(parseInt(input.dataset.value, 10) || 0);
+    } else if (input.classList.contains('yes-no-choice')) {
+      responses.push(input.dataset.value || '');
+    } else if (input.classList.contains('option-group')) {
       const selected = Array.from(input.querySelectorAll('input:checked')).map((option) => option.value);
       responses.push(input.querySelector('input[type="checkbox"]') ? selected : (selected[0] || ''));
     }
   });
 
-  const nameInput = form.querySelector('.umfrage-name');
+  const nameInput = form.querySelector('.survey-name');
   const name = nameInput ? nameInput.value.trim() : null;
   const submitButton = form.querySelector('button[type="submit"]');
   submitButton.disabled = true;
@@ -235,13 +235,13 @@ async function submitSurvey(form, surveyId) {
   submitButton.disabled = false;
 
   if (result.ok) {
-    invalidiereAbfrage(['survey-detail', getLocale(), surveyId]);
+    invalidateQuery(['survey-detail', getLocale(), surveyId]);
     showSuccess(t('survey.success'));
     form.reset();
-    form.querySelectorAll('.stern').forEach((star) => star.classList.remove('aktiv'));
-    form.querySelectorAll('.ja-nein-btn').forEach((button) => button.classList.remove('ausgewaehlt'));
-    form.querySelectorAll('.sterne-bewertung').forEach((rating) => { rating.dataset.wert = '0'; });
-    form.querySelectorAll('.ja-nein-auswahl').forEach((choice) => { choice.dataset.wert = ''; });
+    form.querySelectorAll('.star').forEach((star) => star.classList.remove('active'));
+    form.querySelectorAll('.yes-no-button').forEach((button) => button.classList.remove('selected'));
+    form.querySelectorAll('.star-rating').forEach((rating) => { rating.dataset.value = '0'; });
+    form.querySelectorAll('.yes-no-choice').forEach((choice) => { choice.dataset.value = ''; });
   } else {
     showError(result.data?.error || t('survey.error'));
   }
@@ -249,11 +249,11 @@ async function submitSurvey(form, surveyId) {
 
 function renderNotFound(container, context) {
   container.innerHTML = `
-    <div class="feed-leer">
-      <div class="feed-leer-icon">${icon('alertCircle', 56)}</div>
-      <h2 class="feed-leer-titel">${escapeHtml(t('survey.detailMissingTitle'))}</h2>
-      <p class="feed-leer-text">${escapeHtml(t('survey.detailMissingText'))}</p>
-      <a class="btn btn-sekundaer" href="/feedback" data-back="1" style="margin-top: 1rem;">
+    <div class="feed-empty">
+      <div class="feed-empty-icon">${icon('alertCircle', 56)}</div>
+      <h2 class="feed-empty-title">${escapeHtml(t('survey.detailMissingTitle'))}</h2>
+      <p class="feed-empty-text">${escapeHtml(t('survey.detailMissingText'))}</p>
+      <a class="btn btn-secondary" href="/feedback" data-back="1" style="margin-top: 1rem;">
         ${escapeHtml(t('survey.backToFeedback'))}
       </a>
     </div>

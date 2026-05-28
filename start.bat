@@ -1,6 +1,6 @@
 @echo off
 REM ============================================
-REM  KI-Hub - Startskript
+REM  KI-Hub - startup script
 REM ============================================
 setlocal
 
@@ -47,21 +47,21 @@ if not defined NODE_BIN (
 
 if not defined NODE_BIN (
     echo.
-    echo FEHLER: Node.js wurde weder ueber PATH noch ueber NODE_HOME/NODEJS_HOME gefunden.
-    echo Bitte pruefen Sie Ihre Benutzerumgebungsvariablen.
+    echo ERROR: Node.js was not found through PATH, NODE_HOME, or NODEJS_HOME.
+    echo Please check your user environment variables.
     pause
     exit /b 1
 )
 
-echo Starte KI-Hub...
+echo Starting KI-Hub...
 for /f "tokens=*" %%v in ('"%NODE_BIN%" -v') do set "NODE_VERSION=%%v"
 echo Node: %NODE_VERSION% ^(%NODE_BIN%^)
 echo.
 
 echo %NODE_VERSION% | findstr /b /c:"v20." >nul
 if %ERRORLEVEL% neq 0 (
-    echo WARNUNG: Dieses Projekt ist fuer Node.js v20 vorgesehen.
-    echo          Setzen Sie NODE20_HOME oder NODEJS_HOME auf Ihre Node-20-Installation.
+    echo WARNING: This project is intended for Node.js v20.
+    echo          Set NODE20_HOME or NODEJS_HOME to your Node 20 installation.
     echo.
 )
 echo.
@@ -70,7 +70,7 @@ echo.
 
 if %ERRORLEVEL% neq 0 (
     echo.
-    echo FEHLER: Server konnte nicht gestartet werden.
+    echo ERROR: Server could not be started.
     pause
 )
 

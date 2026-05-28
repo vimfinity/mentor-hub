@@ -46,12 +46,12 @@ async function loadLanguage(language) {
 }
 
 function t(key) {
-  const parts = key.split('.');
+  const ptypes = key.split('.');
   let value = translations;
 
-  for (const part of parts) {
-    if (value && typeof value === 'object' && part in value) {
-      value = value[part];
+  for (const ptype of ptypes) {
+    if (value && typeof value === 'object' && ptype in value) {
+      value = value[ptype];
     } else {
       return key;
     }

@@ -135,11 +135,11 @@ function updateItem(fileName, id, changes) {
       ...records[index],
       ...changes,
       id: records[index].id,
-      createdAt: changes.createdAt || records[index].createdAt || records[index].erstelltAm || new Date().toISOString(),
+      createdAt: changes.createdAt || records[index].createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
-    delete records[index].erstelltAm;
-    delete records[index].aktualisiertAm;
+    delete records[index].createdAt;
+    delete records[index].updatedAt;
 
     return { changed: true, result: records[index] };
   });

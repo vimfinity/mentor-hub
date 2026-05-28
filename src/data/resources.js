@@ -11,11 +11,11 @@ const {
 const FILE_NAME = 'resources.json';
 
 function normalizeResource(resource, locale = DEFAULT_LOCALE) {
-  const normalizedCategory = normalizeCategory(resource.category || resource.kategorie || 'article');
-  const title = resource.title || resource.titel || '';
-  const description = resource.description || resource.beschreibung || '';
-  const detailContent = resource.detailContent || resource.detailInhalt || resource.content || resource.inhalt || '';
-  const summary = resource.summary || resource.zusammenfassung || resource.description || resource.beschreibung || '';
+  const normalizedCategory = normalizeCategory(resource.category || 'article');
+  const title = resource.title || '';
+  const description = resource.description || '';
+  const detailContent = resource.detailContent || resource.content || '';
+  const summary = resource.summary || resource.description || '';
   return {
     id: resource.id,
     title: resolveLocalizedValue(title, locale),
@@ -25,23 +25,22 @@ function normalizeResource(resource, locale = DEFAULT_LOCALE) {
     descriptionLocalized: toLocalizedValue(description),
     detailContent: resolveLocalizedValue(detailContent, locale),
     detailContentLocalized: toLocalizedValue(detailContent),
-    imageUrl: resource.imageUrl || resource.bildUrl || resource.thumbnailUrl || '',
+    imageUrl: resource.imageUrl || resource.thumbnailUrl || '',
     category: normalizedCategory,
-    kind: normalizeKind(resource.kind || resource.art || normalizedCategory),
-    subtype: normalizeSubtype(resource.subtype || resource.untertyp || normalizedCategory),
+    kind: normalizeKind(resource.kind || resource.type || normalizedCategory),
+    subtype: normalizeSubtype(resource.subtype || normalizedCategory),
     summary: resolveLocalizedValue(summary, locale),
     summaryLocalized: toLocalizedValue(summary),
-    source: resource.source || resource.quelle || detectSource(resource.url || ''),
-    tags: normalizeTags(resource.tags || resource.schlagwoerter, normalizedCategory),
-    attachments: normalizeAttachments(resource.attachments || resource.anhaenge, resource.id, locale),
+    source: resource.source || detectSource(resource.url || ''),
+    tags: normalizeTags(resource.tags, normalizedCategory),
+    attachments: normalizeAttachments(resource.attachments, resource.id, locale),
     featured: resource.featured || false,
-    createdAt: resource.createdAt || resource.erstelltAm || new Date().toISOString(),
-    updatedAt: resource.updatedAt || resource.aktualisiertAm || null
+    createdAt: resource.createdAt || new Date().toISOString(),
+    updatedAt: resource.updatedAt || null
   };
 }
 
 function normalizeCategory(category) {
-  if (category === 'artikel') return 'article';
   return category || 'article';
 }
 
@@ -66,7 +65,6 @@ function normalizeKind(kind) {
 function normalizeSubtype(subtype) {
   const normalized = String(subtype || '').toLowerCase();
 
-  if (normalized === 'artikel') return 'article';
   if (normalized === 'howto') return 'tutorial';
 
   return normalized || 'article';
@@ -102,7 +100,7 @@ function normalizeAttachments(attachments, resourceId, locale = DEFAULT_LOCALE) 
       }
 
       const id = String(attachment.id);
-      const filename = attachment.filename || attachment.dateiname || attachment.originalName || attachment.name || '';
+      const filename = attachment.filename || attachment.originalName || attachment.name || '';
       const originalName = attachment.originalName || attachment.name || filename;
       const label = attachment.label || attachment.title || originalName || filename || 'Download';
 
@@ -206,59 +204,53 @@ function create(data) {
 function update(id, changes) {
   const filteredChanges = {};
 
-  if (changes.title !== undefined || changes.titel !== undefined) {
-    filteredChanges.title = trimLocalizedValue(changes.title !== undefined ? changes.title : changes.titel);
+  if (changes.title !== undefined) {
+    filteredChanges.title = trimLocalizedValue(changes.title);
   }
   if (changes.url !== undefined) {
     filteredChanges.url = changes.url;
   }
-  if (changes.description !== undefined || changes.beschreibung !== undefined) {
-    filteredChanges.description = trimLocalizedValue(changes.description !== undefined ? changes.description : changes.beschreibung);
+  if (changes.description !== undefined) {
+    filteredChanges.description = trimLocalizedValue(changes.description);
   }
-  if (changes.detailContent !== undefined || changes.detailInhalt !== undefined || changes.content !== undefined || changes.inhalt !== undefined) {
+  if (changes.detailContent !== undefined || changes.content !== undefined) {
     filteredChanges.detailContent = trimLocalizedValue(changes.detailContent !== undefined
       ? changes.detailContent
-      : changes.detailInhalt !== undefined
-        ? changes.detailInhalt
-        : changes.content !== undefined
-          ? changes.content
-          : changes.inhalt);
+      : changes.content);
   }
-  if (changes.imageUrl !== undefined || changes.bildUrl !== undefined || changes.thumbnailUrl !== undefined) {
+  if (changes.imageUrl !== undefined || changes.thumbnailUrl !== undefined) {
     filteredChanges.imageUrl = changes.imageUrl !== undefined
       ? changes.imageUrl
-      : changes.bildUrl !== undefined
-        ? changes.bildUrl
-        : changes.thumbnailUrl;
+      : changes.thumbnailUrl;
   }
-  if (changes.category !== undefined || changes.kategorie !== undefined) {
-    filteredChanges.category = normalizeCategory(changes.category !== undefined ? changes.category : changes.kategorie);
+  if (changes.category !== undefined) {
+    filteredChanges.category = normalizeCategory(changes.category);
   }
-  if (changes.kind !== undefined || changes.art !== undefined) {
-    filteredChanges.kind = normalizeKind(changes.kind !== undefined ? changes.kind : changes.art);
+  if (changes.kind !== undefined || changes.type !== undefined) {
+    filteredChanges.kind = normalizeKind(changes.kind !== undefined ? changes.kind : changes.type);
   }
-  if (changes.subtype !== undefined || changes.untertyp !== undefined) {
-    const subtype = normalizeSubtype(changes.subtype !== undefined ? changes.subtype : changes.untertyp);
+  if (changes.subtype !== undefined) {
+    const subtype = normalizeSubtype(changes.subtype);
     filteredChanges.subtype = subtype;
     filteredChanges.category = normalizeCategory(subtype);
   }
-  if (changes.summary !== undefined || changes.zusammenfassung !== undefined) {
-    filteredChanges.summary = trimLocalizedValue(changes.summary !== undefined ? changes.summary : changes.zusammenfassung);
+  if (changes.summary !== undefined) {
+    filteredChanges.summary = trimLocalizedValue(changes.summary);
   }
-  if (changes.source !== undefined || changes.quelle !== undefined) {
-    filteredChanges.source = changes.source !== undefined ? changes.source : changes.quelle;
+  if (changes.source !== undefined) {
+    filteredChanges.source = changes.source;
   }
-  if (changes.tags !== undefined || changes.schlagwoerter !== undefined) {
-    filteredChanges.tags = normalizeTags(changes.tags !== undefined ? changes.tags : changes.schlagwoerter, changes.subtype || changes.category);
+  if (changes.tags !== undefined) {
+    filteredChanges.tags = normalizeTags(changes.tags, changes.subtype || changes.category);
   }
-  if (changes.attachments !== undefined || changes.anhaenge !== undefined) {
-    filteredChanges.attachments = normalizeAttachments(changes.attachments !== undefined ? changes.attachments : changes.anhaenge, id);
+  if (changes.attachments !== undefined) {
+    filteredChanges.attachments = normalizeAttachments(changes.attachments, id);
   }
   if (changes.featured !== undefined) {
     filteredChanges.featured = changes.featured;
   }
-  if (changes.createdAt !== undefined || changes.erstelltAm !== undefined) {
-    filteredChanges.createdAt = changes.createdAt !== undefined ? changes.createdAt : changes.erstelltAm;
+  if (changes.createdAt !== undefined) {
+    filteredChanges.createdAt = changes.createdAt;
   }
 
   return store.updateItem(FILE_NAME, id, filteredChanges);

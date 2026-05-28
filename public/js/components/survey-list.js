@@ -4,23 +4,23 @@ import { escapeHtml } from './modal.js';
 import { showError, showSuccess } from './toast.js';
 
 async function render(container) {
-  container.innerHTML = '<p class="leer-zustand-text">' + t('general.loading') + '</p>';
+  container.innerHTML = '<p class="empty-state-text">' + t('general.loading') + '</p>';
 
   const response = await api.get('/api/surveys');
 
   if (!response.ok || !response.data || response.data.length === 0) {
     container.innerHTML = `
-      <div class="leer-zustand">
-        <div class="leer-zustand-icon">&#128203;</div>
-        <p class="leer-zustand-text">${t('survey.empty')}</p>
+      <div class="empty-state">
+        <div class="empty-state-icon">&#128203;</div>
+        <p class="empty-state-text">${t('survey.empty')}</p>
       </div>
     `;
     return;
   }
 
   const html = `
-    <h1 class="sektion-titel">${t('survey.title')}</h1>
-    <div class="umfragen-container">
+    <h1 class="section-title">${t('survey.title')}</h1>
+    <div class="surveys-container">
       ${response.data.map((survey) => renderSurvey(survey)).join('')}
     </div>
   `;
@@ -35,16 +35,16 @@ function renderSurvey(survey) {
   ).join('');
 
   return `
-    <div class="umfrage-karte" data-survey-id="${escapeHtml(survey.id)}">
-      <h2 class="karte-titel">${escapeHtml(survey.title)}</h2>
-      ${survey.description ? `<p class="karte-text">${escapeHtml(survey.description)}</p>` : ''}
-      <form class="umfrage-formular">
+    <div class="survey-card" data-survey-id="${escapeHtml(survey.id)}">
+      <h2 class="card-title">${escapeHtml(survey.title)}</h2>
+      ${survey.description ? `<p class="card-text">${escapeHtml(survey.description)}</p>` : ''}
+      <form class="survey-form">
         ${questionsHtml}
-        <div class="formular-gruppe">
-          <input type="text" class="formular-eingabe umfrage-name"
+        <div class="form-group">
+          <input type="text" class="form-input survey-name"
             placeholder="${t('survey.namePlaceholder')}">
         </div>
-        <button type="submit" class="btn btn-primaer">${t('survey.submit')}</button>
+        <button type="submit" class="btn btn-primary">${t('survey.submit')}</button>
       </form>
     </div>
   `;
@@ -56,7 +56,7 @@ function renderQuestion(question, index) {
   switch (question.type) {
     case 'free_text':
       inputHtml = `
-        <textarea class="formular-textarea frage-eingabe"
+        <textarea class="form-textarea question-input"
           data-index="${index}"
           placeholder="${t('survey.freeText')}"
           rows="3"></textarea>
@@ -65,9 +65,9 @@ function renderQuestion(question, index) {
 
     case 'rating':
       inputHtml = `
-        <div class="sterne-bewertung frage-eingabe" data-index="${index}" data-wert="0">
+        <div class="star-rating question-input" data-index="${index}" data-value="0">
           ${[1,2,3,4,5].map(n => `
-            <svg class="stern" data-wert="${n}" viewBox="0 0 24 24">
+            <svg class="star" data-value="${n}" viewBox="0 0 24 24">
               <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
             </svg>
           `).join('')}
@@ -77,19 +77,19 @@ function renderQuestion(question, index) {
 
     case 'yes_no':
       inputHtml = `
-        <div class="ja-nein-auswahl frage-eingabe" data-index="${index}" data-wert="">
-          <button type="button" class="ja-nein-btn" data-wert="yes">${t('survey.yesLabel')}</button>
-          <button type="button" class="ja-nein-btn" data-wert="no">${t('survey.noLabel')}</button>
+        <div class="yes-no-choice question-input" data-index="${index}" data-value="">
+          <button type="button" class="yes-no-button" data-value="yes">${t('survey.yesLabel')}</button>
+          <button type="button" class="yes-no-button" data-value="no">${t('survey.noLabel')}</button>
         </div>
       `;
       break;
 
     case 'choice':
       inputHtml = `
-        <div class="auswahl-gruppe frage-eingabe" data-index="${index}" data-wert="">
+        <div class="option-group question-input" data-index="${index}" data-value="">
           ${(question.options || []).map(option => `
-            <label class="auswahl-option">
-              <input type="radio" name="frage_${index}" value="${escapeHtml(getOptionValue(option))}">
+            <label class="option-choice">
+              <input type="radio" name="question_${index}" value="${escapeHtml(getOptionValue(option))}">
               <span>${escapeHtml(getOptionLabel(option))}</span>
             </label>
           `).join('')}
@@ -98,10 +98,10 @@ function renderQuestion(question, index) {
       break;
     case 'multiple_choice':
       inputHtml = `
-        <div class="auswahl-gruppe frage-eingabe" data-index="${index}" data-wert="">
+        <div class="option-group question-input" data-index="${index}" data-value="">
           ${(question.options || []).map(option => `
-            <label class="auswahl-option">
-              <input type="checkbox" name="frage_${index}" value="${escapeHtml(getOptionValue(option))}">
+            <label class="option-choice">
+              <input type="checkbox" name="question_${index}" value="${escapeHtml(getOptionValue(option))}">
               <span>${escapeHtml(getOptionLabel(option))}</span>
             </label>
           `).join('')}
@@ -111,44 +111,44 @@ function renderQuestion(question, index) {
 
     default:
       inputHtml = `
-        <input type="text" class="formular-eingabe frage-eingabe"
+        <input type="text" class="form-input question-input"
           data-index="${index}"
           placeholder="${t('survey.freeText')}">
       `;
   }
 
   return `
-    <div class="frage-block">
-      <p class="frage-text">${escapeHtml(question.text)}</p>
+    <div class="question-block">
+      <p class="question-text">${escapeHtml(question.text)}</p>
       ${inputHtml}
     </div>
   `;
 }
 
 function registerEvents(container) {
-  container.querySelectorAll('.sterne-bewertung').forEach((rating) => {
-    rating.querySelectorAll('.stern').forEach((star) => {
+  container.querySelectorAll('.star-rating').forEach((rating) => {
+    rating.querySelectorAll('.star').forEach((star) => {
       star.addEventListener('click', () => {
-        const value = parseInt(star.dataset.wert, 10);
-        rating.dataset.wert = value;
+        const value = parseInt(star.dataset.value, 10);
+        rating.dataset.value = value;
         updateStars(rating, value);
       });
     });
   });
 
-  container.querySelectorAll('.ja-nein-auswahl').forEach((choice) => {
-    choice.querySelectorAll('.ja-nein-btn').forEach((button) => {
+  container.querySelectorAll('.yes-no-choice').forEach((choice) => {
+    choice.querySelectorAll('.yes-no-button').forEach((button) => {
       button.addEventListener('click', () => {
-        choice.querySelectorAll('.ja-nein-btn').forEach((element) =>
-          element.classList.remove('ausgewaehlt')
+        choice.querySelectorAll('.yes-no-button').forEach((element) =>
+          element.classList.remove('selected')
         );
-        button.classList.add('ausgewaehlt');
-        choice.dataset.wert = button.dataset.wert;
+        button.classList.add('selected');
+        choice.dataset.value = button.dataset.value;
       });
     });
   });
 
-  container.querySelectorAll('.umfrage-formular').forEach((form) => {
+  container.querySelectorAll('.survey-form').forEach((form) => {
     form.addEventListener('submit', (event) => {
       event.preventDefault();
       submitSurvey(form);
@@ -157,31 +157,31 @@ function registerEvents(container) {
 }
 
 function updateStars(rating, value) {
-  rating.querySelectorAll('.stern').forEach((star) => {
-    const starValue = parseInt(star.dataset.wert, 10);
+  rating.querySelectorAll('.star').forEach((star) => {
+    const starValue = parseInt(star.dataset.value, 10);
     if (starValue <= value) {
-      star.classList.add('aktiv');
+      star.classList.add('active');
     } else {
-      star.classList.remove('aktiv');
+      star.classList.remove('active');
     }
   });
 }
 
 async function submitSurvey(form) {
-  const card = form.closest('.umfrage-karte');
+  const card = form.closest('.survey-card');
   const surveyId = card.dataset.surveyId;
-  const nameInput = form.querySelector('.umfrage-name');
+  const nameInput = form.querySelector('.survey-name');
   const name = nameInput ? nameInput.value.trim() : '';
 
   const responses = [];
-  form.querySelectorAll('.frage-eingabe').forEach((input) => {
+  form.querySelectorAll('.question-input').forEach((input) => {
     if (input.tagName === 'TEXTAREA' || input.tagName === 'INPUT') {
       responses.push(input.value);
-    } else if (input.classList.contains('sterne-bewertung')) {
-      responses.push(parseInt(input.dataset.wert, 10) || 0);
-    } else if (input.classList.contains('ja-nein-auswahl')) {
-      responses.push(input.dataset.wert || '');
-    } else if (input.classList.contains('auswahl-gruppe')) {
+    } else if (input.classList.contains('star-rating')) {
+      responses.push(parseInt(input.dataset.value, 10) || 0);
+    } else if (input.classList.contains('yes-no-choice')) {
+      responses.push(input.dataset.value || '');
+    } else if (input.classList.contains('option-group')) {
       const selected = Array.from(input.querySelectorAll('input:checked')).map((option) => option.value);
       responses.push(input.querySelector('input[type="checkbox"]') ? selected : (selected[0] || ''));
     }
@@ -195,10 +195,10 @@ async function submitSurvey(form) {
   if (result.ok) {
     showSuccess(t('survey.success'));
     form.reset();
-    form.querySelectorAll('.stern').forEach((star) => star.classList.remove('aktiv'));
-    form.querySelectorAll('.ja-nein-btn').forEach((button) => button.classList.remove('ausgewaehlt'));
-    form.querySelectorAll('.sterne-bewertung').forEach((rating) => { rating.dataset.wert = '0'; });
-    form.querySelectorAll('.ja-nein-auswahl').forEach((choice) => { choice.dataset.wert = ''; });
+    form.querySelectorAll('.star').forEach((star) => star.classList.remove('active'));
+    form.querySelectorAll('.yes-no-button').forEach((button) => button.classList.remove('selected'));
+    form.querySelectorAll('.star-rating').forEach((rating) => { rating.dataset.value = '0'; });
+    form.querySelectorAll('.yes-no-choice').forEach((choice) => { choice.dataset.value = ''; });
   } else {
     showError(t('survey.error'));
   }

@@ -114,7 +114,7 @@ function updatePageChrome() {
     element.textContent = t('app.title');
   });
 
-  document.querySelectorAll('.logo-bild').forEach((element) => {
+  document.querySelectorAll('.logo-image').forEach((element) => {
     element.alt = t('app.logoAlt');
   });
 }
@@ -126,7 +126,7 @@ function renderNavigation() {
   }
 
   const mainItems = NAVIGATION_ITEMS.map((item) => `
-    <a class="tab-link ${item.key === activeRoute ? 'aktiv' : ''}"
+    <a class="tab-link ${item.key === activeRoute ? 'active' : ''}"
       href="${localizePath(item.path)}" data-route="${item.key}"
       aria-current="${item.key === activeRoute ? 'page' : 'false'}">
       <span class="tab-icon">${icon(item.icon, 18)}</span>
@@ -134,8 +134,8 @@ function renderNavigation() {
     </a>
   `).join('');
 
-  // Theme- und Sprach-Toggle teilen sich nun den .tab-link-Stil,
-  // sitzen aber rechtsbündig in einer eigenen Gruppe (.nav-utilities).
+  // Theme and language controls share the tab-link treatment and sit in a
+  // dedicated utility group.
   const themeName = getTheme();
   const themeIcon = themeName === 'dark' ? 'sun' : 'moon';
   const otherLanguage = getLanguage() === 'de' ? 'EN' : 'DE';
@@ -181,7 +181,7 @@ function renderNavigation() {
 }
 
 async function renderRoute(route) {
-  const mainContent = document.getElementById('hauptinhalt');
+  const mainContent = document.getElementById('main-content');
   if (!mainContent || !route) {
     return;
   }
@@ -191,7 +191,7 @@ async function renderRoute(route) {
   const navigationId = ++pendingNavigation;
   const section = document.createElement('section');
   section.id = 'route-' + route.key;
-  section.className = 'sektion aktiv';
+  section.className = 'section active';
   section.setAttribute('aria-live', 'polite');
   section.innerHTML = renderRouteSkeleton(route.skeleton || route.key);
 
@@ -217,25 +217,25 @@ async function renderRoute(route) {
     }
 
     section.innerHTML = `
-      <div class="leer-zustand">
-        <div class="leer-zustand-icon">${icon('alertCircle', 48)}</div>
-        <p class="leer-zustand-text">${t('general.error')}</p>
+      <div class="empty-state">
+        <div class="empty-state-icon">${icon('alertCircle', 48)}</div>
+        <p class="empty-state-text">${t('general.error')}</p>
       </div>
     `;
   }
 }
 
 function setViewClasses(route) {
-  const mainContent = document.getElementById('hauptinhalt');
+  const mainContent = document.getElementById('main-content');
   if (!mainContent) {
     return;
   }
 
   const isAdminView = (route.navigationKey || route.key) === 'admin';
-  // Admin teilt jetzt dasselbe Hauptlayout wie der Rest; die alten
-  // Sonder-Klassen bleiben für Auth-Karten (Login/Setup) erhalten.
-  mainContent.classList.toggle('hauptinhalt-admin', isAdminView);
-  document.body.classList.toggle('ansicht-admin', isAdminView);
+  // Admin uses the same main layout as the rest; auth cards keep their
+  // dedicated class hook for login/setup views.
+  mainContent.classList.toggle('main-content-admin', isAdminView);
+  document.body.classList.toggle('view-admin', isAdminView);
 }
 
 function findRouteByPath(pathname) {

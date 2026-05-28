@@ -1,44 +1,44 @@
 // ===========================================
-// State Service - Einfacher Event-Bus
+// State service - simple event bus
 // ===========================================
 
 /** @type {Map<string, Array<Function>>} Event-Listener Map */
-const abonnenten = new Map();
+const subscribers = new Map();
 
 /**
- * Registriert einen Listener fuer ein Event.
- * @param {string} ereignis - Event-Name
+ * Registers a listener for an event.
+ * @param {string} eventName - Event-Name
  * @param {Function} callback - Callback-Funktion
- * @returns {Function} Abmelde-Funktion
+ * @returns {Function} Unsubscribe function
  */
-function abonniere(ereignis, callback) {
-  if (!abonnenten.has(ereignis)) {
-    abonnenten.set(ereignis, []);
+function subscribe(eventName, callback) {
+  if (!subscribers.has(eventName)) {
+    subscribers.set(eventName, []);
   }
-  abonnenten.get(ereignis).push(callback);
+  subscribers.get(eventName).push(callback);
 
-  // Abmelde-Funktion zurueckgeben
+  // Return the unsubscribe function.
   return () => {
-    const liste = abonnenten.get(ereignis);
-    if (liste) {
-      const index = liste.indexOf(callback);
+    const list = subscribers.get(eventName);
+    if (list) {
+      const index = list.indexOf(callback);
       if (index > -1) {
-        liste.splice(index, 1);
+        list.splice(index, 1);
       }
     }
   };
 }
 
 /**
- * Sendet ein Event an alle Abonnenten.
- * @param {string} ereignis - Event-Name
- * @param {*} daten - Zu uebergebende Daten
+ * Sends an event to all subscribers.
+ * @param {string} eventName - Event-Name
+ * @param {*} data - Data to pass to listeners
  */
-function sende(ereignis, daten) {
-  const liste = abonnenten.get(ereignis);
-  if (liste) {
-    liste.forEach(callback => callback(daten));
+function emit(eventName, data) {
+  const list = subscribers.get(eventName);
+  if (list) {
+    list.forEach(callback => callback(data));
   }
 }
 
-export { abonniere, sende };
+export { subscribe, emit };

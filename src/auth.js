@@ -50,12 +50,12 @@ function verifyPassword(password, hash, salt) {
 }
 
 function verifyScryptPassword(password, encodedHash) {
-  const parts = encodedHash.split('$');
-  if (parts.length !== 3) {
+  const ptypes = encodedHash.split('$');
+  if (ptypes.length !== 3) {
     return false;
   }
 
-  const [, salt, expectedHash] = parts;
+  const [, salt, expectedHash] = ptypes;
   const computedHash = crypto.scryptSync(password, salt, PASSWORD_KEY_LENGTH).toString('hex');
   return compareHexStrings(computedHash, expectedHash);
 }

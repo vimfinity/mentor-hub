@@ -1,5 +1,5 @@
 import * as api from '../services/api-client.js';
-import { holeAbfrage } from '../services/query-cache.js';
+import { fetchQuery } from '../services/query-cache.js';
 import { t, getLocale } from '../services/i18n.js';
 import { escapeHtml } from './modal.js';
 import { icon } from './icons.js';
@@ -19,9 +19,9 @@ async function render(container, context = {}) {
     return;
   }
 
-  const response = await holeAbfrage({
-    schluessel: ['feed-detail', getLocale(), id],
-    abrufFunktion: () => api.get('/api/feed/' + encodeURIComponent(id)),
+  const response = await fetchQuery({
+    key: ['feed-detail', getLocale(), id],
+    fetchFunction: () => api.get('/api/feed/' + encodeURIComponent(id)),
     ttlMs: DETAIL_CACHE_TTL_MS
   });
 
@@ -42,13 +42,13 @@ async function render(container, context = {}) {
       <header class="feed-detail-header">
         <div class="feed-detail-meta">
           <span class="feed-card-type ${escapeHtml(config.accent)}">${escapeHtml(t(config.labelKey))}</span>
-          <time class="feed-card-zeit">${escapeHtml(formatDate(item.createdAt))}</time>
+          <time class="feed-card-time">${escapeHtml(formatDate(item.createdAt))}</time>
           ${sourceLabel ? `<span class="feed-detail-source">${escapeHtml(sourceLabel)}</span>` : ''}
         </div>
-        <h1 class="feed-detail-titel">${escapeHtml(item.title)}</h1>
+        <h1 class="feed-detail-title">${escapeHtml(item.title)}</h1>
         ${item.summary ? `<p class="feed-detail-lead">${escapeHtml(item.summary)}</p>` : ''}
         <div class="feed-detail-actions">
-          <button class="tab-link tab-link-utility tab-link-icon" type="button" data-copy-article-link aria-label="Link kopieren" title="Link kopieren">
+          <button class="tab-link tab-link-utility tab-link-icon" type="button" data-copy-article-link aria-label="Link copy" title="Link copy">
             <span class="tab-icon">${icon('link', 16)}</span>
           </button>
         </div>
@@ -84,7 +84,7 @@ async function render(container, context = {}) {
       ` : ''}
 
       ${item.url ? `
-        <a class="btn btn-sekundaer feed-detail-external"
+        <a class="btn btn-secondary feed-detail-external"
           href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer">
           ${icon('externalLink', 14)}
           <span>${escapeHtml(extractDomain(item.url))}</span>
@@ -105,7 +105,7 @@ async function render(container, context = {}) {
   if (copyButton) {
     copyButton.addEventListener('click', async () => {
       await copyToClipboard(new URL('/' + getLocale() + '/feed/' + encodeURIComponent(item.id), window.location.origin).href);
-      showSuccess('Link wurde kopiert');
+      showSuccess('Link copied');
     });
   }
 }
@@ -115,20 +115,20 @@ function preload(context = {}) {
   if (!id) {
     return Promise.resolve();
   }
-  return holeAbfrage({
-    schluessel: ['feed-detail', getLocale(), id],
-    abrufFunktion: () => api.get('/api/feed/' + encodeURIComponent(id)),
+  return fetchQuery({
+    key: ['feed-detail', getLocale(), id],
+    fetchFunction: () => api.get('/api/feed/' + encodeURIComponent(id)),
     ttlMs: DETAIL_CACHE_TTL_MS
   });
 }
 
 function renderNotFound(container, context) {
   container.innerHTML = `
-    <div class="feed-leer">
-      <div class="feed-leer-icon">${icon('alertCircle', 56)}</div>
-      <h2 class="feed-leer-titel">${escapeHtml(t('feed.detailMissingTitle'))}</h2>
-      <p class="feed-leer-text">${escapeHtml(t('feed.detailMissingText'))}</p>
-      <a class="btn btn-sekundaer" href="/" data-back="1" style="margin-top: 1rem;">
+    <div class="feed-empty">
+      <div class="feed-empty-icon">${icon('alertCircle', 56)}</div>
+      <h2 class="feed-empty-title">${escapeHtml(t('feed.detailMissingTitle'))}</h2>
+      <p class="feed-empty-text">${escapeHtml(t('feed.detailMissingText'))}</p>
+      <a class="btn btn-secondary" href="/" data-back="1" style="margin-top: 1rem;">
         ${escapeHtml(t('feed.backToFeed'))}
       </a>
     </div>
@@ -186,7 +186,7 @@ function formatTag(tag) {
   return tag
     .split(/[-_\s]+/)
     .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .map((ptype) => ptype.charAt(0).toUpperCase() + ptype.slice(1))
     .join(' ');
 }
 

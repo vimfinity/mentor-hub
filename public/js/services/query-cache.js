@@ -1,87 +1,87 @@
-const STANDARD_TTL_MS = 5 * 60 * 1000;
-const abfragen = new Map();
+const DEFAULT_TTL_MS = 5 * 60 * 1000;
+const queryCache = new Map();
 
-function normalisiereSchluessel(schluessel) {
-  if (Array.isArray(schluessel)) {
-    return JSON.stringify(schluessel);
+function normalizeKey(key) {
+  if (Array.isArray(key)) {
+    return JSON.stringify(key);
   }
 
-  return String(schluessel);
+  return String(key);
 }
 
-function istCachebar(daten) {
-  if (!daten || typeof daten !== 'object' || !('ok' in daten)) {
+function isCacheable(data) {
+  if (!data || typeof data !== 'object' || !('ok' in data)) {
     return true;
   }
 
-  return daten.ok;
+  return data.ok;
 }
 
-async function holeAbfrage({ schluessel, abrufFunktion, ttlMs = STANDARD_TTL_MS }) {
-  const normalisierterSchluessel = normalisiereSchluessel(schluessel);
-  const jetzt = Date.now();
-  const vorhandenerEintrag = abfragen.get(normalisierterSchluessel);
+async function fetchQuery({ key, fetchFunction, ttlMs = DEFAULT_TTL_MS }) {
+  const normalizedKey = normalizeKey(key);
+  const now = Date.now();
+  const existingEntry = queryCache.get(normalizedKey);
 
-  if (vorhandenerEintrag) {
-    if (vorhandenerEintrag.status === 'laeuft') {
-      return vorhandenerEintrag.promise;
+  if (existingEntry) {
+    if (existingEntry.status === 'running') {
+      return existingEntry.promise;
     }
 
-    if (vorhandenerEintrag.status === 'erfolgreich' && vorhandenerEintrag.gueltigBis > jetzt) {
-      return vorhandenerEintrag.daten;
+    if (existingEntry.status === 'success' && existingEntry.validUntil > now) {
+      return existingEntry.data;
     }
   }
 
   const promise = Promise.resolve()
-    .then(() => abrufFunktion())
-    .then((daten) => {
-      if (!istCachebar(daten)) {
-        abfragen.delete(normalisierterSchluessel);
-        return daten;
+    .then(() => fetchFunction())
+    .then((data) => {
+      if (!isCacheable(data)) {
+        queryCache.delete(normalizedKey);
+        return data;
       }
 
-      abfragen.set(normalisierterSchluessel, {
-        status: 'erfolgreich',
-        daten,
-        gueltigBis: Date.now() + ttlMs
+      queryCache.set(normalizedKey, {
+        status: 'success',
+        data,
+        validUntil: Date.now() + ttlMs
       });
 
-      return daten;
+      return data;
     })
-    .catch((fehler) => {
-      abfragen.delete(normalisierterSchluessel);
-      throw fehler;
+    .catch((error) => {
+      queryCache.delete(normalizedKey);
+      throw error;
     });
 
-  abfragen.set(normalisierterSchluessel, {
-    status: 'laeuft',
+  queryCache.set(normalizedKey, {
+    status: 'running',
     promise,
-    gueltigBis: jetzt + ttlMs
+    validUntil: now + ttlMs
   });
 
   return promise;
 }
 
-function invalidiereAbfrage(schluessel) {
-  abfragen.delete(normalisiereSchluessel(schluessel));
+function invalidateQuery(key) {
+  queryCache.delete(normalizeKey(key));
 }
 
-function invalidiereAbfragenMitPraefix(praefix) {
-  const normalisiertesPraefix = normalisiereSchluessel(praefix);
-  const arrayPraefix = Array.isArray(praefix)
-    ? normalisiertesPraefix.replace(/\]$/, ',')
-    : normalisiertesPraefix;
+function invalidateQueriesByPrefix(prefix) {
+  const normalizedPrefix = normalizeKey(prefix);
+  const arrayPrefix = Array.isArray(prefix)
+    ? normalizedPrefix.replace(/\]$/, ',')
+    : normalizedPrefix;
 
-  for (const schluessel of abfragen.keys()) {
-    if (schluessel.startsWith(normalisiertesPraefix) || schluessel.startsWith(arrayPraefix)) {
-      abfragen.delete(schluessel);
+  for (const key of queryCache.keys()) {
+    if (key.startsWith(normalizedPrefix) || key.startsWith(arrayPrefix)) {
+      queryCache.delete(key);
     }
   }
 }
 
 export {
-  holeAbfrage,
-  invalidiereAbfrage,
-  invalidiereAbfragenMitPraefix,
-  STANDARD_TTL_MS
+  fetchQuery,
+  invalidateQuery,
+  invalidateQueriesByPrefix,
+  DEFAULT_TTL_MS
 };

@@ -214,7 +214,7 @@ function registerRoutes(router) {
     }
 
     readBody(req, res, (body) => {
-      const password = body?.password || body?.passwort;
+      const password = body?.password;
 
       if (!password || password.length < 8) {
         sendJson(res, 400, { error: 'Password is required (minimum 8 characters)' });
@@ -235,13 +235,13 @@ function registerRoutes(router) {
   router.post('/api/admin/login', (req, res) => {
     const config = loadConfig();
 
-    if (!config.adminPasswordHash || config.adminPasswordHash.length === 0) {
+    if (!config.adminPasswordHash.length === 0) {
       sendJson(res, 503, { error: 'Initial setup required (POST /api/admin/setup)' });
       return;
     }
 
     readBody(req, res, (body) => {
-      const password = body?.password || body?.passwort;
+      const password = body?.password;
 
       if (!password) {
         sendJson(res, 400, { error: 'Password is required' });
@@ -288,7 +288,7 @@ function registerRoutes(router) {
     }
 
     readBody(req, res, (body) => {
-      const newPassword = body?.newPassword || body?.neuesPasswort;
+      const newPassword = body?.newPassword;
 
       if (!newPassword || newPassword.length < 8) {
         sendJson(res, 400, { error: 'New password is required (minimum 8 characters)' });
@@ -416,9 +416,9 @@ function registerRoutes(router) {
     }
 
     readBody(req, res, (body) => {
-      const title = body?.title || body?.titel;
-      const description = body?.description || body?.beschreibung || '';
-      const questions = body?.questions || body?.fragen;
+      const title = body?.title;
+      const description = body?.description || '';
+      const questions = body?.questions;
 
       if (!hasLocalizedText(title)) {
         sendJson(res, 400, { error: 'Title is required' });
@@ -466,7 +466,7 @@ function registerRoutes(router) {
 
     readBody(req, res, (body) => {
       const direction = body?.direction || body?.richtung;
-      if (direction !== 'up' && direction !== 'down' && direction !== 'hoch' && direction !== 'runter') {
+      if (direction !== 'up' && direction !== 'down' && direction !== 'hoch' && direction !== 'down') {
         sendJson(res, 400, { error: 'Direction must be up or down' });
         return;
       }
@@ -500,11 +500,11 @@ function registerRoutes(router) {
     }
 
     readBody(req, res, (body) => {
-      const title = body?.title || body?.titel;
-      const description = body?.description || body?.beschreibung || '';
-      const category = body?.category || body?.kategorie || 'article';
-      const kind = body?.kind || body?.art || 'agent-asset';
-      const subtype = body?.subtype || body?.untertyp || category;
+      const title = body?.title;
+      const description = body?.description || '';
+      const category = body?.category || 'article';
+      const kind = body?.kind || body?.type || 'agent-asset';
+      const subtype = body?.subtype || category;
 
       if (!hasLocalizedText(title)) {
         sendJson(res, 400, { error: 'Title is required' });
@@ -518,7 +518,7 @@ function registerRoutes(router) {
         sendJson(res, 400, { error: 'URL is too long (max 2000 characters)' });
         return;
       }
-      const createdAt = normalizeEditableDate(body.createdAt || body.erstelltAm);
+      const createdAt = normalizeEditableDate(body.createdAt);
       if (!createdAt) {
         sendJson(res, 400, { error: 'Invalid date' });
         return;
@@ -559,11 +559,11 @@ function registerRoutes(router) {
     }
 
     readBody(req, res, (body) => {
-      const title = body?.title || body?.titel;
-      const description = body?.description !== undefined ? body.description : body?.beschreibung;
-      const category = body?.category || body?.kategorie;
-      const kind = body?.kind || body?.art;
-      const subtype = body?.subtype || body?.untertyp || category;
+      const title = body?.title;
+      const description = body?.description;
+      const category = body?.category;
+      const kind = body?.kind || body?.type;
+      const subtype = body?.subtype || category;
 
       if (title !== undefined && !hasLocalizedText(title)) {
         sendJson(res, 400, { error: 'Title is required' });
@@ -585,8 +585,8 @@ function registerRoutes(router) {
         sendJson(res, 400, { error: 'Detail content is too long (max 200000 characters)' });
         return;
       }
-      if (body.createdAt !== undefined || body.erstelltAm !== undefined) {
-        const createdAt = normalizeEditableDate(body.createdAt || body.erstelltAm);
+      if (body.createdAt !== undefined) {
+        const createdAt = normalizeEditableDate(body.createdAt);
         if (!createdAt) {
           sendJson(res, 400, { error: 'Invalid date' });
           return;
@@ -748,8 +748,8 @@ function registerRoutes(router) {
     }
 
     readBody(req, res, (body) => {
-      const title = body?.title || body?.titel;
-      const content = body?.content || body?.inhalt || '';
+      const title = body?.title;
+      const content = body?.content || '';
       const url = body?.url || '';
       const type = body?.type || 'announcement';
       const featured = body?.featured || false;
@@ -774,7 +774,7 @@ function registerRoutes(router) {
         sendJson(res, 400, { error: 'Invalid type' });
         return;
       }
-      const createdAt = normalizeEditableDate(body.createdAt || body.erstelltAm);
+      const createdAt = normalizeEditableDate(body.createdAt);
       if (!createdAt) {
         sendJson(res, 400, { error: 'Invalid date' });
         return;
@@ -805,8 +805,8 @@ function registerRoutes(router) {
     }
 
     readBody(req, res, (body) => {
-      const title = body?.title || body?.titel;
-      const content = body?.content || body?.inhalt || '';
+      const title = body?.title;
+      const content = body?.content || '';
       const url = body?.url;
       const type = body?.type;
 
@@ -826,8 +826,8 @@ function registerRoutes(router) {
         sendJson(res, 400, { error: 'Detail content is too long (max 200000 characters)' });
         return;
       }
-      if (body.createdAt !== undefined || body.erstelltAm !== undefined) {
-        const createdAt = normalizeEditableDate(body.createdAt || body.erstelltAm);
+      if (body.createdAt !== undefined) {
+        const createdAt = normalizeEditableDate(body.createdAt);
         if (!createdAt) {
           sendJson(res, 400, { error: 'Invalid date' });
           return;

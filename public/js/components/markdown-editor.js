@@ -6,7 +6,7 @@ const TOOLBAR_GROUPS = [
   {
     label: 'Text',
     buttons: [
-      { action: 'heading', labelKey: 'editor.heading', iconName: 'newspaper', snippet: '<h2>Überschrift</h2>\n<p>Einleitungstext...</p>\n' },
+      { action: 'heading', labelKey: 'editor.heading', iconName: 'newspaper', snippet: '<h2>Heading</h2>\n<p>Intro text...</p>\n' },
       { action: 'paragraph', labelKey: 'editor.paragraph', iconName: 'edit', snippet: '<p>Absatz...</p>\n' },
       { action: 'list', labelKey: 'editor.list', iconName: 'clipboardList', snippet: '<ul>\n  <li>Punkt 1</li>\n  <li>Punkt 2</li>\n</ul>\n' },
       { action: 'code', labelKey: 'editor.code', iconName: 'edit', snippet: '<pre><code>const x = 42;\nconsole.log(x);</code></pre>\n' }
@@ -15,14 +15,14 @@ const TOOLBAR_GROUPS = [
   {
     label: 'Layout',
     buttons: [
-      { action: 'image', labelKey: 'editor.image', iconName: 'image', snippet: '<figure>\n  <img src="https://..." alt="Beschreibung">\n  <figcaption>Bildunterschrift</figcaption>\n</figure>\n' },
-      { action: 'table', labelKey: 'editor.table', iconName: 'clipboardList', snippet: '<table>\n  <thead>\n    <tr><th>Spalte 1</th><th>Spalte 2</th></tr>\n  </thead>\n  <tbody>\n    <tr><td>Wert A</td><td>Wert B</td></tr>\n    <tr><td>Wert C</td><td>Wert D</td></tr>\n  </tbody>\n</table>\n' },
-      { action: 'callout', labelKey: 'editor.callout', iconName: 'alertCircle', snippet: '<aside style="padding:1rem;border-left:4px solid #007d8f;background:#f4f4f5;border-radius:.5rem">\n  <strong>Hinweis:</strong> Wichtige Information für den Leser.\n</aside>\n' },
-      { action: 'details', labelKey: 'editor.details', iconName: 'eye', snippet: '<details>\n  <summary>Mehr anzeigen</summary>\n  <p>Versteckter Inhalt, der erst beim Klick erscheint.</p>\n</details>\n' }
+      { action: 'image', labelKey: 'editor.image', iconName: 'image', snippet: '<figure>\n  <img src="https://..." alt="Description">\n  <figcaption>Caption</figcaption>\n</figure>\n' },
+      { action: 'table', labelKey: 'editor.table', iconName: 'clipboardList', snippet: '<table>\n  <thead>\n    <tr><th>Column 1</th><th>Column 2</th></tr>\n  </thead>\n  <tbody>\n    <tr><td>Value A</td><td>Value B</td></tr>\n    <tr><td>Value C</td><td>Value D</td></tr>\n  </tbody>\n</table>\n' },
+      { action: 'callout', labelKey: 'editor.callout', iconName: 'alertCircle', snippet: '<aside style="padding:1rem;border-left:4px solid #007d8f;background:#f4f4f5;border-radius:.5rem">\n  <strong>Note:</strong> Important information for the reader.\n</aside>\n' },
+      { action: 'details', labelKey: 'editor.details', iconName: 'eye', snippet: '<details>\n  <summary>Show more</summary>\n  <p>Hidden content that appears after clicking.</p>\n</details>\n' }
     ]
   },
   {
-    label: 'Interaktiv',
+    label: 'Interactive',
     buttons: [
       { action: 'slider', labelKey: 'editor.slider', iconName: 'play', snippet: buildSliderSnippet() },
       { action: 'tabs', labelKey: 'editor.tabs', iconName: 'layoutDashboard', snippet: buildTabsSnippet() },
@@ -157,10 +157,10 @@ function translate(key) {
 }
 
 const FALLBACK_LABELS = {
-  'editor.heading': 'Überschrift',
+  'editor.heading': 'Heading',
   'editor.paragraph': 'Absatz',
   'editor.list': 'Liste',
-  'editor.image': 'Bild',
+  'editor.image': 'Image',
   'editor.table': 'Tabelle',
   'editor.code': 'Code',
   'editor.callout': 'Hinweis',
@@ -172,10 +172,10 @@ const FALLBACK_LABELS = {
   'editor.diagram': 'Diagramm',
   'editor.preview': 'Vorschau',
   'editor.togglePreview': 'Vorschau ein-/ausblenden',
-  'editor.refresh': 'Vorschau neu laden',
+  'editor.refresh': 'Refresh preview',
   'editor.toolbar': 'Format',
-  'editor.placeholder': 'Schreibe deinen Inhalt als HTML. Style und Script sind erlaubt.',
-  'editor.hint': 'HTML, CSS und JavaScript funktionieren. Inhalt läuft in einem sandboxed iframe – also isoliert vom Rest der Seite.'
+  'editor.placeholder': 'Write your content as HTML. Style and script tags are allowed.',
+  'editor.hint': 'HTML, CSS, and JavaScript work. Content runs in a sandboxed iframe, isolated from the rest of the page.'
 };
 
 function escape(text) {
@@ -187,7 +187,7 @@ function escape(text) {
 function buildSliderSnippet() {
   return `<div style="padding:1rem;border:1px solid #d9d9d9;border-radius:.5rem">
   <label style="display:block;margin-bottom:.5rem">
-    Wert: <output id="slider-out">50</output>
+    Value: <output id="slider-out">50</output>
   </label>
   <input id="slider" type="range" min="0" max="100" value="50">
   <script>
@@ -207,9 +207,9 @@ function buildTabsSnippet() {
     <button data-tab="c" class="tab-btn" style="flex:1;padding:.6rem;border:0;background:transparent;cursor:pointer">Tab C</button>
   </div>
   <div style="padding:1rem">
-    <div data-pane="a">Inhalt von Tab A.</div>
-    <div data-pane="b" hidden>Inhalt von Tab B.</div>
-    <div data-pane="c" hidden>Inhalt von Tab C.</div>
+    <div data-pane="a">Content for tab A.</div>
+    <div data-pane="b" hidden>Content for tab B.</div>
+    <div data-pane="c" hidden>Content for tab C.</div>
   </div>
   <script>
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -226,7 +226,7 @@ function buildTabsSnippet() {
 
 function buildQuizSnippet() {
   return `<div style="padding:1rem;border:1px solid #d9d9d9;border-radius:.5rem">
-  <p><strong>Frage:</strong> Was ist 2 + 2?</p>
+  <p><strong>Question:</strong> What is 2 + 2?</p>
   <div style="display:flex;flex-direction:column;gap:.4rem">
     <button data-ok="false" class="opt" style="padding:.5rem;text-align:left">3</button>
     <button data-ok="true"  class="opt" style="padding:.5rem;text-align:left">4</button>
@@ -254,8 +254,8 @@ function buildChartSnippet() {
     new Chart(document.getElementById('chart'), {
       type: 'bar',
       data: {
-        labels: ['Jan', 'Feb', 'Mär', 'Apr', 'Mai'],
-        datasets: [{ label: 'Anfragen', data: [12, 19, 8, 15, 22], backgroundColor: '#007d8f' }]
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mai'],
+        datasets: [{ label: 'Requests', data: [12, 19, 8, 15, 22], backgroundColor: '#007d8f' }]
       },
       options: { responsive: true }
     });
@@ -267,7 +267,7 @@ function buildChartSnippet() {
 function buildMermaidSnippet() {
   return `<div class="mermaid">
 flowchart LR
-  A[Start] --> B{Entscheidung}
+  A[Start] --> B{Decision}
   B -->|Ja| C[Schritt 1]
   B -->|Nein| D[Schritt 2]
   C --> E[Ende]

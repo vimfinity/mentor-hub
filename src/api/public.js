@@ -68,7 +68,7 @@ function registerRoutes(router) {
 
   router.post('/api/surveys/:id/responses', (req, res, params) => {
     readBody(req, res, (body) => {
-      const responses = body?.responses || body?.antworten;
+      const responses = body?.responses;
 
       if (!body || !Array.isArray(responses)) {
         sendJson(res, 400, { error: 'Responses array is required' });
@@ -142,8 +142,8 @@ function registerRoutes(router) {
 
   router.post('/api/concerns', (req, res) => {
     readBody(req, res, (body) => {
-      const title = body?.title || body?.titel;
-      const description = body?.description || body?.beschreibung || '';
+      const title = body?.title;
+      const description = body?.description || '';
 
       if (!title || title.trim().length === 0) {
         sendJson(res, 400, { error: 'Title is required' });

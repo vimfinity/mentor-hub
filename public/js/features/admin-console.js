@@ -1,11 +1,11 @@
 import * as api from '../services/api-client.js';
-import { holeAbfrage, invalidiereAbfrage, invalidiereAbfragenMitPraefix } from '../services/query-cache.js';
+import { fetchQuery, invalidateQuery, invalidateQueriesByPrefix } from '../services/query-cache.js';
 import { t, getLanguage } from '../services/i18n.js';
-import { normalisiereAuswahl, paginiereElemente } from '../services/view-state.js';
+import { normalizeSelection, paginateItems } from '../services/view-state.js';
 import { showError, showSuccess } from '../components/toast.js';
 import { escapeHtml, openModal, confirmDialog } from '../components/modal.js';
 import { renderAdminSection, renderAdminPanel, renderAdminEmptyState } from '../components/admin-ui.js';
-import { renderListensteuerung, verbindeListensteuerung } from '../components/list-controls.js';
+import { renderListControls, bindListControls } from '../components/list-controls.js';
 import { icon } from '../components/icons.js';
 import { renderSelect, bindSelect } from '../components/select.js';
 import { mountMarkdownEditor } from '../components/markdown-editor.js';
@@ -16,7 +16,7 @@ const SESSION_CACHE_KEY = 'admin:session';
 const SURVEYS_CACHE_KEY = 'admin:surveys';
 const FEED_ADMIN_CACHE_KEY = 'admin:feed';
 const CONCERNS_CACHE_KEY = 'admin:concerns';
-const ADMIN_PRO_SEITE = 8;
+const ITEMS_PER_ADMIN_PAGE = 8;
 const CONTENT_LOCALES = ['de-DE', 'en-US'];
 
 function getLocalizedField(item, field, locale) {
@@ -30,19 +30,19 @@ function getLocalizedField(item, field, locale) {
 
 function renderLocalizedInput({ idBase, label, value = {}, required = false, textarea = false, rows = 3, maxlength = 200, placeholder = '' }) {
   return `
-    <div class="formular-gruppe">
-      <label class="formular-label">${label}${required ? ' *' : ''}</label>
+    <div class="form-group">
+      <label class="form-label">${label}${required ? ' *' : ''}</label>
       <div class="feed-form-row">
         ${CONTENT_LOCALES.map((locale) => {
           const inputId = `${idBase}-${locale}`;
           const text = escapeHtml(value[locale] || '');
           const localeLabel = locale === 'de-DE' ? 'DE' : 'EN';
           return `
-            <div class="formular-gruppe">
-              <label class="formular-label" for="${inputId}">${localeLabel}</label>
+            <div class="form-group">
+              <label class="form-label" for="${inputId}">${localeLabel}</label>
               ${textarea
-                ? `<textarea class="formular-textarea" id="${inputId}" rows="${rows}" maxlength="${maxlength}" placeholder="${escapeHtml(placeholder)}">${text}</textarea>`
-                : `<input type="text" class="formular-eingabe" id="${inputId}" maxlength="${maxlength}" value="${text}" placeholder="${escapeHtml(placeholder)}">`
+                ? `<textarea class="form-textarea" id="${inputId}" rows="${rows}" maxlength="${maxlength}" placeholder="${escapeHtml(placeholder)}">${text}</textarea>`
+                : `<input type="text" class="form-input" id="${inputId}" maxlength="${maxlength}" value="${text}" placeholder="${escapeHtml(placeholder)}">`
               }
             </div>
           `;
@@ -141,42 +141,42 @@ function getFeedKindLabel(kind) {
   return kind || '';
 }
 
-async function holeAdminSitzung() {
-  return holeAbfrage({
-    schluessel: SESSION_CACHE_KEY,
+async function fetchAdminSession() {
+  return fetchQuery({
+    key: SESSION_CACHE_KEY,
     ttlMs: 15 * 1000,
-    abrufFunktion: () => api.get('/api/admin/session')
+    fetchFunction: () => api.get('/api/admin/session')
   });
 }
 
 function preload() {
-  return holeAdminSitzung();
+  return fetchAdminSession();
 }
 
-function invalidiereAdminSitzung() {
-  invalidiereAbfrage(SESSION_CACHE_KEY);
+function invalidateAdminSession() {
+  invalidateQuery(SESSION_CACHE_KEY);
 }
 
-function invalidiereAdminSurveys() {
-  invalidiereAbfrage(SURVEYS_CACHE_KEY);
-  invalidiereAbfragenMitPraefix([SURVEYS_CACHE_KEY]);
-  invalidiereAbfragenMitPraefix(['surveys']);
+function invalidateAdminSurveys() {
+  invalidateQuery(SURVEYS_CACHE_KEY);
+  invalidateQueriesByPrefix([SURVEYS_CACHE_KEY]);
+  invalidateQueriesByPrefix(['surveys']);
 }
 
-function invalidiereAdminFeed() {
-  invalidiereAbfrage(FEED_ADMIN_CACHE_KEY);
-  invalidiereAbfragenMitPraefix([FEED_ADMIN_CACHE_KEY]);
-  invalidiereAbfragenMitPraefix(['feed']);
+function invalidateAdminFeed() {
+  invalidateQuery(FEED_ADMIN_CACHE_KEY);
+  invalidateQueriesByPrefix([FEED_ADMIN_CACHE_KEY]);
+  invalidateQueriesByPrefix(['feed']);
 }
 
-function invalidiereAdminConcerns() {
-  invalidiereAbfrage(CONCERNS_CACHE_KEY);
+function invalidateAdminConcerns() {
+  invalidateQuery(CONCERNS_CACHE_KEY);
 }
 
-function behandleNichtAutorisierteAntwort(antwort, navigateTo) {
-  if (antwort && antwort.status === 401) {
+function handleUnauthorizedResponse(response, navigateTo) {
+  if (response && response.status === 401) {
     api.removeToken();
-    invalidiereAdminSitzung();
+    invalidateAdminSession();
     showError(t('admin.sessionExpired'));
     navigateTo('/admin', { replace: true, force: true });
     return true;
@@ -187,25 +187,25 @@ function behandleNichtAutorisierteAntwort(antwort, navigateTo) {
 
 async function render(container, context) {
   const section = SECTION_META[context.section] ? context.section : 'feed';
-  const sitzung = await holeAdminSitzung();
+  const session = await fetchAdminSession();
 
-  if (behandleNichtAutorisierteAntwort(sitzung, context.navigateTo)) {
+  if (handleUnauthorizedResponse(session, context.navigateTo)) {
     return;
   }
 
-  const sitzungsDaten = sitzung.ok ? sitzung.data : null;
+  const sessionData = session.ok ? session.data : null;
 
-  if (!sitzung.ok || !sitzungsDaten) {
+  if (!session.ok || !sessionData) {
     renderAdminError(container);
     return;
   }
 
-  if (!sitzungsDaten.configured) {
+  if (!sessionData.configured) {
     renderSetup(container, context);
     return;
   }
 
-  if (!sitzungsDaten.authenticated) {
+  if (!sessionData.authenticated) {
     renderLogin(container, context);
     return;
   }
@@ -216,10 +216,10 @@ async function render(container, context) {
 function renderAdminError(container) {
   container.innerHTML = `
     <div class="login-container">
-      <div class="login-karte">
+      <div class="login-card">
         <div class="login-icon">${icon('alertCircle', 24)}</div>
-        <h1 class="login-titel">${t('admin.pageTitle')}</h1>
-        <p class="login-untertitel">${t('general.error')}</p>
+        <h1 class="login-title">${t('admin.pageTitle')}</h1>
+        <p class="login-subtitle">${t('general.error')}</p>
       </div>
     </div>
   `;
@@ -228,17 +228,17 @@ function renderAdminError(container) {
 function renderSetup(container, context) {
   container.innerHTML = `
     <div class="login-container">
-      <div class="login-karte">
+      <div class="login-card">
         <div class="login-icon">${icon('settings', 24)}</div>
-        <h1 class="login-titel">${t('admin.setup')}</h1>
-        <p class="login-untertitel">${t('admin.setupDescription')}</p>
+        <h1 class="login-title">${t('admin.setup')}</h1>
+        <p class="login-subtitle">${t('admin.setupDescription')}</p>
         <form id="setup-form">
-          <div class="formular-gruppe">
-            <label class="formular-label" for="setup-password">${t('admin.password')}</label>
-            <input type="password" id="setup-password" class="formular-eingabe"
+          <div class="form-group">
+            <label class="form-label" for="setup-password">${t('admin.password')}</label>
+            <input type="password" id="setup-password" class="form-input"
               minlength="8" required autocomplete="new-password">
           </div>
-          <button type="submit" class="btn btn-primaer" style="width:100%">
+          <button type="submit" class="btn btn-primary" style="width:100%">
             ${t('admin.save')}
           </button>
         </form>
@@ -256,7 +256,7 @@ function renderSetup(container, context) {
       return;
     }
 
-    invalidiereAdminSitzung();
+    invalidateAdminSession();
     showSuccess(t('admin.setupSuccess'));
     await render(container, context);
   });
@@ -265,17 +265,17 @@ function renderSetup(container, context) {
 function renderLogin(container, context) {
   container.innerHTML = `
     <div class="login-container">
-      <div class="login-karte">
+      <div class="login-card">
         <div class="login-icon">${icon('layoutDashboard', 24)}</div>
-        <h1 class="login-titel">${t('admin.login')}</h1>
-        <p class="login-untertitel">${t('admin.pageTitle')}</p>
+        <h1 class="login-title">${t('admin.login')}</h1>
+        <p class="login-subtitle">${t('admin.pageTitle')}</p>
         <form id="login-form">
-          <div class="formular-gruppe">
-            <label class="formular-label" for="login-password">${t('admin.password')}</label>
-            <input type="password" id="login-password" class="formular-eingabe"
+          <div class="form-group">
+            <label class="form-label" for="login-password">${t('admin.password')}</label>
+            <input type="password" id="login-password" class="form-input"
               required autocomplete="current-password">
           </div>
-          <button type="submit" class="btn btn-primaer" style="width:100%">
+          <button type="submit" class="btn btn-primary" style="width:100%">
             ${t('admin.signIn')}
           </button>
         </form>
@@ -290,7 +290,7 @@ function renderLogin(container, context) {
 
     if (result.ok && result.data?.token) {
       api.setToken(result.data.token);
-      invalidiereAdminSitzung();
+      invalidateAdminSession();
       showSuccess(t('admin.signInSuccess'));
       context.navigateTo('/admin/feed', { replace: true, force: true });
       return;
@@ -306,7 +306,7 @@ async function renderAdminShell(container, context, section) {
       <nav class="sub-nav" aria-label="${escapeHtml(t('admin.pageTitle'))}">
         <div class="sub-nav-tabs">
           ${Object.keys(SECTION_META).map((key) => `
-            <a class="sub-nav-tab ${section === key ? 'aktiv' : ''}"
+            <a class="sub-nav-tab ${section === key ? 'active' : ''}"
               href="${SECTION_META[key].path}" data-admin-route="${key}">
               ${icon(SECTION_META[key].icon, 15)}
               <span>${t('admin.' + key)}</span>
@@ -318,8 +318,8 @@ async function renderAdminShell(container, context, section) {
           <span>${t('admin.signOut')}</span>
         </button>
       </nav>
-      <div class="admin-inhalt" id="admin-content">
-        <p class="sektion-beschreibung">${t('general.loading')}</p>
+      <div class="admin-content" id="admin-content">
+        <p class="section-description">${t('general.loading')}</p>
       </div>
     </div>
   `;
@@ -338,10 +338,10 @@ async function renderAdminShell(container, context, section) {
   container.querySelector('#sign-out-button').addEventListener('click', async () => {
     await api.post('/api/admin/logout', {});
     api.removeToken();
-    invalidiereAdminSitzung();
-    invalidiereAdminSurveys();
-    invalidiereAdminFeed();
-    invalidiereAdminConcerns();
+    invalidateAdminSession();
+    invalidateAdminSurveys();
+    invalidateAdminFeed();
+    invalidateAdminConcerns();
     context.navigateTo('/admin', { replace: true, force: true });
   });
 
@@ -362,27 +362,27 @@ async function renderAdminShell(container, context, section) {
 }
 
 async function renderSurveysAdmin(container, context) {
-  const response = await holeAbfrage({
-    schluessel: [SURVEYS_CACHE_KEY, getLanguage()],
+  const response = await fetchQuery({
+    key: [SURVEYS_CACHE_KEY, getLanguage()],
     ttlMs: 30 * 1000,
-    abrufFunktion: () => api.get('/api/admin/surveys')
+    fetchFunction: () => api.get('/api/admin/surveys')
   });
 
-  if (behandleNichtAutorisierteAntwort(response, context.navigateTo)) {
+  if (handleUnauthorizedResponse(response, context.navigateTo)) {
     return;
   }
 
   const surveys = response.ok ? response.data : [];
-  const sortierung = normalisiereAuswahl(
+  const sortOrder = normalizeSelection(
     context.searchParams?.get('sort'),
     ['manual', 'newest', 'oldest', 'title-asc', 'title-desc', 'responses-desc', 'status'],
     'manual'
   );
-  const sortierteUmfragen = sortiereUmfragen(surveys, sortierung);
-  const pagination = paginiereElemente(sortierteUmfragen, context.searchParams?.get('page'), ADMIN_PRO_SEITE);
-  const tabellenHtml = surveys.length === 0 ? renderAdminEmptyState(t('survey.empty')) : renderAdminPanel(`
-    ${renderListensteuerung({
-      sortierOptionen: [
+  const sortedSurveys = sortSurveys(surveys, sortOrder);
+  const pagination = paginateItems(sortedSurveys, context.searchParams?.get('page'), ITEMS_PER_ADMIN_PAGE);
+  const tablenHtml = surveys.length === 0 ? renderAdminEmptyState(t('survey.empty')) : renderAdminPanel(`
+    ${renderListControls({
+      sortOptions: [
         { value: 'manual', label: t('admin.sortManual') },
         { value: 'newest', label: t('general.sortNewest') },
         { value: 'oldest', label: t('general.sortOldest') },
@@ -391,13 +391,13 @@ async function renderSurveysAdmin(container, context) {
         { value: 'title-asc', label: t('general.sortTitleAsc') },
         { value: 'title-desc', label: t('general.sortTitleDesc') }
       ],
-      aktuelleSortierung: sortierung,
-      aktuelleSeite: pagination.aktuelleSeite,
-      gesamtSeiten: pagination.gesamtSeiten,
-      gesamtElemente: pagination.gesamtElemente,
-      ergebnisLabel: t('general.resultsCount').replace('{count}', String(pagination.gesamtElemente))
+      currentSort: sortOrder,
+      currentPage: pagination.currentPage,
+      totalPages: pagination.totalPages,
+      totalItems: pagination.totalItems,
+      resultLabel: t('general.resultsCount').replace('{count}', String(pagination.totalItems))
     })}
-    <table class="tabelle">
+    <table class="table">
       <thead>
         <tr>
           <th>${t('admin.title')}</th>
@@ -408,10 +408,10 @@ async function renderSurveysAdmin(container, context) {
         </tr>
       </thead>
       <tbody>
-        ${pagination.elemente.map((survey, index) => {
+        ${pagination.items.map((survey, index) => {
           const absoluteIndex = pagination.startIndex + index;
           const isFirstSurvey = absoluteIndex === 0;
-          const isLastSurvey = absoluteIndex === sortierteUmfragen.length - 1;
+          const isLastSurvey = absoluteIndex === sortedSurveys.length - 1;
           return `
           <tr>
             <td data-label="${escapeHtml(t('admin.title'))}">${escapeHtml(survey.title)}</td>
@@ -422,27 +422,27 @@ async function renderSurveysAdmin(container, context) {
               </span>
             </td>
             <td data-label="${escapeHtml(t('admin.responses'))}">${(survey.responses || []).length}</td>
-            <td class="tabelle-aktionen" data-label="${escapeHtml(t('general.actions'))}">
-              ${sortierung === 'manual' ? `
-                <button class="btn btn-klein btn-sekundaer" data-action="move-up" data-id="${survey.id}" title="${escapeHtml(t('admin.moveUp'))}" aria-label="${escapeHtml(t('admin.moveUp'))}" ${isFirstSurvey ? 'disabled' : ''}>
+            <td class="table-aktionen" data-label="${escapeHtml(t('general.actions'))}">
+              ${sortOrder === 'manual' ? `
+                <button class="btn btn-small btn-secondary" data-action="move-up" data-id="${survey.id}" title="${escapeHtml(t('admin.moveUp'))}" aria-label="${escapeHtml(t('admin.moveUp'))}" ${isFirstSurvey ? 'disabled' : ''}>
                   ${icon('chevronUp', 16)}
                 </button>
-                <button class="btn btn-klein btn-sekundaer" data-action="move-down" data-id="${survey.id}" title="${escapeHtml(t('admin.moveDown'))}" aria-label="${escapeHtml(t('admin.moveDown'))}" ${isLastSurvey ? 'disabled' : ''}>
+                <button class="btn btn-small btn-secondary" data-action="move-down" data-id="${survey.id}" title="${escapeHtml(t('admin.moveDown'))}" aria-label="${escapeHtml(t('admin.moveDown'))}" ${isLastSurvey ? 'disabled' : ''}>
                   ${icon('chevronDown', 16)}
                 </button>
               ` : ''}
               ${survey.active ? `
-                <button class="btn btn-klein btn-sekundaer" data-action="copy-link" data-id="${survey.id}" title="${escapeHtml(t('survey.copyLink'))}" aria-label="${escapeHtml(t('survey.copyLink'))}">
+                <button class="btn btn-small btn-secondary" data-action="copy-link" data-id="${survey.id}" title="${escapeHtml(t('survey.copyLink'))}" aria-label="${escapeHtml(t('survey.copyLink'))}">
                   ${icon('link', 16)}
                 </button>
               ` : ''}
-              <button class="btn btn-klein btn-sekundaer" data-action="toggle" data-id="${survey.id}">
+              <button class="btn btn-small btn-secondary" data-action="toggle" data-id="${survey.id}">
                 ${survey.active ? icon('pause', 16) : icon('play', 16)}
               </button>
-              <button class="btn btn-klein btn-sekundaer" data-action="details" data-id="${survey.id}">
+              <button class="btn btn-small btn-secondary" data-action="details" data-id="${survey.id}">
                 ${icon('eye', 16)}
               </button>
-              <button class="btn btn-klein btn-gefahr" data-action="delete" data-id="${survey.id}">
+              <button class="btn btn-small btn-danger" data-action="delete" data-id="${survey.id}">
                 ${icon('trash', 16)}
               </button>
             </td>
@@ -451,23 +451,23 @@ async function renderSurveysAdmin(container, context) {
         }).join('')}
       </tbody>
     </table>
-  `, 'admin-panel-tabelle');
+  `, 'admin-panel-table');
 
   container.innerHTML = renderAdminSection({
     title: t('admin.surveys'),
     description: t('admin.surveysDescription'),
     iconName: 'clipboardList',
-    actions: `<button class="btn btn-primaer" id="create-survey-button">${icon('plus', 14)} ${t('admin.create')}</button>`,
-    content: tabellenHtml
+    actions: `<button class="btn btn-primary" id="create-survey-button">${icon('plus', 14)} ${t('admin.create')}</button>`,
+    content: tablenHtml
   });
 
   container.querySelector('#create-survey-button').addEventListener('click', () => {
     openSurveyForm(container, context);
   });
 
-  verbindeListensteuerung(container, {
-    onSortierung: (wert) => context.setSearchParams?.({ sort: wert === 'manual' ? null : wert, page: null }),
-    onSeite: (seite) => context.setSearchParams?.({ page: seite <= 1 ? null : seite })
+  bindListControls(container, {
+    onSort: (value) => context.setSearchParams?.({ sort: value === 'manual' ? null : value, page: null }),
+    onPage: (page) => context.setSearchParams?.({ page: page <= 1 ? null : page })
   });
 
   container.querySelectorAll('[data-action]').forEach((button) => {
@@ -485,7 +485,7 @@ async function renderSurveysAdmin(container, context) {
         const result = await api.post('/api/admin/surveys/' + id + '/move', {
           direction: action === 'move-up' ? 'up' : 'down'
         });
-        if (behandleNichtAutorisierteAntwort(result, context.navigateTo)) {
+        if (handleUnauthorizedResponse(result, context.navigateTo)) {
           return;
         }
         if (!result.ok) {
@@ -493,14 +493,14 @@ async function renderSurveysAdmin(container, context) {
           return;
         }
 
-        invalidiereAdminSurveys();
+        invalidateAdminSurveys();
         await renderSurveysAdmin(container, context);
         return;
       }
 
       if (action === 'toggle' && survey) {
         const result = await api.put('/api/admin/surveys/' + id, { active: !survey.active });
-        if (behandleNichtAutorisierteAntwort(result, context.navigateTo)) {
+        if (handleUnauthorizedResponse(result, context.navigateTo)) {
           return;
         }
         if (!result.ok) {
@@ -508,7 +508,7 @@ async function renderSurveysAdmin(container, context) {
           return;
         }
 
-        invalidiereAdminSurveys();
+        invalidateAdminSurveys();
         await renderSurveysAdmin(container, context);
         return;
       }
@@ -516,7 +516,7 @@ async function renderSurveysAdmin(container, context) {
       if (action === 'delete') {
         confirmDialog(t('admin.confirmation'), async () => {
           const result = await api.remove('/api/admin/surveys/' + id);
-          if (behandleNichtAutorisierteAntwort(result, context.navigateTo)) {
+          if (handleUnauthorizedResponse(result, context.navigateTo)) {
             return;
           }
           if (!result.ok) {
@@ -524,7 +524,7 @@ async function renderSurveysAdmin(container, context) {
             return;
           }
 
-          invalidiereAdminSurveys();
+          invalidateAdminSurveys();
           showSuccess(t('admin.deleted'));
           await renderSurveysAdmin(container, context);
         });
@@ -545,10 +545,10 @@ function openSurveyForm(container, context) {
       <form id="new-survey-form">
         ${renderLocalizedInput({ idBase: 'new-survey-title', label: t('admin.title'), required: true })}
         ${renderLocalizedInput({ idBase: 'new-survey-description', label: t('admin.description'), textarea: true, maxlength: 2000 })}
-        <div class="formular-gruppe">
-          <label class="formular-label">${t('admin.questions')}</label>
+        <div class="form-group">
+          <label class="form-label">${t('admin.questions')}</label>
           <div id="question-list"></div>
-          <button type="button" class="btn btn-sekundaer btn-klein" id="add-question-button">+ ${t('admin.add')}</button>
+          <button type="button" class="btn btn-secondary btn-small" id="add-question-button">+ ${t('admin.add')}</button>
         </div>
       </form>
     `,
@@ -568,7 +568,7 @@ function openSurveyForm(container, context) {
 
       const description = readLocalizedField(overlay, 'new-survey-description');
       const result = await api.post('/api/admin/surveys', { title, description, questions });
-      if (behandleNichtAutorisierteAntwort(result, context.navigateTo)) {
+      if (handleUnauthorizedResponse(result, context.navigateTo)) {
         return;
       }
       if (!result.ok) {
@@ -576,7 +576,7 @@ function openSurveyForm(container, context) {
         return;
       }
 
-      invalidiereAdminSurveys();
+      invalidateAdminSurveys();
       showSuccess(t('admin.surveyCreated'));
       await renderSurveysAdmin(container, context);
     }
@@ -640,7 +640,7 @@ function openSurveyDetails(survey) {
       <div class="admin-detail-item">
         <div class="admin-detail-meta">
           ${response.name ? escapeHtml(response.name) : '<em>' + escapeHtml(t('admin.anonymous')) + '</em>'}
-          <span class="admin-detail-zeit">${submittedAt}</span>
+          <span class="admin-detail-time">${submittedAt}</span>
         </div>
         <div class="admin-detail-body">${response.responses.map((answer, index) => `
           <p><strong>${escapeHtml(survey.questions[index] ? survey.questions[index].text : t('admin.question') + ' ' + (index + 1))}:</strong> ${escapeHtml(String(answer))}</p>
@@ -657,13 +657,13 @@ function openSurveyDetails(survey) {
 }
 
 async function renderFeedAdmin(container, context) {
-  const response = await holeAbfrage({
-    schluessel: [FEED_ADMIN_CACHE_KEY, getLanguage()],
+  const response = await fetchQuery({
+    key: [FEED_ADMIN_CACHE_KEY, getLanguage()],
     ttlMs: 30 * 1000,
-    abrufFunktion: () => api.get('/api/feed')
+    fetchFunction: () => api.get('/api/feed')
   });
 
-  if (behandleNichtAutorisierteAntwort(response, context.navigateTo)) {
+  if (handleUnauthorizedResponse(response, context.navigateTo)) {
     return;
   }
 
@@ -673,29 +673,29 @@ async function renderFeedAdmin(container, context) {
   }
 
   const feedItems = Array.isArray(response.data) ? response.data : [];
-  const kindFilter = normalisiereAuswahl(context.searchParams?.get('kind'), ['all', ...FEED_KIND_OPTIONS], 'all');
+  const kindFilter = normalizeSelection(context.searchParams?.get('kind'), ['all', ...FEED_KIND_OPTIONS], 'all');
   const filteredItems = kindFilter === 'all' ? feedItems : feedItems.filter((item) => item.kind === kindFilter);
-  const sortierung = normalisiereAuswahl(context.searchParams?.get('sort'), ['newest', 'oldest', 'title-asc', 'title-desc'], 'newest');
-  const sortierteElemente = sortiereFeedElemente(filteredItems, sortierung);
-  const pagination = paginiereElemente(sortierteElemente, context.searchParams?.get('page'), ADMIN_PRO_SEITE);
+  const sortOrder = normalizeSelection(context.searchParams?.get('sort'), ['newest', 'oldest', 'title-asc', 'title-desc'], 'newest');
+  const sortedItems = sortFeedItems(filteredItems, sortOrder);
+  const pagination = paginateItems(sortedItems, context.searchParams?.get('page'), ITEMS_PER_ADMIN_PAGE);
 
   const TYPE_LABELS = getFeedTypeLabels();
 
-  const tabellenHtml = feedItems.length === 0 ? renderAdminEmptyState(t('feed.emptyTitle'), 'newspaper') : renderAdminPanel(`
-    ${renderListensteuerung({
-      sortierOptionen: [
+  const tablenHtml = feedItems.length === 0 ? renderAdminEmptyState(t('feed.emptyTitle'), 'newspaper') : renderAdminPanel(`
+    ${renderListControls({
+      sortOptions: [
         { value: 'newest', label: t('general.sortNewest') },
         { value: 'oldest', label: t('general.sortOldest') },
         { value: 'title-asc', label: t('general.sortTitleAsc') },
         { value: 'title-desc', label: t('general.sortTitleDesc') }
       ],
-      aktuelleSortierung: sortierung,
-      aktuelleSeite: pagination.aktuelleSeite,
-      gesamtSeiten: pagination.gesamtSeiten,
-      gesamtElemente: pagination.gesamtElemente,
-      ergebnisLabel: t('general.resultsCount').replace('{count}', String(pagination.gesamtElemente))
+      currentSort: sortOrder,
+      currentPage: pagination.currentPage,
+      totalPages: pagination.totalPages,
+      totalItems: pagination.totalItems,
+      resultLabel: t('general.resultsCount').replace('{count}', String(pagination.totalItems))
     })}
-    <table class="tabelle">
+    <table class="table">
       <thead>
         <tr>
           <th>${t('admin.title')}</th>
@@ -706,21 +706,21 @@ async function renderFeedAdmin(container, context) {
         </tr>
       </thead>
       <tbody>
-        ${pagination.elemente.map((item) => `
+        ${pagination.items.map((item) => `
           <tr>
             <td data-label="${escapeHtml(t('admin.title'))}">
               ${escapeHtml(item.title)}
               ${item.featured ? `<span class="status-badge status-open">${t('admin.featured')}</span>` : ''}
             </td>
             <td data-label="${escapeHtml(t('admin.feedKind'))}"><span class="status-badge">${getFeedKindLabel(item.kind)}</span></td>
-            <td data-label="${escapeHtml(t('admin.category'))}"><span class="karte-kategorie">${TYPE_LABELS[item.type] || item.type}</span></td>
+            <td data-label="${escapeHtml(t('admin.category'))}"><span class="card-category">${TYPE_LABELS[item.type] || item.type}</span></td>
             <td data-label="${escapeHtml(t('admin.date'))}">${formatDateTime(item.createdAt)}</td>
-            <td class="tabelle-aktionen" data-label="${escapeHtml(t('general.actions'))}">
-              ${item.url ? `<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener" class="btn btn-klein btn-sekundaer">${icon('externalLink', 14)}</a>` : ''}
-              <button class="btn btn-klein btn-sekundaer feed-edit-button" data-id="${item.id}">
+            <td class="table-aktionen" data-label="${escapeHtml(t('general.actions'))}">
+              ${item.url ? `<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener" class="btn btn-small btn-secondary">${icon('externalLink', 14)}</a>` : ''}
+              <button class="btn btn-small btn-secondary feed-edit-button" data-id="${item.id}">
                 ${icon('edit', 16)}
               </button>
-              <button class="btn btn-klein btn-gefahr feed-delete-button" data-id="${item.id}" data-source="${item.feedSource || item.source}">
+              <button class="btn btn-small btn-danger feed-delete-button" data-id="${item.id}" data-source="${item.feedSource || item.source}">
                 ${icon('trash', 16)}
               </button>
             </td>
@@ -728,14 +728,14 @@ async function renderFeedAdmin(container, context) {
         `).join('')}
       </tbody>
     </table>
-  `, 'admin-panel-tabelle');
+  `, 'admin-panel-table');
 
   const filterChips = `
     <div class="feed-filter-bar" style="margin-bottom: 0;">
       ${['all', ...FEED_KIND_OPTIONS]
         .filter((f) => f === 'all' || feedItems.some((item) => item.kind === f))
         .map((f) => `
-          <button class="feed-filter-chip ${f === kindFilter ? 'aktiv' : ''}" data-kind-filter="${f}">
+          <button class="feed-filter-chip ${f === kindFilter ? 'active' : ''}" data-kind-filter="${f}">
             ${f === 'all' ? t('feed.filter_all') : getFeedKindLabel(f)}
           </button>
         `).join('')}
@@ -746,13 +746,13 @@ async function renderFeedAdmin(container, context) {
     title: t('admin.feed'),
     description: t('admin.feedDescription'),
     iconName: 'newspaper',
-    actions: `<button class="btn btn-primaer" id="create-feed-button">${icon('plus', 14)} ${t('admin.create')}</button>`,
-    content: filterChips + tabellenHtml
+    actions: `<button class="btn btn-primary" id="create-feed-button">${icon('plus', 14)} ${t('admin.create')}</button>`,
+    content: filterChips + tablenHtml
   });
 
-  verbindeListensteuerung(container, {
-    onSortierung: (wert) => context.setSearchParams?.({ sort: wert === 'newest' ? null : wert, page: null }),
-    onSeite: (seite) => context.setSearchParams?.({ page: seite <= 1 ? null : seite })
+  bindListControls(container, {
+    onSort: (value) => context.setSearchParams?.({ sort: value === 'newest' ? null : value, page: null }),
+    onPage: (page) => context.setSearchParams?.({ page: page <= 1 ? null : page })
   });
 
   container.querySelectorAll('[data-kind-filter]').forEach((btn) => {
@@ -784,7 +784,7 @@ async function renderFeedAdmin(container, context) {
           ? '/api/admin/resources/' + button.dataset.id
           : '/api/admin/news/' + button.dataset.id;
         const result = await api.remove(endpoint);
-        if (behandleNichtAutorisierteAntwort(result, context.navigateTo)) {
+        if (handleUnauthorizedResponse(result, context.navigateTo)) {
           return;
         }
         if (!result.ok) {
@@ -792,7 +792,7 @@ async function renderFeedAdmin(container, context) {
           return;
         }
 
-        invalidiereAdminFeed();
+        invalidateAdminFeed();
         showSuccess(t('admin.deleted'));
         context.navigateTo('/admin/feed', { force: true });
       });
@@ -843,8 +843,8 @@ function openFeedForm({ context, mode, item = null }) {
         <aside class="feed-form-side">
           ${renderLocalizedInput({ idBase: 'feed-form-title', label: t('admin.title'), value: titleValue, required: true })}
           <div class="feed-form-row">
-            <div class="formular-gruppe">
-              <label class="formular-label">${t('admin.feedKind')}</label>
+            <div class="form-group">
+              <label class="form-label">${t('admin.feedKind')}</label>
               ${renderSelect({
                 name: 'feed-form-kind',
                 value: selectedKind,
@@ -853,15 +853,15 @@ function openFeedForm({ context, mode, item = null }) {
                 ariaLabel: t('admin.feedKind')
               })}
             </div>
-            <div class="formular-gruppe">
-              <label class="formular-label">${t('admin.category')}</label>
+            <div class="form-group">
+              <label class="form-label">${t('admin.category')}</label>
               <div id="feed-form-subtype-host"></div>
             </div>
           </div>
-          ${renderLocalizedInput({ idBase: 'feed-form-summary', label: t('admin.summary'), value: summaryValue, textarea: true, rows: 3, maxlength: 1000, placeholder: 'Kurze Beschreibung, erscheint auf der Karte im Feed' })}
-          <div class="formular-gruppe">
-            <label class="formular-label" for="feed-form-image">${t('admin.imageUrl')}</label>
-            <input type="url" class="formular-eingabe" id="feed-form-image" maxlength="2000" placeholder="https://..." value="${imageValue}">
+          ${renderLocalizedInput({ idBase: 'feed-form-summary', label: t('admin.summary'), value: summaryValue, textarea: true, rows: 3, maxlength: 1000, placeholder: 'Kurze Description, erscheint auf der card im Feed' })}
+          <div class="form-group">
+            <label class="form-label" for="feed-form-image">${t('admin.imageUrl')}</label>
+            <input type="url" class="form-input" id="feed-form-image" maxlength="2000" placeholder="https://..." value="${imageValue}">
             <div class="feed-image-actions">
               <button type="button" class="tab-link tab-link-utility" data-open-media-library>
                 ${icon('image', 14)}
@@ -869,32 +869,32 @@ function openFeedForm({ context, mode, item = null }) {
               </button>
               <button type="button" class="tab-link tab-link-utility" data-clear-image>
                 ${icon('x', 14)}
-                <span class="tab-label">Bild entfernen</span>
+                <span class="tab-label">Remove image</span>
               </button>
             </div>
             <label class="attachment-file-picker feed-image-picker">
               <input type="file" data-image-file accept=".png,.jpg,.jpeg,.webp,.gif">
-              <span>${icon('image', 14)} Bild hochladen</span>
+              <span>${icon('image', 14)} Upload image</span>
               <em data-image-file-name>PNG, JPG, WebP oder GIF</em>
             </label>
           </div>
-          <div class="formular-gruppe">
-            <label class="formular-label" for="feed-form-url">${t('admin.url')}</label>
-            <input type="url" class="formular-eingabe" id="feed-form-url" maxlength="2000" placeholder="https://..." value="${urlValue}">
+          <div class="form-group">
+            <label class="form-label" for="feed-form-url">${t('admin.url')}</label>
+            <input type="url" class="form-input" id="feed-form-url" maxlength="2000" placeholder="https://..." value="${urlValue}">
           </div>
           <div class="feed-form-row">
-            <div class="formular-gruppe">
-              <label class="formular-label" for="feed-form-source">${t('admin.source')}</label>
-              <input type="text" class="formular-eingabe" id="feed-form-source" maxlength="100" value="${sourceValue}">
+            <div class="form-group">
+              <label class="form-label" for="feed-form-source">${t('admin.source')}</label>
+              <input type="text" class="form-input" id="feed-form-source" maxlength="100" value="${sourceValue}">
             </div>
-            <div class="formular-gruppe">
-              <label class="formular-label" for="feed-form-date">${t('admin.date')}</label>
-              <input type="datetime-local" class="formular-eingabe" id="feed-form-date" value="${createdAtValue}">
+            <div class="form-group">
+              <label class="form-label" for="feed-form-date">${t('admin.date')}</label>
+              <input type="datetime-local" class="form-input" id="feed-form-date" value="${createdAtValue}">
             </div>
           </div>
-          <div class="formular-gruppe">
-            <label class="formular-label" for="feed-form-tags">${t('admin.tags')}</label>
-            <input type="text" class="formular-eingabe" id="feed-form-tags" placeholder="mcp, codex" value="${tagValue}">
+          <div class="form-group">
+            <label class="form-label" for="feed-form-tags">${t('admin.tags')}</label>
+            <input type="text" class="form-input" id="feed-form-tags" placeholder="mcp, codex" value="${tagValue}">
           </div>
           <label class="checkbox-label">
             <input type="checkbox" id="feed-form-featured" ${item?.featured ? 'checked' : ''}>
@@ -903,42 +903,42 @@ function openFeedForm({ context, mode, item = null }) {
           ${isResourceEdit ? `
             <div class="feed-form-attachments">
               <div class="feed-form-attachments-header">
-                <label class="formular-label">Anhänge</label>
-                <span>Dateien, die am Artikel als Download erscheinen.</span>
+                <label class="form-label">Attachments</label>
+                <span>Files that appear as downloads on the article.</span>
               </div>
               <div class="feed-form-attachment-list" data-attachment-list></div>
               <div class="feed-form-attachment-upload">
                 <label class="attachment-file-picker">
                   <input type="file" data-attachment-file accept=".zip,.pdf,.docx,.xlsx,.pptx,.txt,.md,.json,.png,.jpg,.jpeg,.webp">
-                  <span>${icon('fileText', 14)} Datei auswählen</span>
-                  <em data-attachment-file-name>Keine Datei ausgewählt</em>
+                  <span>${icon('fileText', 14)} Select file</span>
+                  <em data-attachment-file-name>No file selected</em>
                 </label>
-                <input type="text" class="formular-eingabe" data-attachment-label maxlength="120" placeholder="Anzeigename, optional">
-                <button type="button" class="btn btn-sekundaer" data-attachment-upload>
+                <input type="text" class="form-input" data-attachment-label maxlength="120" placeholder="Display name, optional">
+                <button type="button" class="btn btn-secondary" data-attachment-upload>
                   ${icon('plus', 14)}
-                  <span>Anhang hochladen</span>
+                  <span>Upload attachment</span>
                 </button>
               </div>
             </div>
           ` : ''}
           <div class="feed-form-card-preview">
-            <div class="feed-form-card-preview-label">${t('admin.preview') || 'Karten-Vorschau'}</div>
-            <div class="feed-admin-vorschau" id="feed-form-preview"></div>
+            <div class="feed-form-card-preview-label">${t('admin.preview') || 'cards-Vorschau'}</div>
+            <div class="feed-admin-preview" id="feed-form-preview"></div>
           </div>
         </aside>
         <section class="feed-form-main">
-          <div class="formular-gruppe formular-gruppe-fuell">
-            <label class="formular-label feed-form-editor-label">
+          <div class="form-group form-group-full">
+            <label class="form-label feed-form-editor-label">
               ${t('admin.detailContent')}
               <span class="feed-form-editor-sub">${t('admin.detailContentPlaceholder')}</span>
             </label>
             <div class="feed-form-row">
-              <div class="formular-gruppe formular-gruppe-fuell">
-                <label class="formular-label">DE</label>
+              <div class="form-group form-group-full">
+                <label class="form-label">DE</label>
                 <div id="feed-form-content-host-de-DE" class="feed-form-editor-host"></div>
               </div>
-              <div class="formular-gruppe formular-gruppe-fuell">
-                <label class="formular-label">EN</label>
+              <div class="form-group form-group-full">
+                <label class="form-label">EN</label>
                 <div id="feed-form-content-host-en-US" class="feed-form-editor-host"></div>
               </div>
             </div>
@@ -966,7 +966,7 @@ function openFeedForm({ context, mode, item = null }) {
       const source = overlay.querySelector('#feed-form-source').value.trim();
       const createdAt = parseDateTimeInput(overlay.querySelector('#feed-form-date').value);
       if (!createdAt) {
-        showError('Bitte ein gültiges Datum eintragen.');
+        showError('Enter a valid date.');
         return;
       }
       const tags = overlay.querySelector('#feed-form-tags').value.split(',').map((tag) => tag.trim()).filter(Boolean);
@@ -983,7 +983,7 @@ function openFeedForm({ context, mode, item = null }) {
         ? await api.put(endpoint, payload)
         : await api.post(endpoint, payload);
 
-      if (behandleNichtAutorisierteAntwort(result, context.navigateTo)) {
+      if (handleUnauthorizedResponse(result, context.navigateTo)) {
         return;
       }
       if (!result.ok) {
@@ -991,7 +991,7 @@ function openFeedForm({ context, mode, item = null }) {
         return;
       }
 
-      invalidiereAdminFeed();
+      invalidateAdminFeed();
       showSuccess(isEdit ? t('admin.feedUpdated') : t('admin.feedCreated'));
       context.navigateTo('/admin/feed', { force: true });
     }
@@ -1017,7 +1017,7 @@ function openFeedForm({ context, mode, item = null }) {
         alt: '',
         sizes: '96px',
         includeDimensions: false
-      }) : `<div class="feed-admin-vorschau-placeholder">${icon('image', 22)}</div>`}
+      }) : `<div class="feed-admin-preview-placeholder">${icon('image', 22)}</div>`}
       <div>
         <strong>${escapeHtml(title || t('admin.title'))}</strong>
         <span>${getFeedKindLabel(kindSelect.dataset.value)} - ${typeLabels[subtypeValue] || subtypeValue}</span>
@@ -1072,7 +1072,7 @@ function openFeedForm({ context, mode, item = null }) {
           contentBase64
         });
 
-        if (behandleNichtAutorisierteAntwort(result, context.navigateTo)) {
+        if (handleUnauthorizedResponse(result, context.navigateTo)) {
           return;
         }
         if (!result.ok || !result.data?.url) {
@@ -1084,7 +1084,7 @@ function openFeedForm({ context, mode, item = null }) {
         imageInput.value = result.data.url;
         selectedImage = result.data;
         refreshPreview();
-        showSuccess('Bild hochgeladen');
+        showSuccess('Image uploaded');
       } finally {
         imageFileInput.value = '';
       }
@@ -1120,14 +1120,14 @@ function openFeedForm({ context, mode, item = null }) {
     }
 
     attachmentList.innerHTML = currentAttachments.length === 0
-      ? '<p class="feed-form-attachment-empty">Noch keine Anhänge vorhanden.</p>'
+      ? '<p class="feed-form-attachment-empty">No attachments yet.</p>'
       : currentAttachments.map((attachment) => `
         <div class="feed-form-attachment-row">
           <div>
             <strong>${escapeHtml(attachment.label || attachment.originalName || attachment.filename || 'Download')}</strong>
             <span>${escapeHtml(attachment.originalName || attachment.filename || '')}${attachment.sizeBytes ? ' · ' + escapeHtml(formatBytes(attachment.sizeBytes)) : ''}</span>
           </div>
-          <button type="button" class="icon-button" data-attachment-delete="${escapeHtml(attachment.id)}" aria-label="Anhang löschen">
+          <button type="button" class="icon-button" data-attachment-delete="${escapeHtml(attachment.id)}" aria-label="Delete attachment">
             ${icon('trash', 15)}
           </button>
         </div>
@@ -1136,7 +1136,7 @@ function openFeedForm({ context, mode, item = null }) {
     attachmentList.querySelectorAll('[data-attachment-delete]').forEach((button) => {
       button.addEventListener('click', async () => {
         const result = await api.remove('/api/admin/resources/' + encodeURIComponent(item.id) + '/attachments/' + encodeURIComponent(button.dataset.attachmentDelete));
-        if (behandleNichtAutorisierteAntwort(result, context.navigateTo)) {
+        if (handleUnauthorizedResponse(result, context.navigateTo)) {
           return;
         }
         if (!result.ok) {
@@ -1146,9 +1146,9 @@ function openFeedForm({ context, mode, item = null }) {
 
         currentAttachments = Array.isArray(result.data?.attachments) ? result.data.attachments : [];
         item.attachments = currentAttachments;
-        invalidiereAdminFeed();
+        invalidateAdminFeed();
         renderAttachments();
-        showSuccess('Anhang gelöscht');
+        showSuccess('Attachment deleted');
       });
     });
   };
@@ -1161,7 +1161,7 @@ function openFeedForm({ context, mode, item = null }) {
     const fileNameLabel = overlay.querySelector('[data-attachment-file-name]');
     if (fileInput && fileNameLabel) {
       fileInput.addEventListener('change', () => {
-        fileNameLabel.textContent = fileInput.files?.[0]?.name || 'Keine Datei ausgewählt';
+        fileNameLabel.textContent = fileInput.files?.[0]?.name || 'No file selected';
       });
     }
 
@@ -1169,7 +1169,7 @@ function openFeedForm({ context, mode, item = null }) {
       const labelInput = overlay.querySelector('[data-attachment-label]');
       const file = fileInput?.files?.[0];
       if (!file) {
-        showError('Bitte zuerst eine Datei auswählen.');
+        showError('Select a file first.');
         return;
       }
 
@@ -1183,7 +1183,7 @@ function openFeedForm({ context, mode, item = null }) {
           contentBase64
         });
 
-        if (behandleNichtAutorisierteAntwort(result, context.navigateTo)) {
+        if (handleUnauthorizedResponse(result, context.navigateTo)) {
           return;
         }
         if (!result.ok) {
@@ -1194,11 +1194,11 @@ function openFeedForm({ context, mode, item = null }) {
         currentAttachments = Array.isArray(result.data?.attachments) ? result.data.attachments : [];
         item.attachments = currentAttachments;
         fileInput.value = '';
-        fileNameLabel.textContent = 'Keine Datei ausgewählt';
+        fileNameLabel.textContent = 'No file selected';
         labelInput.value = '';
-        invalidiereAdminFeed();
+        invalidateAdminFeed();
         renderAttachments();
-        showSuccess('Anhang hochgeladen');
+        showSuccess('Attachment uploaded');
       } finally {
         uploadButton.disabled = false;
       }
@@ -1236,7 +1236,7 @@ function formatBytes(value) {
 
 async function openMediaLibrary({ context, selectedUrl, onSelect }) {
   const response = await api.get('/api/admin/media/images');
-  if (behandleNichtAutorisierteAntwort(response, context.navigateTo)) {
+  if (handleUnauthorizedResponse(response, context.navigateTo)) {
     return;
   }
   if (!response.ok) {
@@ -1251,10 +1251,10 @@ async function openMediaLibrary({ context, selectedUrl, onSelect }) {
     content: `
       <div class="media-library">
         <div class="media-library-toolbar">
-          <p>Wähle ein vorhandenes Bild aus oder entferne ungenutzte Dateien.</p>
-          <button type="button" class="btn btn-sekundaer" data-media-cleanup>
+          <p>Select an existing image or remove unused files.</p>
+          <button type="button" class="btn btn-secondary" data-media-cleanup>
             ${icon('trash', 14)}
-            <span>Ungenutzte Bilder entfernen</span>
+            <span>Remove unused images</span>
           </button>
         </div>
         <div class="media-library-grid" data-media-grid></div>
@@ -1266,9 +1266,9 @@ async function openMediaLibrary({ context, selectedUrl, onSelect }) {
   const grid = overlay.querySelector('[data-media-grid]');
   const renderGrid = () => {
     grid.innerHTML = images.length === 0
-      ? '<p class="feed-form-attachment-empty">Noch keine Bilder hochgeladen.</p>'
+      ? '<p class="feed-form-attachment-empty">No images uploaded yet.</p>'
       : images.map((image) => `
-        <article class="media-library-item ${image.url === selectedUrl ? 'aktiv' : ''}">
+        <article class="media-library-item ${image.url === selectedUrl ? 'active' : ''}">
           <button type="button" class="media-library-select" data-media-select="${escapeHtml(image.url)}">
             ${renderResponsiveImage({
               image,
@@ -1282,7 +1282,7 @@ async function openMediaLibrary({ context, selectedUrl, onSelect }) {
             <strong>${escapeHtml(image.originalName || image.filename)}</strong>
             <span>${escapeHtml(formatBytes(image.sizeBytes))} · ${image.usageCount || 0} Verwendung${image.usageCount === 1 ? '' : 'en'}</span>
           </div>
-          <button type="button" class="tab-link tab-link-utility tab-link-icon" data-media-delete="${escapeHtml(image.id)}" title="Bild löschen" aria-label="Bild löschen" ${image.usageCount > 0 ? 'disabled' : ''}>
+          <button type="button" class="tab-link tab-link-utility tab-link-icon" data-media-delete="${escapeHtml(image.id)}" title="Delete image" aria-label="Delete image" ${image.usageCount > 0 ? 'disabled' : ''}>
             <span class="tab-icon">${icon('trash', 14)}</span>
           </button>
         </article>
@@ -1292,14 +1292,14 @@ async function openMediaLibrary({ context, selectedUrl, onSelect }) {
       button.addEventListener('click', () => {
         const image = images.find((entry) => entry.url === button.dataset.mediaSelect) || null;
         onSelect(button.dataset.mediaSelect, image);
-        overlay.querySelector('.modal-abbrechen')?.click();
+        overlay.querySelector('.modal-cancel')?.click();
       });
     });
 
     grid.querySelectorAll('[data-media-delete]').forEach((button) => {
       button.addEventListener('click', async () => {
         const result = await api.remove('/api/admin/media/images/' + encodeURIComponent(button.dataset.mediaDelete));
-        if (behandleNichtAutorisierteAntwort(result, context.navigateTo)) {
+        if (handleUnauthorizedResponse(result, context.navigateTo)) {
           return;
         }
         if (!result.ok) {
@@ -1308,14 +1308,14 @@ async function openMediaLibrary({ context, selectedUrl, onSelect }) {
         }
         images = images.filter((image) => image.id !== button.dataset.mediaDelete);
         renderGrid();
-        showSuccess('Bild gelöscht');
+        showSuccess('Image deleted');
       });
     });
   };
 
   overlay.querySelector('[data-media-cleanup]').addEventListener('click', async () => {
     const result = await api.post('/api/admin/media/images/cleanup', {});
-    if (behandleNichtAutorisierteAntwort(result, context.navigateTo)) {
+    if (handleUnauthorizedResponse(result, context.navigateTo)) {
       return;
     }
     if (!result.ok) {
@@ -1325,43 +1325,43 @@ async function openMediaLibrary({ context, selectedUrl, onSelect }) {
     const refreshed = await api.get('/api/admin/media/images');
     images = refreshed.ok && Array.isArray(refreshed.data) ? refreshed.data : images;
     renderGrid();
-    showSuccess(`${result.data?.removed || 0} Bilder entfernt`);
+    showSuccess(`${result.data?.removed || 0} images removed`);
   });
 
   renderGrid();
 }
 
 async function renderConcernsAdmin(container, context) {
-  const response = await holeAbfrage({
-    schluessel: CONCERNS_CACHE_KEY,
+  const response = await fetchQuery({
+    key: CONCERNS_CACHE_KEY,
     ttlMs: 15 * 1000,
-    abrufFunktion: () => api.get('/api/admin/concerns')
+    fetchFunction: () => api.get('/api/admin/concerns')
   });
 
-  if (behandleNichtAutorisierteAntwort(response, context.navigateTo)) {
+  if (handleUnauthorizedResponse(response, context.navigateTo)) {
     return;
   }
 
   const concerns = response.ok ? response.data : [];
-  const sortierung = normalisiereAuswahl(context.searchParams?.get('sort'), ['newest', 'oldest', 'status', 'title-asc', 'title-desc'], 'newest');
-  const sortierteAnliegen = sortiereAnliegen(concerns, sortierung);
-  const pagination = paginiereElemente(sortierteAnliegen, context.searchParams?.get('page'), ADMIN_PRO_SEITE);
-  const tabellenHtml = concerns.length === 0 ? renderAdminEmptyState(t('admin.noConcerns')) : renderAdminPanel(`
-    ${renderListensteuerung({
-      sortierOptionen: [
+  const sortOrder = normalizeSelection(context.searchParams?.get('sort'), ['newest', 'oldest', 'status', 'title-asc', 'title-desc'], 'newest');
+  const sortedConcerns = sortConcerns(concerns, sortOrder);
+  const pagination = paginateItems(sortedConcerns, context.searchParams?.get('page'), ITEMS_PER_ADMIN_PAGE);
+  const tablenHtml = concerns.length === 0 ? renderAdminEmptyState(t('admin.noConcerns')) : renderAdminPanel(`
+    ${renderListControls({
+      sortOptions: [
         { value: 'newest', label: t('general.sortNewest') },
         { value: 'oldest', label: t('general.sortOldest') },
         { value: 'status', label: t('admin.sortStatus') },
         { value: 'title-asc', label: t('general.sortTitleAsc') },
         { value: 'title-desc', label: t('general.sortTitleDesc') }
       ],
-      aktuelleSortierung: sortierung,
-      aktuelleSeite: pagination.aktuelleSeite,
-      gesamtSeiten: pagination.gesamtSeiten,
-      gesamtElemente: pagination.gesamtElemente,
-      ergebnisLabel: t('general.resultsCount').replace('{count}', String(pagination.gesamtElemente))
+      currentSort: sortOrder,
+      currentPage: pagination.currentPage,
+      totalPages: pagination.totalPages,
+      totalItems: pagination.totalItems,
+      resultLabel: t('general.resultsCount').replace('{count}', String(pagination.totalItems))
     })}
-    <table class="tabelle">
+    <table class="table">
       <thead>
         <tr>
           <th>${t('admin.title')}</th>
@@ -1372,7 +1372,7 @@ async function renderConcernsAdmin(container, context) {
         </tr>
       </thead>
       <tbody>
-        ${pagination.elemente.map((concern) => `
+        ${pagination.items.map((concern) => `
           <tr>
             <td data-label="${escapeHtml(t('admin.title'))}" title="${escapeHtml(concern.description || '')}">${escapeHtml(concern.title)}</td>
             <td data-label="${escapeHtml(t('admin.name'))}">${concern.name ? escapeHtml(concern.name) : '<em>' + escapeHtml(t('admin.anonymous')) + '</em>'}</td>
@@ -1390,8 +1390,8 @@ async function renderConcernsAdmin(container, context) {
               })}
             </td>
             <td data-label="${escapeHtml(t('admin.date'))}">${formatDate(concern.createdAt)}</td>
-            <td class="tabelle-aktionen" data-label="${escapeHtml(t('general.actions'))}">
-              <button class="btn btn-klein btn-gefahr concern-delete-button" data-id="${concern.id}">
+            <td class="table-aktionen" data-label="${escapeHtml(t('general.actions'))}">
+              <button class="btn btn-small btn-danger concern-delete-button" data-id="${concern.id}">
                 ${icon('trash', 16)}
               </button>
             </td>
@@ -1399,18 +1399,18 @@ async function renderConcernsAdmin(container, context) {
         `).join('')}
       </tbody>
     </table>
-  `, 'admin-panel-tabelle');
+  `, 'admin-panel-table');
 
   container.innerHTML = renderAdminSection({
     title: t('admin.concerns'),
     description: t('admin.concernsDescription'),
     iconName: 'messageSquare',
-    content: tabellenHtml
+    content: tablenHtml
   });
 
-  verbindeListensteuerung(container, {
-    onSortierung: (wert) => context.setSearchParams?.({ sort: wert === 'newest' ? null : wert, page: null }),
-    onSeite: (seite) => context.setSearchParams?.({ page: seite <= 1 ? null : seite })
+  bindListControls(container, {
+    onSort: (value) => context.setSearchParams?.({ sort: value === 'newest' ? null : value, page: null }),
+    onPage: (page) => context.setSearchParams?.({ page: page <= 1 ? null : page })
   });
 
   container.querySelectorAll('[data-concern-status-cell]').forEach((cell) => {
@@ -1421,14 +1421,14 @@ async function renderConcernsAdmin(container, context) {
     }
     bindSelect(root, async (value) => {
       const result = await api.put('/api/admin/concerns/' + concernId, { status: value });
-      if (behandleNichtAutorisierteAntwort(result, context.navigateTo)) {
+      if (handleUnauthorizedResponse(result, context.navigateTo)) {
         return;
       }
       if (!result.ok) {
         showError(result.data?.error || t('general.error'));
         return;
       }
-      invalidiereAdminConcerns();
+      invalidateAdminConcerns();
       showSuccess(t('admin.statusUpdated'));
     });
   });
@@ -1437,7 +1437,7 @@ async function renderConcernsAdmin(container, context) {
     button.addEventListener('click', () => {
       confirmDialog(t('admin.confirmation'), async () => {
         const result = await api.remove('/api/admin/concerns/' + button.dataset.id);
-        if (behandleNichtAutorisierteAntwort(result, context.navigateTo)) {
+        if (handleUnauthorizedResponse(result, context.navigateTo)) {
           return;
         }
         if (!result.ok) {
@@ -1445,7 +1445,7 @@ async function renderConcernsAdmin(container, context) {
           return;
         }
 
-        invalidiereAdminConcerns();
+        invalidateAdminConcerns();
         showSuccess(t('admin.deleted'));
         await renderConcernsAdmin(container, context);
       });
@@ -1453,62 +1453,62 @@ async function renderConcernsAdmin(container, context) {
   });
 }
 
-function sortiereUmfragen(surveys, sortierung) {
-  const kopie = [...surveys];
+function sortSurveys(surveys, sortOrder) {
+  const copy = [...surveys];
 
-  kopie.sort((links, rechts) => {
-    switch (sortierung) {
+  copy.sort((left, right) => {
+    switch (sortOrder) {
       case 'manual': {
-        const byOrder = (Number(links.sortOrder) || 0) - (Number(rechts.sortOrder) || 0);
+        const byOrder = (Number(left.sortOrder) || 0) - (Number(right.sortOrder) || 0);
         if (byOrder !== 0) return byOrder;
-        return compareDate(rechts.createdAt, links.createdAt);
+        return compareDate(right.createdAt, left.createdAt);
       }
       case 'newest':
-        return compareDate(rechts.createdAt, links.createdAt);
+        return compareDate(right.createdAt, left.createdAt);
       case 'oldest':
-        return compareDate(links.createdAt, rechts.createdAt);
+        return compareDate(left.createdAt, right.createdAt);
       case 'title-asc':
-        return links.title.localeCompare(rechts.title, getLanguage());
+        return left.title.localeCompare(right.title, getLanguage());
       case 'title-desc':
-        return rechts.title.localeCompare(links.title, getLanguage());
+        return right.title.localeCompare(left.title, getLanguage());
       case 'status':
-        return Number(rechts.active) - Number(links.active);
+        return Number(right.active) - Number(left.active);
       case 'responses-desc':
       default:
-        return (rechts.responses || []).length - (links.responses || []).length;
+        return (right.responses || []).length - (left.responses || []).length;
     }
   });
 
-  return kopie;
+  return copy;
 }
 
 function compareDate(left, right) {
   return new Date(left || 0) - new Date(right || 0);
 }
 
-function sortiereFeedElemente(items, sortierung) {
-  const kopie = [...items];
+function sortFeedItems(items, sortOrder) {
+  const copy = [...items];
 
-  kopie.sort((links, rechts) => {
-    switch (sortierung) {
+  copy.sort((left, right) => {
+    switch (sortOrder) {
       case 'oldest':
-        return compareFeedDate(links, rechts, 'asc');
+        return compareFeedDate(left, right, 'asc');
       case 'title-asc':
-        return links.title.localeCompare(rechts.title, getLanguage());
+        return left.title.localeCompare(right.title, getLanguage());
       case 'title-desc':
-        return rechts.title.localeCompare(links.title, getLanguage());
+        return right.title.localeCompare(left.title, getLanguage());
       case 'newest':
       default:
-        return compareFeedDate(links, rechts, 'desc');
+        return compareFeedDate(left, right, 'desc');
     }
   });
 
-  return kopie;
+  return copy;
 }
 
-function compareFeedDate(links, rechts, direction) {
-  const leftDate = new Date(links.createdAt || 0).getTime();
-  const rightDate = new Date(rechts.createdAt || 0).getTime();
+function compareFeedDate(left, right, direction) {
+  const leftDate = new Date(left.createdAt || 0).getTime();
+  const rightDate = new Date(right.createdAt || 0).getTime();
   const dateResult = direction === 'asc'
     ? leftDate - rightDate
     : rightDate - leftDate;
@@ -1517,30 +1517,30 @@ function compareFeedDate(links, rechts, direction) {
     return dateResult;
   }
 
-  return String(links.id || '').localeCompare(String(rechts.id || ''));
+  return String(left.id || '').localeCompare(String(right.id || ''));
 }
 
-function sortiereAnliegen(concerns, sortierung) {
+function sortConcerns(concerns, sortOrder) {
   const statusReihenfolge = { open: 0, in_progress: 1, done: 2 };
-  const kopie = [...concerns];
+  const copy = [...concerns];
 
-  kopie.sort((links, rechts) => {
-    switch (sortierung) {
+  copy.sort((left, right) => {
+    switch (sortOrder) {
       case 'oldest':
-        return new Date(links.createdAt || 0) - new Date(rechts.createdAt || 0);
+        return new Date(left.createdAt || 0) - new Date(right.createdAt || 0);
       case 'status':
-        return (statusReihenfolge[links.status] ?? 99) - (statusReihenfolge[rechts.status] ?? 99);
+        return (statusReihenfolge[left.status] ?? 99) - (statusReihenfolge[right.status] ?? 99);
       case 'title-asc':
-        return links.title.localeCompare(rechts.title, getLanguage());
+        return left.title.localeCompare(right.title, getLanguage());
       case 'title-desc':
-        return rechts.title.localeCompare(links.title, getLanguage());
+        return right.title.localeCompare(left.title, getLanguage());
       case 'newest':
       default:
-        return new Date(rechts.createdAt || 0) - new Date(links.createdAt || 0);
+        return new Date(right.createdAt || 0) - new Date(left.createdAt || 0);
     }
   });
 
-  return kopie;
+  return copy;
 }
 
 export { render, preload };

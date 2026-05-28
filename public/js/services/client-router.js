@@ -136,8 +136,8 @@ function createRouter() {
     const targetUrl = getUrl(pathname || window.location.href);
     const targetPath = normalizePath(targetUrl.pathname);
     const targetSearch = targetUrl.search || '';
-    const replace = options.replace || options.ersetzen;
-    const force = options.force || options.erzwingen;
+    const replace = options.replace;
+    const force = options.force;
     const method = replace ? 'replaceState' : 'pushState';
     const currentTarget = window.location.pathname + window.location.search;
     const nextTarget = targetPath + targetSearch;

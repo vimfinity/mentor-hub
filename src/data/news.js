@@ -11,11 +11,11 @@ const {
 const FILE_NAME = 'news.json';
 
 function normalizeNewsItem(item, locale = DEFAULT_LOCALE) {
-  const normalizedType = normalizeType(item.type || item.art || 'announcement');
-  const title = item.title || item.titel || '';
-  const content = item.content || item.inhalt || '';
-  const detailContent = item.detailContent || item.detailInhalt || item.content || item.inhalt || '';
-  const summary = item.summary || item.zusammenfassung || item.content || item.inhalt || '';
+  const normalizedType = normalizeType(item.type || 'announcement');
+  const title = item.title || '';
+  const content = item.content || '';
+  const detailContent = item.detailContent || item.content || '';
+  const summary = item.summary || item.content || '';
   return {
     id: item.id,
     title: resolveLocalizedValue(title, locale),
@@ -24,18 +24,18 @@ function normalizeNewsItem(item, locale = DEFAULT_LOCALE) {
     contentLocalized: toLocalizedValue(content),
     detailContent: resolveLocalizedValue(detailContent, locale),
     detailContentLocalized: toLocalizedValue(detailContent),
-    imageUrl: item.imageUrl || item.bildUrl || item.thumbnailUrl || '',
+    imageUrl: item.imageUrl || item.thumbnailUrl || '',
     url: item.url || '',
     type: normalizedType,
     kind: 'update',
     subtype: normalizedType,
     summary: resolveLocalizedValue(summary, locale),
     summaryLocalized: toLocalizedValue(summary),
-    source: item.source || item.quelle || detectSource(item.url || ''),
-    tags: normalizeTags(item.tags || item.schlagwoerter, normalizedType),
+    source: item.source || detectSource(item.url || ''),
+    tags: normalizeTags(item.tags, normalizedType),
     featured: item.featured || false,
-    createdAt: item.createdAt || item.erstelltAm || new Date().toISOString(),
-    updatedAt: item.updatedAt || item.aktualisiertAm || null
+    createdAt: item.createdAt || new Date().toISOString(),
+    updatedAt: item.updatedAt || null
   };
 }
 
@@ -43,8 +43,6 @@ function normalizeType(type) {
   const normalized = String(type || '').toLowerCase();
 
   if (normalized === 'news') return 'announcement';
-  if (normalized === 'artikel') return 'article';
-
   return normalized || 'announcement';
 }
 
@@ -133,21 +131,19 @@ function create(data) {
 function update(id, changes) {
   const filteredChanges = {};
 
-  if (changes.title !== undefined || changes.titel !== undefined) {
-    filteredChanges.title = trimLocalizedValue(changes.title !== undefined ? changes.title : changes.titel);
+  if (changes.title !== undefined) {
+    filteredChanges.title = trimLocalizedValue(changes.title);
   }
-  if (changes.content !== undefined || changes.inhalt !== undefined) {
-    filteredChanges.content = trimLocalizedValue(changes.content !== undefined ? changes.content : changes.inhalt);
+  if (changes.content !== undefined) {
+    filteredChanges.content = trimLocalizedValue(changes.content);
   }
-  if (changes.detailContent !== undefined || changes.detailInhalt !== undefined) {
-    filteredChanges.detailContent = trimLocalizedValue(changes.detailContent !== undefined ? changes.detailContent : changes.detailInhalt);
+  if (changes.detailContent !== undefined) {
+    filteredChanges.detailContent = trimLocalizedValue(changes.detailContent);
   }
-  if (changes.imageUrl !== undefined || changes.bildUrl !== undefined || changes.thumbnailUrl !== undefined) {
+  if (changes.imageUrl !== undefined || changes.thumbnailUrl !== undefined) {
     filteredChanges.imageUrl = changes.imageUrl !== undefined
       ? changes.imageUrl
-      : changes.bildUrl !== undefined
-        ? changes.bildUrl
-        : changes.thumbnailUrl;
+      : changes.thumbnailUrl;
   }
   if (changes.url !== undefined) {
     filteredChanges.url = changes.url;
@@ -159,20 +155,20 @@ function update(id, changes) {
     filteredChanges.subtype = changes.subtype;
     filteredChanges.type = changes.subtype;
   }
-  if (changes.summary !== undefined || changes.zusammenfassung !== undefined) {
-    filteredChanges.summary = trimLocalizedValue(changes.summary !== undefined ? changes.summary : changes.zusammenfassung);
+  if (changes.summary !== undefined) {
+    filteredChanges.summary = trimLocalizedValue(changes.summary);
   }
-  if (changes.source !== undefined || changes.quelle !== undefined) {
-    filteredChanges.source = changes.source !== undefined ? changes.source : changes.quelle;
+  if (changes.source !== undefined) {
+    filteredChanges.source = changes.source;
   }
-  if (changes.tags !== undefined || changes.schlagwoerter !== undefined) {
-    filteredChanges.tags = normalizeTags(changes.tags !== undefined ? changes.tags : changes.schlagwoerter, changes.type || changes.subtype);
+  if (changes.tags !== undefined) {
+    filteredChanges.tags = normalizeTags(changes.tags, changes.type || changes.subtype);
   }
   if (changes.featured !== undefined) {
     filteredChanges.featured = changes.featured;
   }
-  if (changes.createdAt !== undefined || changes.erstelltAm !== undefined) {
-    filteredChanges.createdAt = changes.createdAt !== undefined ? changes.createdAt : changes.erstelltAm;
+  if (changes.createdAt !== undefined) {
+    filteredChanges.createdAt = changes.createdAt;
   }
 
   return store.updateItem(FILE_NAME, id, filteredChanges);

@@ -34,7 +34,7 @@ function closeInstance(instance) {
   if (!instance) {
     return;
   }
-  instance.root.classList.remove('offen');
+  instance.root.classList.remove('open');
   instance.trigger.setAttribute('aria-expanded', 'false');
   if (openInstance === instance) {
     openInstance = null;
@@ -88,7 +88,7 @@ function renderSelect({
       </button>
       <ul class="select-menu" role="listbox">
         ${options.map((option) => `
-          <li class="select-option ${option.value === value ? 'aktiv' : ''}"
+          <li class="select-option ${option.value === value ? 'active' : ''}"
             role="option"
             data-select-value="${escapeHtml(option.value)}"
             aria-selected="${option.value === value ? 'true' : 'false'}">
@@ -124,7 +124,7 @@ function bindSelect(root, onChange) {
     if (trigger.disabled) {
       return;
     }
-    const isOpen = root.classList.contains('offen');
+    const isOpen = root.classList.contains('open');
     if (isOpen) {
       closeInstance(instance);
       return;
@@ -132,7 +132,7 @@ function bindSelect(root, onChange) {
     if (openInstance && openInstance !== instance) {
       closeInstance(openInstance);
     }
-    root.classList.add('offen');
+    root.classList.add('open');
     trigger.setAttribute('aria-expanded', 'true');
     openInstance = instance;
   });
@@ -155,7 +155,7 @@ function bindSelect(root, onChange) {
     }
     menu.querySelectorAll('.select-option').forEach((option) => {
       const isActive = option === item;
-      option.classList.toggle('aktiv', isActive);
+      option.classList.toggle('active', isActive);
       option.setAttribute('aria-selected', isActive ? 'true' : 'false');
     });
     closeInstance(instance);

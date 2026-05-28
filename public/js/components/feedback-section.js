@@ -1,5 +1,5 @@
 import * as api from '../services/api-client.js';
-import { holeAbfrage } from '../services/query-cache.js';
+import { fetchQuery } from '../services/query-cache.js';
 import { t, getLocale } from '../services/i18n.js';
 import { escapeHtml } from './modal.js';
 import { icon } from './icons.js';
@@ -9,22 +9,22 @@ const UMFRAGEN_CACHE_KEY = ['surveys'];
 const UMFRAGEN_CACHE_TTL_MS = 60 * 1000;
 
 async function render(container, context = {}) {
-  const response = await holeAbfrage({
-    schluessel: [...UMFRAGEN_CACHE_KEY, getLocale()],
-    abrufFunktion: () => api.get('/api/surveys'),
+  const response = await fetchQuery({
+    key: [...UMFRAGEN_CACHE_KEY, getLocale()],
+    fetchFunction: () => api.get('/api/surveys'),
     ttlMs: UMFRAGEN_CACHE_TTL_MS
   });
   const hasSurveys = response.ok && response.data && response.data.length > 0;
 
   let surveysHtml = `
-    <div class="leer-zustand feedback-empty">
-      <p class="leer-zustand-text">${escapeHtml(t('survey.empty'))}</p>
+    <div class="empty-state feedback-empty">
+      <p class="empty-state-text">${escapeHtml(t('survey.empty'))}</p>
     </div>
   `;
 
   if (hasSurveys) {
     surveysHtml = `
-      <div class="umfragen-container">
+      <div class="surveys-container">
         ${response.data.map((survey) => renderSurvey(survey)).join('')}
       </div>
     `;
@@ -33,7 +33,7 @@ async function render(container, context = {}) {
   const html = `
     <div class="feedback-layout">
       <section class="feedback-panel feedback-surveys">
-        <h1 class="sektion-titel">${escapeHtml(t('survey.title'))}</h1>
+        <h1 class="section-title">${escapeHtml(t('survey.title'))}</h1>
         ${surveysHtml}
       </section>
       ${renderConcernForm()}
@@ -45,41 +45,41 @@ async function render(container, context = {}) {
 }
 
 function preload() {
-  return holeAbfrage({
-    schluessel: [...UMFRAGEN_CACHE_KEY, getLocale()],
-    abrufFunktion: () => api.get('/api/surveys'),
+  return fetchQuery({
+    key: [...UMFRAGEN_CACHE_KEY, getLocale()],
+    fetchFunction: () => api.get('/api/surveys'),
     ttlMs: UMFRAGEN_CACHE_TTL_MS
   });
 }
 
 function renderConcernForm() {
   return `
-    <section class="anliegen-sektion feedback-panel">
-      <h2 class="anliegen-titel">
+    <section class="concern-section feedback-panel">
+      <h2 class="concern-title">
         ${icon('lightbulb', 22)}
         <span>${t('concern.title')}</span>
       </h2>
-      <p class="sektion-beschreibung">${t('concern.description')}</p>
-      <form class="formular" id="concern-form">
-        <div class="formular-gruppe">
-          <label class="formular-label" for="concern-title">${t('concern.titleLabel')}</label>
-          <input type="text" id="concern-title" class="formular-eingabe"
+      <p class="section-description">${t('concern.description')}</p>
+      <form class="form" id="concern-form">
+        <div class="form-group">
+          <label class="form-label" for="concern-title">${t('concern.titleLabel')}</label>
+          <input type="text" id="concern-title" class="form-input"
             placeholder="${t('concern.titlePlaceholder')}"
             maxlength="200" required>
         </div>
-        <div class="formular-gruppe">
-          <label class="formular-label" for="concern-detail">${t('concern.detailLabel')}</label>
-          <textarea id="concern-detail" class="formular-textarea"
+        <div class="form-group">
+          <label class="form-label" for="concern-detail">${t('concern.detailLabel')}</label>
+          <textarea id="concern-detail" class="form-textarea"
             placeholder="${t('concern.detailPlaceholder')}"
             maxlength="2000"></textarea>
         </div>
-        <div class="formular-gruppe">
-          <label class="formular-label" for="concern-name">${t('concern.nameLabel')}</label>
-          <input type="text" id="concern-name" class="formular-eingabe"
+        <div class="form-group">
+          <label class="form-label" for="concern-name">${t('concern.nameLabel')}</label>
+          <input type="text" id="concern-name" class="form-input"
             placeholder="${t('concern.namePlaceholder')}"
             maxlength="100">
         </div>
-        <button type="submit" class="btn btn-primaer">
+        <button type="submit" class="btn btn-primary">
           ${icon('send', 16)}
           <span>${t('concern.submit')}</span>
         </button>
@@ -97,15 +97,15 @@ function renderSurvey(survey) {
   ].filter(Boolean);
 
   return `
-    <a class="feed-card feed-card-clickable umfrage-preview" href="${detailHref}" data-survey-id="${escapeHtml(survey.id)}" data-survey-internal="1">
+    <a class="feed-card feed-card-clickable survey-preview" href="${detailHref}" data-survey-id="${escapeHtml(survey.id)}" data-survey-internal="1">
       <div class="feed-card-body">
         <div class="feed-card-meta">
           <span class="feed-card-type accent-skill">
             ${escapeHtml(t('survey.singleLabel'))}
           </span>
-          <span class="feed-card-zeit">${escapeHtml(metaParts.join(' · '))}</span>
+          <span class="feed-card-time">${escapeHtml(metaParts.join(' · '))}</span>
         </div>
-        <h2 class="feed-card-titel">${escapeHtml(survey.title)}</h2>
+        <h2 class="feed-card-title">${escapeHtml(survey.title)}</h2>
         ${survey.description ? `<p class="feed-card-text">${escapeHtml(survey.description)}</p>` : ''}
       </div>
     </a>

@@ -2,15 +2,15 @@ import { icon } from './icons.js';
 
 function renderAdminSection({ title, description = '', actions = '', content = '', iconName = '' }) {
   return `
-    <section class="admin-bereich">
-      <div class="admin-bereich-kopf">
-        <div class="admin-bereich-meta">
-          <h2 class="sektion-titel admin-bereich-titel">
-            ${iconName ? `<span class="admin-bereich-icon">${icon(iconName, 22)}</span>` : ''}${title}
+    <section class="admin-section">
+      <div class="admin-section-header">
+        <div class="admin-section-meta">
+          <h2 class="section-title admin-section-title">
+            ${iconName ? `<span class="admin-section-icon">${icon(iconName, 22)}</span>` : ''}${title}
           </h2>
-          ${description ? `<p class="sektion-beschreibung admin-bereich-beschreibung">${description}</p>` : ''}
+          ${description ? `<p class="section-description admin-section-description">${description}</p>` : ''}
         </div>
-        ${actions ? `<div class="admin-bereich-aktionen">${actions}</div>` : ''}
+        ${actions ? `<div class="admin-section-actions">${actions}</div>` : ''}
       </div>
       ${content}
     </section>
@@ -23,11 +23,11 @@ function renderAdminPanel(content, extraClasses = '') {
 
 function renderAdminEmptyState(text, iconName = 'inbox') {
   return renderAdminPanel(`
-    <div class="leer-zustand">
-      <div class="leer-zustand-icon">${icon(iconName, 40)}</div>
-      <p class="leer-zustand-text">${text}</p>
+    <div class="empty-state">
+      <div class="empty-state-icon">${icon(iconName, 40)}</div>
+      <p class="empty-state-text">${text}</p>
     </div>
-  `, 'admin-panel-zentriert');
+  `, 'admin-panel-centered');
 }
 
 export {

@@ -229,7 +229,7 @@ const server = http.createServer((req, res) => {
     res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify({
       error: 'Too many requests. Please try again later.',
-      fehler: 'Zu viele Anfragen. Bitte spaeter erneut versuchen.',
+      error: 'Too many requests. Please try again later.',
       retryAfterSeconds: rateLimitStatus.retryAfterSeconds
     }));
     return;
@@ -283,7 +283,7 @@ server.listen(config.port, config.host, () => {
   console.log(`  Language:          ${config.defaultLanguage}`);
   console.log('-------------------------------------------');
 
-  if (!config.adminPasswordHash || config.adminPasswordHash.length === 0) {
+  if (!config.adminPasswordHash.length === 0) {
     console.log('');
     console.log('  WARNING: Admin password has not been set yet.');
     console.log('  Please call POST /api/admin/setup.');

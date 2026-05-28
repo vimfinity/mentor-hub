@@ -29,12 +29,12 @@ function normalizeOption(option, locale = DEFAULT_LOCALE) {
 }
 
 function normalizeQuestion(question, locale = DEFAULT_LOCALE) {
-  const text = question.text || question.frage || '';
+  const text = question.text || question.question || '';
   return {
     text: resolveLocalizedValue(text, locale),
     textLocalized: toLocalizedValue(text),
-    type: question.type || question.typ || 'free_text',
-    options: (question.options || question.optionen || []).map((option) => normalizeOption(option, locale))
+    type: question.type || 'free_text',
+    options: (question.options || []).map((option) => normalizeOption(option, locale))
   };
 }
 
@@ -42,15 +42,15 @@ function normalizeResponse(response) {
   return {
     id: response.id,
     name: response.name || null,
-    responses: response.responses || response.antworten || [],
-    submittedAt: response.submittedAt || response.eingereichtAm || new Date().toISOString()
+    responses: response.responses || [],
+    submittedAt: response.submittedAt || new Date().toISOString()
   };
 }
 
 function normalizeSurvey(survey, index = 0, locale = DEFAULT_LOCALE) {
-  const sortOrder = Number(survey.sortOrder ?? survey.reihenfolge);
-  const title = survey.title || survey.titel || '';
-  const description = survey.description || survey.beschreibung || '';
+  const sortOrder = Number(survey.sortOrder);
+  const title = survey.title || '';
+  const description = survey.description || '';
 
   return {
     id: survey.id,
@@ -58,12 +58,12 @@ function normalizeSurvey(survey, index = 0, locale = DEFAULT_LOCALE) {
     titleLocalized: toLocalizedValue(title),
     description: resolveLocalizedValue(description, locale),
     descriptionLocalized: toLocalizedValue(description),
-    questions: (survey.questions || survey.fragen || []).map((question) => normalizeQuestion(question, locale)),
-    active: survey.active !== undefined ? survey.active : !!survey.aktiv,
-    responses: (survey.responses || survey.antworten || []).map(normalizeResponse),
+    questions: (survey.questions || []).map((question) => normalizeQuestion(question, locale)),
+    active: survey.active,
+    responses: (survey.responses || []).map(normalizeResponse),
     sortOrder: Number.isFinite(sortOrder) ? sortOrder : index,
-    createdAt: survey.createdAt || survey.erstelltAm || new Date().toISOString(),
-    updatedAt: survey.updatedAt || survey.aktualisiertAm || null
+    createdAt: survey.createdAt || new Date().toISOString(),
+    updatedAt: survey.updatedAt || null
   };
 }
 
@@ -121,8 +121,8 @@ function create(data) {
     description: trimLocalizedValue(data.description || ''),
     questions: (data.questions || []).map((question) => ({
       text: trimLocalizedValue(question.text),
-      type: question.type || question.typ || 'free_text',
-      options: (question.options || question.optionen || []).map((option) => {
+      type: question.type || 'free_text',
+      options: (question.options || []).map((option) => {
         if (option && typeof option === 'object' && !Array.isArray(option)) {
           return {
             id: String(option.id || option.value || '').trim(),
@@ -151,17 +151,17 @@ function update(id, changes) {
   const allowedFields = ['title', 'description', 'questions', 'active', 'sortOrder'];
   const filteredChanges = {};
 
-  if (changes.title !== undefined || changes.titel !== undefined) {
-    filteredChanges.title = trimLocalizedValue(changes.title !== undefined ? changes.title : changes.titel);
+  if (changes.title !== undefined) {
+    filteredChanges.title = trimLocalizedValue(changes.title);
   }
-  if (changes.description !== undefined || changes.beschreibung !== undefined) {
-    filteredChanges.description = trimLocalizedValue(changes.description !== undefined ? changes.description : changes.beschreibung);
+  if (changes.description !== undefined) {
+    filteredChanges.description = trimLocalizedValue(changes.description);
   }
-  if (changes.questions !== undefined || changes.fragen !== undefined) {
-    filteredChanges.questions = (changes.questions || changes.fragen || []).map((question) => ({
+  if (changes.questions !== undefined) {
+    filteredChanges.questions = (changes.questions || []).map((question) => ({
       text: trimLocalizedValue(question.text),
-      type: question.type || question.typ || 'free_text',
-      options: (question.options || question.optionen || []).map((option) => {
+      type: question.type || 'free_text',
+      options: (question.options || []).map((option) => {
         if (option && typeof option === 'object' && !Array.isArray(option)) {
           return {
             id: String(option.id || option.value || '').trim(),
@@ -172,11 +172,11 @@ function update(id, changes) {
       })
     }));
   }
-  if (changes.active !== undefined || changes.aktiv !== undefined) {
-    filteredChanges.active = changes.active !== undefined ? changes.active : changes.aktiv;
+  if (changes.active !== undefined) {
+    filteredChanges.active = changes.active;
   }
-  if (changes.sortOrder !== undefined || changes.reihenfolge !== undefined) {
-    const sortOrder = Number(changes.sortOrder !== undefined ? changes.sortOrder : changes.reihenfolge);
+  if (changes.sortOrder !== undefined) {
+    const sortOrder = Number(changes.sortOrder);
     if (Number.isFinite(sortOrder)) {
       filteredChanges.sortOrder = sortOrder;
     }
@@ -192,7 +192,7 @@ function update(id, changes) {
 }
 
 function move(id, direction) {
-  const step = direction === 'down' || direction === 'runter' ? 1 : -1;
+  const step = direction === 'down' ? 1 : -1;
 
   return store.mutateDataFile(FILE_NAME, (records) => {
     const ordered = records
@@ -234,7 +234,7 @@ function addResponse(surveyId, response) {
   const newResponse = {
     id: store.createId(),
     name: response.name || null,
-    responses: response.responses || response.antworten || [],
+    responses: response.responses || [],
     submittedAt: new Date().toISOString()
   };
 
