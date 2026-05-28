@@ -96,6 +96,18 @@ function renderQuestion(question, index) {
         </div>
       `;
       break;
+    case 'multiple_choice':
+      inputHtml = `
+        <div class="auswahl-gruppe frage-eingabe" data-index="${index}" data-wert="">
+          ${(question.options || []).map(option => `
+            <label class="auswahl-option">
+              <input type="checkbox" name="frage_${index}" value="${escapeHtml(option)}">
+              <span>${escapeHtml(option)}</span>
+            </label>
+          `).join('')}
+        </div>
+      `;
+      break;
 
     default:
       inputHtml = `
@@ -170,8 +182,8 @@ async function submitSurvey(form) {
     } else if (input.classList.contains('ja-nein-auswahl')) {
       responses.push(input.dataset.wert || '');
     } else if (input.classList.contains('auswahl-gruppe')) {
-      const selected = input.querySelector('input:checked');
-      responses.push(selected ? selected.value : '');
+      const selected = Array.from(input.querySelectorAll('input:checked')).map((option) => option.value);
+      responses.push(input.querySelector('input[type="checkbox"]') ? selected : (selected[0] || ''));
     }
   });
 
