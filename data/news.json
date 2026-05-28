@@ -1,15 +1,15 @@
 [
   {
     "id": "e887a6ce-6cf5-4ee6-adf8-2c631cbe395e",
-    "createdAt": "2026-05-20T15:10:35.244Z",
+    "createdAt": "2026-05-20T15:10:00.000Z",
     "title": "Using Claude Code: The Unreasonable Effectiveness of HTML",
     "content": "HTML als eine Alternative für den Output eines LLM's zu Markdown.",
     "url": "https://x.com/trq212/status/2052809885763747935?s=20",
     "type": "article",
     "featured": false,
-    "updatedAt": "2026-05-26T06:33:29.222Z",
+    "updatedAt": "2026-05-28T00:12:01.168Z",
     "detailContent": "HTML als eine Alternative für den Output eines LLM's zu Markdown.",
-    "imageUrl": "https://pbs.twimg.com/media/HHz_ftzaIAAwkQs?format=jpg&name=small",
+    "imageUrl": "/uploads/images/e74024911bf9641338815bdf1fe361aba001f7703cf26848704be2da11a6a1b7.jpg",
     "subtype": "article",
     "summary": "HTML als eine Alternative für den Output eines LLM's zu Markdown.",
     "source": "x.com",
@@ -25,9 +25,9 @@
     "url": "https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-3-5/",
     "type": "release",
     "featured": true,
-    "updatedAt": "2026-05-27T20:40:14.120Z",
+    "updatedAt": "2026-05-27T23:20:59.506Z",
     "detailContent": "Vorstellung von Gemini 3.5 Flash",
-    "imageUrl": "https://storage.googleapis.com/gweb-uniblog-publish-prod/images/gemini-3-5__keyword__blog-header.width-1200.format-webp.webp",
+    "imageUrl": "/uploads/images/f526bc91e388abb4d750225ce7e1a578d8a690006779d6bfc1e85a84c710838f.webp",
     "subtype": "release",
     "summary": "Vorstellung von Gemini 3.5 Flash",
     "source": "Google Blog",
@@ -37,11 +37,11 @@
   },
   {
     "id": "042e857d-829b-4d9d-ba05-27c9a2aadf26",
-    "createdAt": "2026-05-27T20:19:39.443Z",
+    "createdAt": "2026-05-27T20:19:00.000Z",
     "title": "Introducing Claude Opus 4.7",
     "content": "Release of Anthropics new frontier model: Claude Opus 4.7",
     "detailContent": "Release of Anthropics new frontier model: Claude Opus 4.7",
-    "imageUrl": "https://www.anthropic.com/_next/image?url=https%3A%2F%2Fwww-cdn.anthropic.com%2Fimages%2F4zrzovbb%2Fwebsite%2F96ea2509a90e527642c822303e56296a07bcfce4-1920x1080.png&w=1920&q=75",
+    "imageUrl": "/uploads/images/0897708868e20cc1bc5d238ff2bcc804dc2ed7b130a6ddec0826b6ce11005225.webp",
     "url": "https://www.anthropic.com/news/claude-opus-4-7",
     "type": "release",
     "subtype": "release",
@@ -54,15 +54,15 @@
       "opus"
     ],
     "featured": false,
-    "updatedAt": "2026-05-27T20:24:56.193Z"
+    "updatedAt": "2026-05-27T23:06:50.483Z"
   },
   {
     "id": "13b77219-b97e-4f72-817b-cb0f37a1dc5d",
-    "createdAt": "2026-05-27T20:22:32.321Z",
+    "createdAt": "2026-05-27T20:22:00.000Z",
     "title": "Entdecke GPT‑5.5",
     "content": "Einführung des neusten Models aus dem Hause OpenAI: GPT-5.5",
     "detailContent": "Einführung des neusten Models aus dem Hause OpenAI: GPT-5.5",
-    "imageUrl": "https://images.ctfassets.net/kftzwdyauwt9/2Bh47W4cA48dvG5FbDtNQH/5897109fb0de6fc3125c0c35c4f60001/Hero_Art_Card_16x9.jpg?w=1920&q=90&fm=webp",
+    "imageUrl": "/uploads/images/d362805585d51640c371df86038befa6100c94a5b46918b94d969fd6a580aa17.webp",
     "url": "https://openai.com/de-DE/index/introducing-gpt-5-5/",
     "type": "release",
     "subtype": "release",
@@ -74,6 +74,6 @@
       "gpt"
     ],
     "featured": false,
-    "updatedAt": "2026-05-27T20:25:10.289Z"
+    "updatedAt": "2026-05-27T23:09:32.383Z"
   }
 ]

@@ -4,6 +4,7 @@ import { t } from '../services/i18n.js';
 import { escapeHtml } from './modal.js';
 import { icon } from './icons.js';
 import { renderSelect, bindSelect } from './select.js';
+import { renderResponsiveImage } from './responsive-image.js';
 
 const FEED_CACHE_KEY = ['feed'];
 const FEED_CACHE_TTL_MS = 60 * 1000;
@@ -390,7 +391,19 @@ function renderFeedCard(item, index) {
 
 function renderFeedImage(item, className) {
   if (item.imageUrl) {
-    return `<img class="${className}" src="${escapeHtml(item.imageUrl)}" alt="">`;
+    const isFeatured = className === 'feed-featured-image';
+    return renderResponsiveImage({
+      image: item.image,
+      src: item.imageUrl,
+      className,
+      alt: '',
+      sizes: isFeatured
+        ? '(max-width: 768px) calc(100vw - 32px), 960px'
+        : '(max-width: 768px) calc(100vw - 32px), 176px',
+      loading: isFeatured ? 'eager' : 'lazy',
+      fetchPriority: isFeatured ? 'high' : 'auto',
+      includeDimensions: false
+    });
   }
 
   const config = getTypeConfig(item);

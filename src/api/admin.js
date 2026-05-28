@@ -10,6 +10,7 @@ const resources = require('../data/resources');
 const concerns = require('../data/concerns');
 const newsItems = require('../data/news');
 const media = require('../data/media');
+const { createImageVariants } = require('../image-optimizer');
 const { sendJson, readBody } = require('./public');
 
 const NEWS_TYPES = ['announcement', 'release', 'article', 'tool', 'skill', 'video', 'tutorial'];
@@ -299,7 +300,7 @@ function registerRoutes(router) {
       return;
     }
 
-    readLargeJsonBody(req, res, (body) => {
+    readLargeJsonBody(req, res, async (body) => {
       const originalName = sanitizeFileName(body?.filename || body?.name);
       const extension = path.extname(originalName).toLowerCase();
       const contentBase64 = String(body?.contentBase64 || '').replace(/^data:[^,]+,/, '');
@@ -327,19 +328,30 @@ function registerRoutes(router) {
       }
 
       const sha256 = crypto.createHash('sha256').update(buffer).digest('hex');
-      const existing = media.addImage({
-        filename: `${sha256}${extension}`,
-        originalName,
-        mimeType: IMAGE_MIME_TYPES[extension] || body?.mimeType || 'application/octet-stream',
-        sizeBytes: buffer.length,
-        sha256
-      });
-
+      const filename = `${sha256}${extension}`;
       fs.mkdirSync(IMAGE_UPLOAD_ROOT, { recursive: true });
-      const imagePath = safeImageUploadPath(existing.filename);
+      const imagePath = safeImageUploadPath(filename);
       if (!fs.existsSync(imagePath)) {
         fs.writeFileSync(imagePath, buffer);
       }
+
+      let optimized = { width: null, height: null, variants: [] };
+      try {
+        optimized = await createImageVariants({ sourcePath: imagePath, filename });
+      } catch (error) {
+        console.warn('Image optimization failed:', error.message);
+      }
+
+      const existing = media.addImage({
+        filename,
+        originalName,
+        mimeType: IMAGE_MIME_TYPES[extension] || body?.mimeType || 'application/octet-stream',
+        sizeBytes: buffer.length,
+        sha256,
+        width: optimized.width,
+        height: optimized.height,
+        variants: optimized.variants
+      });
 
       sendJson(res, 201, existing);
     });

@@ -7,6 +7,7 @@ const surveys = require('../data/surveys');
 const resources = require('../data/resources');
 const concerns = require('../data/concerns');
 const newsItems = require('../data/news');
+const media = require('../data/media');
 
 const localesDirectory = path.join(__dirname, '..', '..', 'locales');
 const resourceUploadDirectory = path.join(__dirname, '..', '..', 'data', 'uploads', 'resources');
@@ -81,7 +82,7 @@ function registerRoutes(router) {
   });
 
   router.get('/api/resources', (req, res) => {
-    sendJson(res, 200, resources.getAll());
+    sendJson(res, 200, resources.getAll().map(withImageMetadata));
   });
 
   router.get('/api/uploads/images/:filename', (req, res, params) => {
@@ -165,7 +166,7 @@ function registerRoutes(router) {
   });
 
   router.get('/api/feed', (req, res) => {
-    const news = newsItems.getAll().map((item) => ({
+    const news = newsItems.getAll().map((item) => withImageMetadata({
       ...item,
       feedSource: 'news',
       kind: item.kind || 'update',
@@ -176,7 +177,7 @@ function registerRoutes(router) {
       imageUrl: item.imageUrl || '',
       tags: Array.isArray(item.tags) ? item.tags : []
     }));
-    const allResources = resources.getAll().map((item) => ({
+    const allResources = resources.getAll().map((item) => withImageMetadata({
       ...item,
       feedSource: 'resource',
       kind: item.kind || 'agent-asset',
@@ -195,7 +196,7 @@ function registerRoutes(router) {
 
   router.get('/api/feed/:id', (req, res, params) => {
     const merged = [
-      ...newsItems.getAll().map((item) => ({
+      ...newsItems.getAll().map((item) => withImageMetadata({
         ...item,
         feedSource: 'news',
         kind: item.kind || 'update',
@@ -206,7 +207,7 @@ function registerRoutes(router) {
         imageUrl: item.imageUrl || '',
         tags: Array.isArray(item.tags) ? item.tags : []
       })),
-      ...resources.getAll().map((item) => ({
+      ...resources.getAll().map((item) => withImageMetadata({
         ...item,
         feedSource: 'resource',
         kind: item.kind || 'agent-asset',
@@ -237,6 +238,24 @@ function registerRoutes(router) {
 function sendJson(res, statusCode, data) {
   res.writeHead(statusCode, { 'Content-Type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify(data));
+}
+
+function withImageMetadata(item) {
+  const imageUrl = item.imageUrl || '';
+  const image = media.findByUrl(imageUrl);
+  if (!image) {
+    return item;
+  }
+
+  return {
+    ...item,
+    image: {
+      url: image.url,
+      width: image.width,
+      height: image.height,
+      variants: image.variants
+    }
+  };
 }
 
 function safeAttachmentPath(resourceId, attachmentId, filename) {

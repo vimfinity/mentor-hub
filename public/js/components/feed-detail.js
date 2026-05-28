@@ -95,7 +95,10 @@ async function render(container, context = {}) {
 
   const richHost = container.querySelector('[data-rich-host]');
   if (richHost && detailContent) {
-    mountRichDocument(richHost, detailContent, { minHeight: 0, className: 'feed-detail-iframe' });
+    mountRichDocument(richHost, detailContent, {
+      minHeight: 0,
+      className: 'feed-detail-iframe'
+    });
   }
 
   const copyButton = container.querySelector('[data-copy-article-link]');

@@ -5,11 +5,25 @@ const path = require('path');
 const store = require('./store');
 const newsItems = require('./news');
 const resources = require('./resources');
+const { removeImageVariants } = require('../image-optimizer');
 
 const FILE_NAME = 'media.json';
 const IMAGE_UPLOAD_ROOT = path.join(__dirname, '..', '..', 'public', 'uploads', 'images');
 
 function normalizeMediaItem(item) {
+  const variants = Array.isArray(item.variants)
+    ? item.variants
+        .map((variant) => ({
+          width: Number(variant.width) || null,
+          height: Number(variant.height) || null,
+          format: variant.format || 'webp',
+          mimeType: variant.mimeType || 'image/webp',
+          sizeBytes: Number.isFinite(Number(variant.sizeBytes)) ? Number(variant.sizeBytes) : 0,
+          url: variant.url || ''
+        }))
+        .filter((variant) => variant.width && variant.url)
+    : [];
+
   return {
     id: item.id,
     kind: item.kind || 'image',
@@ -19,6 +33,9 @@ function normalizeMediaItem(item) {
     sizeBytes: Number.isFinite(Number(item.sizeBytes || item.size)) ? Number(item.sizeBytes || item.size) : 0,
     sha256: item.sha256 || '',
     url: item.url || (item.filename ? `/uploads/images/${encodeURIComponent(item.filename)}` : ''),
+    width: Number(item.width) || null,
+    height: Number(item.height) || null,
+    variants,
     createdAt: item.createdAt || new Date().toISOString()
   };
 }
@@ -43,9 +60,25 @@ function findByHash(sha256) {
   return getAll().find((item) => item.sha256 === sha256) || null;
 }
 
+function findByUrl(url) {
+  if (!url || !String(url).startsWith('/uploads/images/')) {
+    return null;
+  }
+
+  return getAll().find((item) => item.url === url) || null;
+}
+
 function addImage(data) {
   const existing = findByHash(data.sha256);
   if (existing) {
+    if ((!existing.variants || existing.variants.length === 0) && Array.isArray(data.variants) && data.variants.length > 0) {
+      return updateImageMetadata(existing.id, {
+        width: data.width,
+        height: data.height,
+        variants: data.variants
+      });
+    }
+
     return normalizeMediaItem(existing);
   }
 
@@ -58,6 +91,9 @@ function addImage(data) {
     sizeBytes: data.sizeBytes,
     sha256: data.sha256,
     url: `/uploads/images/${encodeURIComponent(data.filename)}`,
+    width: data.width || null,
+    height: data.height || null,
+    variants: Array.isArray(data.variants) ? data.variants : [],
     createdAt: new Date().toISOString()
   };
 
@@ -67,6 +103,24 @@ function addImage(data) {
   });
 
   return normalizeMediaItem(item);
+}
+
+function updateImageMetadata(id, changes) {
+  const updated = store.mutateDataFile(FILE_NAME, (records) => {
+    const index = records.findIndex((item) => item.id === id);
+    if (index === -1) {
+      return { changed: false, result: null };
+    }
+
+    records[index] = {
+      ...records[index],
+      ...changes
+    };
+
+    return { changed: true, result: normalizeMediaItem(records[index]) };
+  });
+
+  return updated;
 }
 
 function removeImage(id) {
@@ -90,6 +144,7 @@ function removeImage(id) {
 
   if (removed?.filename) {
     removeImageFile(removed.filename);
+    removeImageVariants(removed.filename);
   }
 
   return { ok: true, image: removed };
@@ -114,6 +169,7 @@ function removeUnusedImages() {
 
   for (const image of removedImages) {
     removeImageFile(image.filename);
+    removeImageVariants(image.filename);
   }
 
   return { removed: removedImages.length };
@@ -151,8 +207,11 @@ function removeImageFile(filename) {
 }
 
 module.exports = {
+  getAll,
   getImagesWithUsage,
+  findByUrl,
   addImage,
+  updateImageMetadata,
   removeImage,
   removeUnusedImages
 };

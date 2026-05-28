@@ -9,6 +9,7 @@ import { renderListensteuerung, verbindeListensteuerung } from '../components/li
 import { icon } from '../components/icons.js';
 import { renderSelect, bindSelect } from '../components/select.js';
 import { mountMarkdownEditor } from '../components/markdown-editor.js';
+import { renderResponsiveImage } from '../components/responsive-image.js';
 
 const SESSION_CACHE_KEY = 'admin:session';
 const SURVEYS_CACHE_KEY = 'admin:surveys';
@@ -723,6 +724,7 @@ function openFeedForm({ context, mode, item = null }) {
   const tagValue = escapeHtml(Array.isArray(item?.tags) ? item.tags.join(', ') : '');
   const createdAtValue = escapeHtml(formatDateTimeInput(item?.createdAt));
   const isResourceEdit = isEdit && (item?.feedSource === 'resource' || selectedKind !== 'update');
+  let selectedImage = item?.image?.url === item?.imageUrl ? item.image : null;
   const kindOptions = FEED_KIND_OPTIONS.map((value) => `
     <option value="${value}" ${value === selectedKind ? 'selected' : ''}>${getFeedKindLabel(value)}</option>
   `).join('');
@@ -902,7 +904,13 @@ function openFeedForm({ context, mode, item = null }) {
     const subtypeRoot = subtypeHost.querySelector('[data-select="feed-form-subtype"]');
     const subtypeValue = subtypeRoot ? subtypeRoot.dataset.value : '';
     preview.innerHTML = `
-      ${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="">` : `<div class="feed-admin-vorschau-placeholder">${icon('image', 22)}</div>`}
+      ${imageUrl ? renderResponsiveImage({
+        image: selectedImage?.url === imageUrl ? selectedImage : null,
+        src: imageUrl,
+        alt: '',
+        sizes: '96px',
+        includeDimensions: false
+      }) : `<div class="feed-admin-vorschau-placeholder">${icon('image', 22)}</div>`}
       <div>
         <strong>${escapeHtml(title || t('admin.title'))}</strong>
         <span>${getFeedKindLabel(kindSelect.dataset.value)} - ${typeLabels[subtypeValue] || subtypeValue}</span>
@@ -967,6 +975,7 @@ function openFeedForm({ context, mode, item = null }) {
 
         const imageInput = overlay.querySelector('#feed-form-image');
         imageInput.value = result.data.url;
+        selectedImage = result.data;
         refreshPreview();
         showSuccess('Bild hochgeladen');
       } finally {
@@ -980,8 +989,9 @@ function openFeedForm({ context, mode, item = null }) {
     mediaButton.addEventListener('click', () => openMediaLibrary({
       context,
       selectedUrl: overlay.querySelector('#feed-form-image').value.trim(),
-      onSelect: (url) => {
+      onSelect: (url, image) => {
         overlay.querySelector('#feed-form-image').value = url;
+        selectedImage = image || null;
         refreshPreview();
       }
     }));
@@ -991,6 +1001,7 @@ function openFeedForm({ context, mode, item = null }) {
   if (clearImageButton) {
     clearImageButton.addEventListener('click', () => {
       overlay.querySelector('#feed-form-image').value = '';
+      selectedImage = null;
       refreshPreview();
     });
   }
@@ -1150,7 +1161,13 @@ async function openMediaLibrary({ context, selectedUrl, onSelect }) {
       : images.map((image) => `
         <article class="media-library-item ${image.url === selectedUrl ? 'aktiv' : ''}">
           <button type="button" class="media-library-select" data-media-select="${escapeHtml(image.url)}">
-            <img src="${escapeHtml(image.url)}" alt="">
+            ${renderResponsiveImage({
+              image,
+              src: image.url,
+              alt: '',
+              sizes: '(max-width: 680px) calc(100vw - 48px), 180px',
+              includeDimensions: false
+            })}
           </button>
           <div class="media-library-meta">
             <strong>${escapeHtml(image.originalName || image.filename)}</strong>
@@ -1164,7 +1181,8 @@ async function openMediaLibrary({ context, selectedUrl, onSelect }) {
 
     grid.querySelectorAll('[data-media-select]').forEach((button) => {
       button.addEventListener('click', () => {
-        onSelect(button.dataset.mediaSelect);
+        const image = images.find((entry) => entry.url === button.dataset.mediaSelect) || null;
+        onSelect(button.dataset.mediaSelect, image);
         overlay.querySelector('.modal-abbrechen')?.click();
       });
     });

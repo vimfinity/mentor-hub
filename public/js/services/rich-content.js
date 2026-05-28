@@ -53,35 +53,82 @@ const BASE_STYLES = `
 `;
 
 const AUTOSIZE_SCRIPT = `
-  (function(){
-    function report(){
-      var h = Math.max(
-        document.documentElement.scrollHeight,
-        document.body.scrollHeight,
-        document.documentElement.offsetHeight
+  (function () {
+    var pendingFrame = null;
+
+    function contentHeight() {
+      var root = document.documentElement;
+      var body = document.body;
+      if (!body) return root.scrollHeight || 0;
+
+      var bodyRect = body.getBoundingClientRect();
+      var top = bodyRect.top;
+      var height = Math.max(
+        root.scrollHeight,
+        body.scrollHeight,
+        root.offsetHeight,
+        body.offsetHeight,
+        bodyRect.bottom - top
       );
-      try { parent.postMessage({ __mhRichResize: true, height: h }, '*'); } catch(e) {}
+
+      var elements = body.querySelectorAll('*');
+      for (var i = 0; i < elements.length; i++) {
+        var element = elements[i];
+        var style = getComputedStyle(element);
+        if (style.display === 'none' || style.position === 'fixed') continue;
+
+        var rect = element.getBoundingClientRect();
+        if (!rect.width && !rect.height) continue;
+
+        height = Math.max(height, rect.bottom - top + (parseFloat(style.marginBottom) || 0));
+      }
+
+      return Math.ceil(height);
     }
-    var t = null;
-    function schedule(){ if (t) cancelAnimationFrame(t); t = requestAnimationFrame(report); }
+
+    function report() {
+      try {
+        parent.postMessage({ __mhRichResize: true, height: contentHeight() }, '*');
+      } catch (error) {}
+    }
+
+    function schedule() {
+      if (pendingFrame) cancelAnimationFrame(pendingFrame);
+      pendingFrame = requestAnimationFrame(report);
+    }
+
+    function openExternalLinksInNewTabs(event) {
+      var link = event.target.closest('a[href]');
+      if (!link || link.target === '_blank') return;
+
+      var href = link.getAttribute('href') || '';
+      if (!/^https?:/i.test(href)) return;
+
+      event.preventDefault();
+      window.open(href, '_blank', 'noopener');
+    }
+
     schedule();
     window.addEventListener('load', schedule);
+    window.addEventListener('resize', schedule);
+
     if ('ResizeObserver' in window) {
       new ResizeObserver(schedule).observe(document.documentElement);
+      if (document.body) new ResizeObserver(schedule).observe(document.body);
     }
-    var mo = new MutationObserver(schedule);
-    mo.observe(document.documentElement, { childList: true, subtree: true, attributes: true, characterData: true });
-    setInterval(schedule, 1500);
-    document.addEventListener('click', function(e){
-      var a = e.target.closest('a[href]');
-      if (a && a.target !== '_blank') {
-        var href = a.getAttribute('href') || '';
-        if (/^https?:/i.test(href)) {
-          e.preventDefault();
-          window.open(href, '_blank', 'noopener');
-        }
-      }
+
+    new MutationObserver(schedule).observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      characterData: true
     });
+
+    setTimeout(schedule, 50);
+    setTimeout(schedule, 250);
+    setTimeout(schedule, 1000);
+    setInterval(schedule, 1500);
+    document.addEventListener('click', openExternalLinksInNewTabs);
   })();
 `;
 
@@ -106,21 +153,22 @@ export function buildRichDocument(userHtml) {
  * @returns {{ update: (html: string) => void, destroy: () => void, element: HTMLIFrameElement }}
  */
 export function mountRichDocument(host, html, options = {}) {
+  const minHeight = options.minHeight ?? 200;
   const iframe = document.createElement('iframe');
   iframe.setAttribute('sandbox', SANDBOX_FLAGS);
   iframe.setAttribute('referrerpolicy', 'no-referrer');
-  iframe.setAttribute('loading', 'lazy');
+  iframe.setAttribute('scrolling', 'no');
   iframe.className = options.className || 'rich-document';
   iframe.style.width = '100%';
   iframe.style.border = '0';
   iframe.style.display = 'block';
-  iframe.style.minHeight = (options.minHeight || 200) + 'px';
+  iframe.style.minHeight = minHeight + 'px';
 
   const handleMessage = (event) => {
     if (event.source !== iframe.contentWindow) return;
     const data = event.data;
     if (!data || !data.__mhRichResize) return;
-    const next = Math.max(options.minHeight || 0, Math.ceil(Number(data.height) || 0));
+    const next = Math.max(minHeight, Math.ceil(Number(data.height) || 0));
     if (Number.isFinite(next) && next > 0) {
       iframe.style.height = next + 'px';
     }

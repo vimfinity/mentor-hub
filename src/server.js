@@ -52,7 +52,7 @@ function setSecurityHeaders(res) {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' https: data:; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; frame-src 'self' data:; child-src 'self' data:"
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' https: data:; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; frame-src 'self' data:; child-src 'self' data:"
   );
 }
 
@@ -118,8 +118,13 @@ function serveStaticFile(req, res) {
 
     const extension = path.extname(absolutePath).toLowerCase();
     const mimeType = MIME_TYPES[extension] || 'application/octet-stream';
+    const headers = { 'Content-Type': mimeType };
 
-    res.writeHead(200, { 'Content-Type': mimeType });
+    if (safePath.startsWith(`${path.sep}uploads${path.sep}images${path.sep}`) || safePath.startsWith('/uploads/images/')) {
+      headers['Cache-Control'] = 'public, max-age=31536000, immutable';
+    }
+
+    res.writeHead(200, headers);
     const stream = fs.createReadStream(absolutePath);
     stream.pipe(res);
     return true;
@@ -185,11 +190,12 @@ function initializeDevReload() {
           return;
         }
 
-        if (String(fileName).indexOf('.git') >= 0) {
+        const normalized = String(fileName).replace(/\\/g, '/');
+        if (normalized.indexOf('.git') >= 0 || normalized.startsWith('uploads/')) {
           return;
         }
 
-        broadcastDevReload(String(fileName));
+        broadcastDevReload(normalized);
       });
 
       devReloadWatchers.push(watcher);
