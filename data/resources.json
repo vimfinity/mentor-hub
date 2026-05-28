@@ -107,11 +107,11 @@
       "en-US": "Model Context Protocol: Introduction"
     },
     "description": {
-      "de-DE": "Ein kompakter Einstieg in MCP als offenen Standard fuer Tools, Datenquellen und agentische Integrationen.",
+      "de-DE": "Ein kompakter Einstieg in MCP als offenen Standard für Tools, Datenquellen und agentische Integrationen.",
       "en-US": "A compact introduction to MCP as an open standard for tools, data sources, and agentic integrations."
     },
     "summary": {
-      "de-DE": "Ein kompakter Einstieg in MCP als offenen Standard fuer Tools, Datenquellen und agentische Integrationen.",
+      "de-DE": "Ein kompakter Einstieg in MCP als offenen Standard für Tools, Datenquellen und agentische Integrationen.",
       "en-US": "A compact introduction to MCP as an open standard for tools, data sources, and agentic integrations."
     },
     "url": "https://modelcontextprotocol.io/introduction",
@@ -126,7 +126,7 @@
       "integration"
     ],
     "detailContent": {
-      "de-DE": "Grundlagen zum Model Context Protocol und warum es fuer agentische Workflows relevant ist.",
+      "de-DE": "Grundlagen zum Model Context Protocol und warum es für agentische Workflows relevant ist.",
       "en-US": "Basics of the Model Context Protocol and why it matters for agentic workflows."
     },
     "imageUrl": "/uploads/images/56ef14a71c3b348830495efc685361bf61063aa34f65413ee793db91774b2379.png",
@@ -141,11 +141,11 @@
       "en-US": "Model Context Protocol: Example Clients"
     },
     "description": {
-      "de-DE": "Eine gute Vergleichsgrundlage, wenn man wissen will, welche Clients Tools, Resources, Prompts oder Apps unterstuetzen.",
+      "de-DE": "Eine gute Vergleichsgrundlage, wenn man wissen will, welche Clients Tools, Resources, Prompts oder Apps unterstützen.",
       "en-US": "A useful comparison baseline for understanding which clients support tools, resources, prompts, or apps."
     },
     "summary": {
-      "de-DE": "Eine gute Vergleichsgrundlage, wenn man wissen will, welche Clients Tools, Resources, Prompts oder Apps unterstuetzen.",
+      "de-DE": "Eine gute Vergleichsgrundlage, wenn man wissen will, welche Clients Tools, Resources, Prompts oder Apps unterstützen.",
       "en-US": "A useful comparison baseline for understanding which clients support tools, resources, prompts, or apps."
     },
     "url": "https://modelcontextprotocol.io/clients",
@@ -160,7 +160,7 @@
       "comparison"
     ],
     "detailContent": {
-      "de-DE": "Vergleich aktueller MCP-Hosts und Clients mit ihren unterstuetzten Faehigkeiten.",
+      "de-DE": "Vergleich aktueller MCP-Hosts und Clients mit ihren unterstützten Fähigkeiten.",
       "en-US": "Comparison of current MCP hosts and clients with their supported capabilities."
     },
     "imageUrl": "/uploads/images/56ef14a71c3b348830495efc685361bf61063aa34f65413ee793db91774b2379.png",
@@ -175,11 +175,11 @@
       "en-US": "OpenAI Academy: Codex for work"
     },
     "description": {
-      "de-DE": "Ein guter Startpunkt fuer praktische Codex-Workflows im Arbeitsalltag.",
+      "de-DE": "Ein guter Startpunkt für praktische Codex-Workflows im Arbeitsalltag.",
       "en-US": "A good starting point for practical Codex workflows in day-to-day work."
     },
     "summary": {
-      "de-DE": "Ein guter Startpunkt fuer praktische Codex-Workflows im Arbeitsalltag.",
+      "de-DE": "Ein guter Startpunkt für praktische Codex-Workflows im Arbeitsalltag.",
       "en-US": "A good starting point for practical Codex workflows in day-to-day work."
     },
     "url": "https://openai.com/academy/codex-for-work/",
@@ -209,11 +209,11 @@
       "en-US": "Claude Skills"
     },
     "description": {
-      "de-DE": "Ein Beispiel dafuer, wie Faehigkeiten fuer Agenten als wiederverwendbare Bausteine organisiert werden koennen.",
+      "de-DE": "Ein Beispiel dafür, wie Fähigkeiten für Agenten als wiederverwendbare Bausteine organisiert werden können.",
       "en-US": "An example of how capabilities for agents can be organized as reusable building blocks."
     },
     "summary": {
-      "de-DE": "Ein Beispiel dafuer, wie Faehigkeiten fuer Agenten als wiederverwendbare Bausteine organisiert werden koennen.",
+      "de-DE": "Ein Beispiel dafür, wie Fähigkeiten für Agenten als wiederverwendbare Bausteine organisiert werden können.",
       "en-US": "An example of how capabilities for agents can be organized as reusable building blocks."
     },
     "url": "https://claude.com/skills",
@@ -228,7 +228,7 @@
       "agent"
     ],
     "detailContent": {
-      "de-DE": "Skills buendeln Anweisungen, Wissen und unterstuetzende Artefakte fuer wiederholbare Agentenarbeit.",
+      "de-DE": "Skills bündeln Anweisungen, Wissen und unterstützende Artefakte für wiederholbare Agentenarbeit.",
       "en-US": "Skills bundle instructions, knowledge, and supporting artifacts for repeatable agent work."
     },
     "imageUrl": "",
@@ -243,11 +243,11 @@
       "en-US": "Model Context Protocol Servers"
     },
     "description": {
-      "de-DE": "Repository mit gepflegten MCP-Servern und Referenzimplementierungen fuer reale Integrationen.",
+      "de-DE": "Repository mit gepflegten MCP-Servern und Referenzimplementierungen für reale Integrationen.",
       "en-US": "Repository with maintained MCP servers and reference implementations for real-world integrations."
     },
     "summary": {
-      "de-DE": "Repository mit gepflegten MCP-Servern und Referenzimplementierungen fuer reale Integrationen.",
+      "de-DE": "Repository mit gepflegten MCP-Servern und Referenzimplementierungen für reale Integrationen.",
       "en-US": "Repository with maintained MCP servers and reference implementations for real-world integrations."
     },
     "url": "https://github.com/modelcontextprotocol/servers",
