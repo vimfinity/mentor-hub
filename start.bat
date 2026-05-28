@@ -27,6 +27,18 @@ if not defined NODE_BIN (
 )
 
 if not defined NODE_BIN (
+    where fnm >nul 2>nul
+    if %ERRORLEVEL% equ 0 (
+        for /f "tokens=*" %%e in ('fnm env --shell cmd') do call %%e
+        fnm use 20 >nul 2>nul
+        where node >nul 2>nul
+        if %ERRORLEVEL% equ 0 (
+            set "NODE_BIN=node"
+        )
+    )
+)
+
+if not defined NODE_BIN (
     where node >nul 2>nul
     if %ERRORLEVEL% equ 0 (
         set "NODE_BIN=node"
