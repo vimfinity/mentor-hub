@@ -8,7 +8,7 @@ import { showError, showSuccess } from './toast.js';
 const UMFRAGEN_CACHE_KEY = ['surveys'];
 const UMFRAGEN_CACHE_TTL_MS = 60 * 1000;
 
-async function render(container) {
+async function render(container, context = {}) {
   const response = await holeAbfrage({
     schluessel: UMFRAGEN_CACHE_KEY,
     abrufFunktion: () => api.get('/api/surveys'),
@@ -16,20 +16,32 @@ async function render(container) {
   });
   const hasSurveys = response.ok && response.data && response.data.length > 0;
 
-  let html = `<h1 class="sektion-titel">${t('survey.title')}</h1>`;
+  let surveysHtml = `
+    <div class="leer-zustand feedback-empty">
+      <p class="leer-zustand-text">${escapeHtml(t('survey.empty'))}</p>
+    </div>
+  `;
 
   if (hasSurveys) {
-    html += `
+    surveysHtml = `
       <div class="umfragen-container">
         ${response.data.map((survey) => renderSurvey(survey)).join('')}
       </div>
     `;
   }
 
-  html += renderConcernForm();
+  const html = `
+    <div class="feedback-layout">
+      <section class="feedback-panel feedback-surveys">
+        <h1 class="sektion-titel">${escapeHtml(t('survey.title'))}</h1>
+        ${surveysHtml}
+      </section>
+      ${renderConcernForm()}
+    </div>
+  `;
 
   container.innerHTML = html;
-  registerEvents(container);
+  registerEvents(container, context);
 }
 
 function preload() {
@@ -42,7 +54,7 @@ function preload() {
 
 function renderConcernForm() {
   return `
-    <div class="anliegen-sektion">
+    <section class="anliegen-sektion feedback-panel">
       <h2 class="anliegen-titel">
         ${icon('lightbulb', 22)}
         <span>${t('concern.title')}</span>
@@ -72,130 +84,52 @@ function renderConcernForm() {
           <span>${t('concern.submit')}</span>
         </button>
       </form>
-    </div>
+    </section>
   `;
 }
 
 function renderSurvey(survey) {
-  const questionsHtml = survey.questions.map((question, index) => renderQuestion(question, index)).join('');
+  const detailHref = '/surveys/' + encodeURIComponent(survey.id);
+  const questionCount = Array.isArray(survey.questions) ? survey.questions.length : 0;
+  const metaParts = [
+    t('survey.questionsCount').replace('{count}', String(questionCount)),
+    survey.createdAt ? t('survey.createdOn').replace('{date}', formatDate(survey.createdAt)) : ''
+  ].filter(Boolean);
 
   return `
-    <div class="umfrage-karte" data-survey-id="${escapeHtml(survey.id)}">
-      <h2 class="karte-titel">${escapeHtml(survey.title)}</h2>
-      ${survey.description ? `<p class="karte-text">${escapeHtml(survey.description)}</p>` : ''}
-      <form class="umfrage-formular">
-        ${questionsHtml}
-        <div class="formular-gruppe">
-          <input type="text" class="formular-eingabe umfrage-name"
-            placeholder="${t('survey.namePlaceholder')}">
+    <a class="feed-card feed-card-clickable umfrage-preview" href="${detailHref}" data-survey-id="${escapeHtml(survey.id)}" data-survey-internal="1">
+      <div class="feed-card-body">
+        <div class="feed-card-meta">
+          <span class="feed-card-type accent-skill">
+            ${escapeHtml(t('survey.singleLabel'))}
+          </span>
+          <span class="feed-card-zeit">${escapeHtml(metaParts.join(' · '))}</span>
         </div>
-        <button type="submit" class="btn btn-primaer">
-          ${icon('send', 16)}
-          <span>${t('survey.submit')}</span>
-        </button>
-      </form>
-    </div>
+        <h2 class="feed-card-titel">${escapeHtml(survey.title)}</h2>
+        ${survey.description ? `<p class="feed-card-text">${escapeHtml(survey.description)}</p>` : ''}
+      </div>
+    </a>
   `;
 }
 
-function renderQuestion(question, index) {
-  let inputHtml = '';
-
-  switch (question.type) {
-    case 'free_text':
-      inputHtml = `
-        <textarea class="formular-textarea frage-eingabe"
-          data-index="${index}"
-          placeholder="${t('survey.freeText')}"
-          rows="3"></textarea>
-      `;
-      break;
-    case 'rating':
-      inputHtml = `
-        <div class="sterne-bewertung frage-eingabe" data-index="${index}" data-wert="0">
-          ${[1, 2, 3, 4, 5].map((value) => `
-            <span class="stern" data-wert="${value}">${icon('star', 28)}</span>
-          `).join('')}
-        </div>
-      `;
-      break;
-    case 'yes_no':
-      inputHtml = `
-        <div class="ja-nein-auswahl frage-eingabe" data-index="${index}" data-wert="">
-          <button type="button" class="ja-nein-btn" data-wert="yes">
-            ${icon('thumbsUp', 16)} ${t('survey.yesLabel')}
-          </button>
-          <button type="button" class="ja-nein-btn" data-wert="no">
-            ${icon('thumbsDown', 16)} ${t('survey.noLabel')}
-          </button>
-        </div>
-      `;
-      break;
-    case 'choice':
-      inputHtml = `
-        <div class="auswahl-gruppe frage-eingabe" data-index="${index}" data-wert="">
-          ${(question.options || []).map((option) => `
-            <label class="auswahl-option">
-              <input type="radio" name="frage_${index}" value="${escapeHtml(option)}">
-              <span>${escapeHtml(option)}</span>
-            </label>
-          `).join('')}
-        </div>
-      `;
-      break;
-    case 'multiple_choice':
-      inputHtml = `
-        <div class="auswahl-gruppe frage-eingabe" data-index="${index}" data-wert="">
-          ${(question.options || []).map((option) => `
-            <label class="auswahl-option">
-              <input type="checkbox" name="frage_${index}" value="${escapeHtml(option)}">
-              <span>${escapeHtml(option)}</span>
-            </label>
-          `).join('')}
-        </div>
-      `;
-      break;
-    default:
-      inputHtml = `
-        <input type="text" class="formular-eingabe frage-eingabe"
-          data-index="${index}"
-          placeholder="${t('survey.freeText')}">
-      `;
-  }
-
-  return `
-    <div class="frage-block">
-      <p class="frage-text">${escapeHtml(question.text)}</p>
-      ${inputHtml}
-    </div>
-  `;
+function formatDate(value) {
+  const locale = document.documentElement.lang === 'de' ? 'de-DE' : 'en-US';
+  return new Date(value).toLocaleDateString(locale, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
 }
 
-function registerEvents(container) {
-  container.querySelectorAll('.sterne-bewertung').forEach((rating) => {
-    rating.querySelectorAll('.stern').forEach((star) => {
-      star.addEventListener('click', () => {
-        const value = parseInt(star.dataset.wert, 10);
-        rating.dataset.wert = value;
-        updateStars(rating, value);
-      });
-    });
-  });
+function registerEvents(container, context = {}) {
+  container.querySelectorAll('[data-survey-internal="1"]').forEach((anchor) => {
+    anchor.addEventListener('click', (event) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+        return;
+      }
 
-  container.querySelectorAll('.ja-nein-auswahl').forEach((choice) => {
-    choice.querySelectorAll('.ja-nein-btn').forEach((button) => {
-      button.addEventListener('click', () => {
-        choice.querySelectorAll('.ja-nein-btn').forEach((element) => element.classList.remove('ausgewaehlt'));
-        button.classList.add('ausgewaehlt');
-        choice.dataset.wert = button.dataset.wert;
-      });
-    });
-  });
-
-  container.querySelectorAll('.umfrage-formular').forEach((form) => {
-    form.addEventListener('submit', (event) => {
       event.preventDefault();
-      submitSurvey(form);
+      context.navigateTo?.(anchor.getAttribute('href'));
     });
   });
 
@@ -230,53 +164,6 @@ function registerEvents(container) {
         showError(t('concern.error'));
       }
     });
-  }
-}
-
-function updateStars(rating, value) {
-  rating.querySelectorAll('.stern').forEach((star) => {
-    const starValue = parseInt(star.dataset.wert, 10);
-    star.classList.toggle('aktiv', starValue <= value);
-  });
-}
-
-async function submitSurvey(form) {
-  const card = form.closest('.umfrage-karte');
-  const surveyId = card.dataset.surveyId;
-  const responses = [];
-
-  form.querySelectorAll('.frage-eingabe').forEach((input) => {
-    if (input.tagName === 'TEXTAREA' || input.tagName === 'INPUT') {
-      responses.push(input.value.trim());
-    } else if (input.classList.contains('sterne-bewertung')) {
-      responses.push(parseInt(input.dataset.wert, 10) || 0);
-    } else if (input.classList.contains('ja-nein-auswahl')) {
-      responses.push(input.dataset.wert || '');
-    } else if (input.classList.contains('auswahl-gruppe')) {
-      const selected = Array.from(input.querySelectorAll('input:checked')).map((option) => option.value);
-      responses.push(input.querySelector('input[type="checkbox"]') ? selected : (selected[0] || ''));
-    }
-  });
-
-  const nameInput = form.querySelector('.umfrage-name');
-  const name = nameInput ? nameInput.value.trim() : null;
-
-  const submitButton = form.querySelector('button[type="submit"]');
-  submitButton.disabled = true;
-
-  const result = await api.post('/api/surveys/' + surveyId + '/responses', {
-    name: name || null,
-    responses
-  });
-
-  submitButton.disabled = false;
-
-  if (result.ok) {
-    showSuccess(t('survey.success'));
-    card.style.opacity = '0.6';
-    card.style.pointerEvents = 'none';
-  } else {
-    showError(result.data?.error || t('survey.error'));
   }
 }
 

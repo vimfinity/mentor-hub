@@ -448,6 +448,28 @@ function registerRoutes(router) {
     });
   });
 
+  router.post('/api/admin/surveys/:id/move', (req, res, params) => {
+    if (!requireAuth(req, res)) {
+      return;
+    }
+
+    readBody(req, res, (body) => {
+      const direction = body?.direction || body?.richtung;
+      if (direction !== 'up' && direction !== 'down' && direction !== 'hoch' && direction !== 'runter') {
+        sendJson(res, 400, { error: 'Direction must be up or down' });
+        return;
+      }
+
+      const updated = surveys.move(params.id, direction);
+      if (!updated) {
+        sendJson(res, 404, { error: 'Survey not found or cannot be moved' });
+        return;
+      }
+
+      sendJson(res, 200, updated);
+    });
+  });
+
   router.delete('/api/admin/surveys/:id', (req, res, params) => {
     if (!requireAuth(req, res)) {
       return;

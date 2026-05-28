@@ -76,7 +76,15 @@
     "required": "Please answer all questions.",
     "freeText": "Your answer...",
     "yesLabel": "Yes",
-    "noLabel": "No"
+    "noLabel": "No",
+    "singleLabel": "Survey",
+    "copyLink": "Copy survey link",
+    "linkCopied": "Survey link copied",
+    "questionsCount": "{count} questions",
+    "createdOn": "from {date}",
+    "backToFeedback": "Back to feedback",
+    "detailMissingTitle": "Survey not found",
+    "detailMissingText": "This survey does not exist, has been removed, or is not active."
   },
   "resource": {
     "title": "AI Resources",
@@ -170,8 +178,11 @@
     "newsCreated": "News item created",
     "newsDescription": "Manage homepage news items and keep them ordered by relevance and recency.",
     "sortResponsesDesc": "Most responses first",
+    "sortManual": "Manual order",
     "sortStatus": "Status",
     "sortCategory": "Category",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
     "setup": "Initial Setup",
     "setupDescription": "Please set an admin password (min. 8 characters).",
     "setupSuccess": "Password set. You can now sign in."

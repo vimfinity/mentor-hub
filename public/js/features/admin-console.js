@@ -10,6 +10,7 @@ import { icon } from '../components/icons.js';
 import { renderSelect, bindSelect } from '../components/select.js';
 import { mountMarkdownEditor } from '../components/markdown-editor.js';
 import { renderResponsiveImage } from '../components/responsive-image.js';
+import { copySurveyLink } from '../components/survey-detail.js';
 
 const SESSION_CACHE_KEY = 'admin:session';
 const SURVEYS_CACHE_KEY = 'admin:surveys';
@@ -325,12 +326,19 @@ async function renderSurveysAdmin(container, context) {
   }
 
   const surveys = response.ok ? response.data : [];
-  const sortierung = normalisiereAuswahl(context.searchParams?.get('sort'), ['title-asc', 'title-desc', 'responses-desc', 'status'], 'responses-desc');
+  const sortierung = normalisiereAuswahl(
+    context.searchParams?.get('sort'),
+    ['manual', 'newest', 'oldest', 'title-asc', 'title-desc', 'responses-desc', 'status'],
+    'manual'
+  );
   const sortierteUmfragen = sortiereUmfragen(surveys, sortierung);
   const pagination = paginiereElemente(sortierteUmfragen, context.searchParams?.get('page'), ADMIN_PRO_SEITE);
   const tabellenHtml = surveys.length === 0 ? renderAdminEmptyState(t('survey.empty')) : renderAdminPanel(`
     ${renderListensteuerung({
       sortierOptionen: [
+        { value: 'manual', label: t('admin.sortManual') },
+        { value: 'newest', label: t('general.sortNewest') },
+        { value: 'oldest', label: t('general.sortOldest') },
         { value: 'responses-desc', label: t('admin.sortResponsesDesc') },
         { value: 'status', label: t('admin.sortStatus') },
         { value: 'title-asc', label: t('general.sortTitleAsc') },
@@ -346,15 +354,21 @@ async function renderSurveysAdmin(container, context) {
       <thead>
         <tr>
           <th>${t('admin.title')}</th>
+          <th>${t('admin.date')}</th>
           <th>${t('admin.status')}</th>
           <th>${t('admin.responses')}</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
-        ${pagination.elemente.map((survey) => `
+        ${pagination.elemente.map((survey, index) => {
+          const absoluteIndex = pagination.startIndex + index;
+          const isFirstSurvey = absoluteIndex === 0;
+          const isLastSurvey = absoluteIndex === sortierteUmfragen.length - 1;
+          return `
           <tr>
             <td data-label="${escapeHtml(t('admin.title'))}">${escapeHtml(survey.title)}</td>
+            <td data-label="${escapeHtml(t('admin.date'))}">${escapeHtml(formatDate(survey.createdAt))}</td>
             <td data-label="${escapeHtml(t('admin.status'))}">
               <span class="status-badge ${survey.active ? 'status-open' : 'status-done'}">
                 ${survey.active ? t('admin.active') : t('admin.inactive')}
@@ -362,6 +376,19 @@ async function renderSurveysAdmin(container, context) {
             </td>
             <td data-label="${escapeHtml(t('admin.responses'))}">${(survey.responses || []).length}</td>
             <td class="tabelle-aktionen" data-label="${escapeHtml(t('general.actions'))}">
+              ${sortierung === 'manual' ? `
+                <button class="btn btn-klein btn-sekundaer" data-action="move-up" data-id="${survey.id}" title="${escapeHtml(t('admin.moveUp'))}" aria-label="${escapeHtml(t('admin.moveUp'))}" ${isFirstSurvey ? 'disabled' : ''}>
+                  ${icon('chevronUp', 16)}
+                </button>
+                <button class="btn btn-klein btn-sekundaer" data-action="move-down" data-id="${survey.id}" title="${escapeHtml(t('admin.moveDown'))}" aria-label="${escapeHtml(t('admin.moveDown'))}" ${isLastSurvey ? 'disabled' : ''}>
+                  ${icon('chevronDown', 16)}
+                </button>
+              ` : ''}
+              ${survey.active ? `
+                <button class="btn btn-klein btn-sekundaer" data-action="copy-link" data-id="${survey.id}" title="${escapeHtml(t('survey.copyLink'))}" aria-label="${escapeHtml(t('survey.copyLink'))}">
+                  ${icon('link', 16)}
+                </button>
+              ` : ''}
               <button class="btn btn-klein btn-sekundaer" data-action="toggle" data-id="${survey.id}">
                 ${survey.active ? icon('pause', 16) : icon('play', 16)}
               </button>
@@ -373,7 +400,8 @@ async function renderSurveysAdmin(container, context) {
               </button>
             </td>
           </tr>
-        `).join('')}
+        `;
+        }).join('')}
       </tbody>
     </table>
   `, 'admin-panel-tabelle');
@@ -391,7 +419,7 @@ async function renderSurveysAdmin(container, context) {
   });
 
   verbindeListensteuerung(container, {
-    onSortierung: (wert) => context.setSearchParams?.({ sort: wert === 'responses-desc' ? null : wert, page: null }),
+    onSortierung: (wert) => context.setSearchParams?.({ sort: wert === 'manual' ? null : wert, page: null }),
     onSeite: (seite) => context.setSearchParams?.({ page: seite <= 1 ? null : seite })
   });
 
@@ -400,6 +428,28 @@ async function renderSurveysAdmin(container, context) {
       const id = button.dataset.id;
       const action = button.dataset.action;
       const survey = surveys.find((item) => item.id === id);
+
+      if (action === 'copy-link' && survey) {
+        await copySurveyLink(survey.id);
+        return;
+      }
+
+      if ((action === 'move-up' || action === 'move-down') && survey) {
+        const result = await api.post('/api/admin/surveys/' + id + '/move', {
+          direction: action === 'move-up' ? 'up' : 'down'
+        });
+        if (behandleNichtAutorisierteAntwort(result, context.navigateTo)) {
+          return;
+        }
+        if (!result.ok) {
+          showError(result.data?.error || t('general.error'));
+          return;
+        }
+
+        invalidiereAdminSurveys();
+        await renderSurveysAdmin(container, context);
+        return;
+      }
 
       if (action === 'toggle' && survey) {
         const result = await api.put('/api/admin/surveys/' + id, { active: !survey.active });
@@ -1349,6 +1399,15 @@ function sortiereUmfragen(surveys, sortierung) {
 
   kopie.sort((links, rechts) => {
     switch (sortierung) {
+      case 'manual': {
+        const byOrder = (Number(links.sortOrder) || 0) - (Number(rechts.sortOrder) || 0);
+        if (byOrder !== 0) return byOrder;
+        return compareDate(rechts.createdAt, links.createdAt);
+      }
+      case 'newest':
+        return compareDate(rechts.createdAt, links.createdAt);
+      case 'oldest':
+        return compareDate(links.createdAt, rechts.createdAt);
       case 'title-asc':
         return links.title.localeCompare(rechts.title, getLanguage());
       case 'title-desc':
@@ -1362,6 +1421,10 @@ function sortiereUmfragen(surveys, sortierung) {
   });
 
   return kopie;
+}
+
+function compareDate(left, right) {
+  return new Date(left || 0) - new Date(right || 0);
 }
 
 function sortiereFeedElemente(items, sortierung) {

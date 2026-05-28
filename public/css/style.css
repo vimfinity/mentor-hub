@@ -667,8 +667,30 @@ body {
 }
 
 /* --- Umfragen --- */
+.feedback-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.9fr) minmax(420px, 1.1fr);
+  gap: var(--abstand-2xl);
+  align-items: start;
+}
+
+.feedback-panel {
+  min-width: 0;
+}
+
+.feedback-surveys {
+  max-width: 560px;
+}
+
 .umfragen-container {
-  margin-bottom: var(--abstand-2xl);
+  display: grid;
+  gap: var(--abstand-md);
+}
+
+.feedback-empty {
+  padding: var(--abstand-lg) 0;
+  text-align: left;
+  align-items: flex-start;
 }
 
 .umfrage-karte {
@@ -677,6 +699,24 @@ body {
   padding: var(--abstand-xl);
   border: 1px solid var(--farbe-rand-subtil);
   margin-bottom: var(--abstand-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--abstand-sm);
+  transition:
+    border-color var(--uebergang-schnell),
+    transform var(--uebergang-schnell),
+    box-shadow var(--uebergang-schnell);
+}
+
+.survey-detail-form {
+  display: grid;
+  gap: var(--abstand-md);
+  width: 100%;
+}
+
+.survey-detail-form .btn[type="submit"] {
+  justify-self: start;
+  min-width: 180px;
 }
 
 .frage-block {
@@ -955,7 +995,11 @@ body.modal-offen {
 
 /* --- Anliegen --- */
 .anliegen-sektion {
-  margin-top: var(--abstand-3xl);
+  margin-top: 0;
+}
+
+.anliegen-sektion .formular {
+  max-width: none;
 }
 
 .anliegen-titel {
@@ -2721,6 +2765,15 @@ body.modal-offen {
   .umfrage-karte,
   .news-eintrag {
     padding: var(--abstand-lg);
+  }
+
+  .feedback-layout {
+    grid-template-columns: 1fr;
+    gap: var(--abstand-xl);
+  }
+
+  .feedback-surveys {
+    max-width: none;
   }
 
   .formular {

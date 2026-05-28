@@ -76,7 +76,15 @@
     "required": "Bitte beantworten Sie alle Fragen.",
     "freeText": "Ihre Antwort...",
     "yesLabel": "Ja",
-    "noLabel": "Nein"
+    "noLabel": "Nein",
+    "singleLabel": "Umfrage",
+    "copyLink": "Umfrage-Link kopieren",
+    "linkCopied": "Umfrage-Link wurde kopiert",
+    "questionsCount": "{count} Fragen",
+    "createdOn": "vom {date}",
+    "backToFeedback": "Zurueck zum Feedback",
+    "detailMissingTitle": "Umfrage nicht gefunden",
+    "detailMissingText": "Diese Umfrage existiert nicht, wurde entfernt oder ist nicht aktiv."
   },
   "resource": {
     "title": "KI-Ressourcen",
@@ -170,8 +178,11 @@
     "newsCreated": "Neuigkeit erstellt",
     "newsDescription": "Neuigkeiten fuer die Startseite verwalten und nach Aktualitaet sortiert im Portal ausspielen.",
     "sortResponsesDesc": "Meiste Antworten zuerst",
+    "sortManual": "Manuelle Reihenfolge",
     "sortStatus": "Status",
     "sortCategory": "Kategorie",
+    "moveUp": "Nach oben",
+    "moveDown": "Nach unten",
     "setup": "Ersteinrichtung",
     "setupDescription": "Bitte setzen Sie ein Admin-Passwort (min. 8 Zeichen).",
     "setupSuccess": "Passwort wurde gesetzt. Sie koennen sich jetzt anmelden."

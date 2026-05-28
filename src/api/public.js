@@ -54,6 +54,16 @@ function registerRoutes(router) {
     sendJson(res, 200, surveys.getActive());
   });
 
+  router.get('/api/surveys/:id', (req, res, params) => {
+    const survey = surveys.getActiveById(params.id);
+    if (!survey) {
+      sendJson(res, 404, { error: 'Survey not found or inactive' });
+      return;
+    }
+
+    sendJson(res, 200, survey);
+  });
+
   router.post('/api/surveys/:id/responses', (req, res, params) => {
     readBody(req, res, (body) => {
       const responses = body?.responses || body?.antworten;

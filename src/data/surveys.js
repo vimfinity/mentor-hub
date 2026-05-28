@@ -21,7 +21,9 @@ function normalizeResponse(response) {
   };
 }
 
-function normalizeSurvey(survey) {
+function normalizeSurvey(survey, index = 0) {
+  const sortOrder = Number(survey.sortOrder ?? survey.reihenfolge);
+
   return {
     id: survey.id,
     title: survey.title || survey.titel || '',
@@ -29,13 +31,22 @@ function normalizeSurvey(survey) {
     questions: (survey.questions || survey.fragen || []).map(normalizeQuestion),
     active: survey.active !== undefined ? survey.active : !!survey.aktiv,
     responses: (survey.responses || survey.antworten || []).map(normalizeResponse),
+    sortOrder: Number.isFinite(sortOrder) ? sortOrder : index,
     createdAt: survey.createdAt || survey.erstelltAm || new Date().toISOString(),
     updatedAt: survey.updatedAt || survey.aktualisiertAm || null
   };
 }
 
 function loadSurveys() {
-  return store.readDataFile(FILE_NAME).map(normalizeSurvey);
+  return store.readDataFile(FILE_NAME).map((survey, index) => normalizeSurvey(survey, index));
+}
+
+function compareSurveyOrder(left, right) {
+  const byOrder = left.sortOrder - right.sortOrder;
+  if (byOrder !== 0) {
+    return byOrder;
+  }
+  return new Date(right.createdAt) - new Date(left.createdAt);
 }
 
 /**
@@ -45,13 +56,19 @@ function loadSurveys() {
 function getActive() {
   return loadSurveys()
     .filter((survey) => survey.active)
+    .sort(compareSurveyOrder)
     .map((survey) => ({
       id: survey.id,
       title: survey.title,
       description: survey.description,
       questions: survey.questions,
+      sortOrder: survey.sortOrder,
       createdAt: survey.createdAt
     }));
+}
+
+function getActiveById(id) {
+  return getActive().find((survey) => survey.id === id) || null;
 }
 
 /**
@@ -68,11 +85,15 @@ function getAll() {
  * @returns {Object} Created survey
  */
 function create(data) {
+  const existing = loadSurveys();
   const survey = {
     title: data.title,
     description: data.description || '',
     questions: (data.questions || []).map(normalizeQuestion),
     active: true,
+    sortOrder: existing.length > 0
+      ? Math.max(...existing.map((item) => Number(item.sortOrder) || 0)) + 1
+      : 0,
     responses: []
   };
   return store.addItem(FILE_NAME, survey);
@@ -85,7 +106,7 @@ function create(data) {
  * @returns {Object|null} Updated survey or null
  */
 function update(id, changes) {
-  const allowedFields = ['title', 'description', 'questions', 'active'];
+  const allowedFields = ['title', 'description', 'questions', 'active', 'sortOrder'];
   const filteredChanges = {};
 
   if (changes.title !== undefined || changes.titel !== undefined) {
@@ -100,6 +121,12 @@ function update(id, changes) {
   if (changes.active !== undefined || changes.aktiv !== undefined) {
     filteredChanges.active = changes.active !== undefined ? changes.active : changes.aktiv;
   }
+  if (changes.sortOrder !== undefined || changes.reihenfolge !== undefined) {
+    const sortOrder = Number(changes.sortOrder !== undefined ? changes.sortOrder : changes.reihenfolge);
+    if (Number.isFinite(sortOrder)) {
+      filteredChanges.sortOrder = sortOrder;
+    }
+  }
 
   for (const field of Object.keys(filteredChanges)) {
     if (!allowedFields.includes(field)) {
@@ -108,6 +135,36 @@ function update(id, changes) {
   }
 
   return store.updateItem(FILE_NAME, id, filteredChanges);
+}
+
+function move(id, direction) {
+  const step = direction === 'down' || direction === 'runter' ? 1 : -1;
+
+  return store.mutateDataFile(FILE_NAME, (records) => {
+    const normalized = records
+      .map((survey, index) => normalizeSurvey(survey, index))
+      .sort(compareSurveyOrder);
+    const index = normalized.findIndex((survey) => survey.id === id);
+    const targetIndex = index + step;
+
+    if (index === -1 || targetIndex < 0 || targetIndex >= normalized.length) {
+      return { changed: false, result: null };
+    }
+
+    const [survey] = normalized.splice(index, 1);
+    normalized.splice(targetIndex, 0, survey);
+
+    records.length = 0;
+    normalized.forEach((item, sortOrder) => {
+      records.push({
+        ...item,
+        sortOrder,
+        updatedAt: item.id === id ? new Date().toISOString() : item.updatedAt
+      });
+    });
+
+    return { changed: true, result: records.find((surveyItem) => surveyItem.id === id) };
+  });
 }
 
 /**
@@ -142,6 +199,7 @@ function addResponse(surveyId, response) {
       questions: normalizedSurvey.questions,
       active: normalizedSurvey.active,
       responses: [...normalizedSurvey.responses, newResponse],
+      sortOrder: normalizedSurvey.sortOrder,
       createdAt: normalizedSurvey.createdAt,
       updatedAt: new Date().toISOString()
     };
@@ -161,9 +219,11 @@ function remove(id) {
 
 module.exports = {
   getActive,
+  getActiveById,
   getAll,
   create,
   update,
+  move,
   addResponse,
   remove
 };

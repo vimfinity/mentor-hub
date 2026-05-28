@@ -10,7 +10,7 @@
         "options": []
       }
     ],
-    "active": false,
+    "active": true,
     "responses": [
       {
         "id": "2b44252d-506b-46a2-b286-7156a0907486",
@@ -22,7 +22,7 @@
       }
     ],
     "createdAt": "2026-05-20T14:38:47.408Z",
-    "updatedAt": "2026-05-28T10:14:27.078Z"
+    "updatedAt": "2026-05-28T10:39:01.073Z"
   },
   {
     "id": "3b4fbd4f-57f6-4a17-ab47-52da73afb7d5",

@@ -9,6 +9,7 @@ import * as adminConsole from './features/admin-console.js';
 import * as homepage from './components/homepage.js';
 import * as feedDetail from './components/feed-detail.js';
 import * as feedbackSection from './components/feedback-section.js';
+import * as surveyDetail from './components/survey-detail.js';
 
 const router = createRouter();
 let activeRoute = 'feed';
@@ -20,6 +21,7 @@ const ROUTES = {
   indexAlias: { key: 'feed', path: '/index.html', render: homepage.render, preload: homepage.preload, icon: 'megaphone', titleKey: 'feed.title', navigationKey: 'feed', skeleton: 'feed' },
   feedDetail: { key: 'feed-detail', path: '/feed/:id', render: feedDetail.render, preload: feedDetail.preload, icon: 'megaphone', titleKey: 'feed.title', navigationKey: 'feed', skeleton: 'feed-detail' },
   feedback: { key: 'feedback', path: '/feedback', render: feedbackSection.render, preload: feedbackSection.preload, icon: 'messageSquare', titleKey: 'nav.feedback', navigationKey: 'feedback', skeleton: 'feedback' },
+  surveyDetail: { key: 'survey-detail', path: '/surveys/:id', render: surveyDetail.render, preload: surveyDetail.preload, icon: 'messageSquare', titleKey: 'survey.singleLabel', navigationKey: 'feedback', skeleton: 'feed-detail' },
   adminLanding: { key: 'admin', path: '/admin', render: renderAdminRoute, preload: adminConsole.preload, icon: 'settings', titleKey: 'admin.pageTitle', navigationKey: 'admin', adminSection: 'feed', skeleton: 'admin' },
   adminFeed: { key: 'admin', path: '/admin/feed', render: renderAdminRoute, preload: adminConsole.preload, icon: 'settings', titleKey: 'admin.feed', navigationKey: 'admin', adminSection: 'feed', skeleton: 'admin' },
   adminSurveys: { key: 'admin', path: '/admin/surveys', render: renderAdminRoute, preload: adminConsole.preload, icon: 'settings', titleKey: 'admin.surveys', navigationKey: 'admin', adminSection: 'surveys', skeleton: 'admin' },

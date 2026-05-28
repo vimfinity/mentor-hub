@@ -29,6 +29,8 @@ const ICONS = {
   x: (g) => buildSvg('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>', g),
   check: (g) => buildSvg('<path d="M20 6 9 17l-5-5"/>', g),
   send: (g) => buildSvg('<path d="m22 2-7 20-4-9-9-4Z"/><path d="m22 2-11 11"/>', g),
+  chevronUp: (g) => buildSvg('<path d="m18 15-6-6-6 6"/>', g),
+  chevronDown: (g) => buildSvg('<path d="m6 9 6 6 6-6"/>', g),
 
   // Status / Info
   alertCircle: (g) => buildSvg('<circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>', g),
