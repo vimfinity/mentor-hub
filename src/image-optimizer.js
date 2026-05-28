@@ -2,12 +2,30 @@
 
 const fs = require('fs');
 const path = require('path');
-const sharp = require('sharp');
 
 const IMAGE_UPLOAD_ROOT = path.join(__dirname, '..', 'public', 'uploads', 'images');
 const VARIANT_DIRECTORY = 'variants';
 const VARIANT_WIDTHS = [160, 320, 480, 640, 960, 1280, 1920, 2560];
 const WEBP_QUALITY = 78;
+
+let sharpModule = null;
+
+function getSharp() {
+  if (sharpModule) {
+    return sharpModule;
+  }
+
+  try {
+    sharpModule = require('sharp');
+    return sharpModule;
+  } catch (error) {
+    if (error && error.code === 'MODULE_NOT_FOUND') {
+      throw new Error('Image optimization is disabled because "sharp" is not available.');
+    }
+
+    throw error;
+  }
+}
 
 function variantDirectoryPath() {
   return path.join(IMAGE_UPLOAD_ROOT, VARIANT_DIRECTORY);
@@ -23,6 +41,7 @@ function toPublicVariantUrl(filename) {
 }
 
 async function createImageVariants({ sourcePath, filename }) {
+  const sharp = getSharp();
   const metadata = await sharp(sourcePath).metadata();
   const sourceWidth = Number(metadata.width) || 0;
   const sourceHeight = Number(metadata.height) || 0;

@@ -37,6 +37,12 @@ async function main() {
 }
 
 main().catch((error) => {
+  if (error.message && error.message.includes('Image optimization is disabled')) {
+    console.warn(error.message);
+    process.exitCode = 0;
+    return;
+  }
+
   console.error(error);
   process.exitCode = 1;
 });
