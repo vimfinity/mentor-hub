@@ -30,6 +30,39 @@
     ]
   },
   {
+    "id": "9a606fe0-feb8-4aa9-b301-bd32b9eac16b",
+    "createdAt": "2026-05-28T16:00:00.000Z",
+    "title": {
+      "de-DE": "Introducing Claude Opus 4.8",
+      "en-US": "Introducing Claude Opus 4.8"
+    },
+    "content": {
+      "de-DE": "Anthropic veröffentlicht Claude Opus 4.8 mit besseren Coding-, Agenten- und Reasoning-Fähigkeiten sowie neuen Workflow-Features.",
+      "en-US": "Anthropic releases Claude Opus 4.8 with stronger coding, agentic, and reasoning capabilities plus new workflow features."
+    },
+    "detailContent": {
+      "de-DE": "Anthropic aktualisiert Claude Opus auf Version 4.8. Das Modell verbessert Opus 4.7 in Benchmarks, arbeitet zuverlässiger bei agentischen Aufgaben und ist ab sofort zum unveränderten regulären Preis verfügbar. Parallel startet Anthropic neue Funktionen wie Effort Control in Claude, Dynamic Workflows in Claude Code und günstigeren Fast Mode. Entwickler können das Modell über `claude-opus-4-8` in der Claude API nutzen.",
+      "en-US": "Anthropic is upgrading Claude Opus to version 4.8. The model improves on Opus 4.7 across benchmarks, is more reliable on agentic tasks, and is available now at the same regular price. The release also adds effort control in Claude, dynamic workflows in Claude Code, and cheaper fast mode. Developers can use the model as `claude-opus-4-8` in the Claude API."
+    },
+    "imageUrl": "/uploads/images/a97e6ce9885d3a86a122f6e2c8c289aed2fdbb8b53cf77136a8010d8546d796e.webp",
+    "url": "https://www.anthropic.com/news/claude-opus-4-8",
+    "type": "release",
+    "subtype": "release",
+    "summary": {
+      "de-DE": "Anthropic veröffentlicht Claude Opus 4.8 mit besseren Coding-, Agenten- und Reasoning-Fähigkeiten sowie neuen Workflow-Features.",
+      "en-US": "Anthropic releases Claude Opus 4.8 with stronger coding, agentic, and reasoning capabilities plus new workflow features."
+    },
+    "source": "Anthropic News",
+    "tags": [
+      "release",
+      "anthropic",
+      "claude",
+      "opus"
+    ],
+    "featured": true,
+    "updatedAt": "2026-05-29T00:47:19.993Z"
+  },
+  {
     "id": "da7dc7e9-c76e-439f-8e84-a8def5881041",
     "createdAt": "2026-05-27T20:24:00.000Z",
     "title": {
@@ -42,8 +75,8 @@
     },
     "url": "https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-3-5/",
     "type": "release",
-    "featured": true,
-    "updatedAt": "2026-05-27T23:20:59.506Z",
+    "featured": false,
+    "updatedAt": "2026-05-29T00:47:35.267Z",
     "detailContent": {
       "de-DE": "Vorstellung von Gemini 3.5 Flash",
       "en-US": "Introduction of Gemini 3.5 Flash."
