@@ -185,7 +185,12 @@
     "moveDown": "Move down",
     "setup": "Initial Setup",
     "setupDescription": "Please set an admin password (min. 8 characters).",
-    "setupSuccess": "Password set. You can now sign in."
+    "setupSuccess": "Password set. You can now sign in.",
+    "exportCsv": "Export CSV",
+    "totalResponses": "Total responses",
+    "averageRating": "Average",
+    "individualResponses": "Individual responses",
+    "respondent": "Respondent"
   },
   "editor": {
     "toolbar": "Blocks",

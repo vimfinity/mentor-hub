@@ -633,27 +633,274 @@ function collectQuestionsFromForm(overlay) {
   return questions;
 }
 
-function openSurveyDetails(survey) {
-  const responseHtml = (survey.responses || []).map((response) => {
-    const submittedAt = formatDate(response.submittedAt);
-    return `
-      <div class="admin-detail-item">
-        <div class="admin-detail-meta">
-          ${response.name ? escapeHtml(response.name) : '<em>' + escapeHtml(t('admin.anonymous')) + '</em>'}
-          <span class="admin-detail-time">${submittedAt}</span>
+function formatAnswerDisplay(answer, question) {
+  if (answer == null || answer === '') {
+    return '—';
+  }
+  if (question.type === 'rating') {
+    const value = Number(answer);
+    if (value >= 1 && value <= 5) {
+      return Array.from({ length: 5 }, (_, i) => i < value ? icon('starFilled', 14) : icon('star', 14)).join('');
+    }
+    return escapeHtml(String(answer));
+  }
+  if (question.type === 'yes_no') {
+    return answer === true || answer === 'yes'
+      ? '<span class="status-badge status-open">Yes</span>'
+      : '<span class="status-badge status-done">No</span>';
+  }
+  if ((question.type === 'multiple_choice' || question.type === 'choice') && Array.isArray(answer)) {
+    return answer.map((id) => {
+      const option = (question.options || []).find((o) => o.id === id);
+      return '<span class="survey-results-choice-badge">' + escapeHtml(option ? option.label : id) + '</span>';
+    }).join(' ');
+  }
+  if ((question.type === 'multiple_choice' || question.type === 'choice') && typeof answer === 'string') {
+    const option = (question.options || []).find((o) => o.id === answer);
+    return '<span class="survey-results-choice-badge">' + escapeHtml(option ? option.label : answer) + '</span>';
+  }
+  return escapeHtml(String(answer));
+}
+
+function renderQuestionResults(question, questionIndex, responses) {
+  const answers = responses.map((r) => r.responses[questionIndex]).filter((a) => a != null && a !== '');
+  const typeLabel = { free_text: t('admin.freeText'), rating: t('admin.rating'), yes_no: t('admin.yesNo'), choice: 'Choice', multiple_choice: 'Multiple Choice' }[question.type] || question.type;
+
+  let bodyHtml = '';
+
+  if (question.type === 'rating') {
+    const values = answers.map(Number).filter((v) => v >= 1 && v <= 5);
+    const avg = values.length > 0 ? (values.reduce((sum, v) => sum + v, 0) / values.length) : 0;
+    const distribution = [5, 4, 3, 2, 1].map((star) => ({
+      star,
+      count: values.filter((v) => v === star).length
+    }));
+    const maxCount = Math.max(...distribution.map((d) => d.count), 1);
+
+    bodyHtml = `
+      <div class="survey-results-rating-summary">
+        <span class="survey-results-rating-avg">${avg.toFixed(1)}</span>
+        <span class="survey-results-rating-stars">
+          ${Array.from({ length: 5 }, (_, i) => i < Math.round(avg) ? icon('starFilled', 16) : icon('star', 16)).join('')}
+        </span>
+        <span style="font-size:var(--font-xs);color:var(--color-text-muted)">(${values.length})</span>
+      </div>
+      ${distribution.map((d) => `
+        <div class="survey-results-bar-row">
+          <div class="survey-results-bar-row-inline">
+            <span class="survey-results-bar-label">${d.star} ${icon('starFilled', 12)}</span>
+            <div class="survey-results-bar-track">
+              <div class="survey-results-bar-fill" style="width:${maxCount > 0 ? (d.count / maxCount * 100) : 0}%"></div>
+            </div>
+            <span class="survey-results-bar-count">${d.count}</span>
+          </div>
         </div>
-        <div class="admin-detail-body">${response.responses.map((answer, index) => `
-          <p><strong>${escapeHtml(survey.questions[index] ? survey.questions[index].text : t('admin.question') + ' ' + (index + 1))}:</strong> ${escapeHtml(String(answer))}</p>
-        `).join('')}</div>
+      `).join('')}
+    `;
+  } else if (question.type === 'yes_no') {
+    const yesCount = answers.filter((a) => a === true || a === 'yes').length;
+    const noCount = answers.filter((a) => a === false || a === 'no').length;
+    const total = yesCount + noCount || 1;
+
+    bodyHtml = `
+      <div class="survey-results-bar-row">
+        <div class="survey-results-bar-row-inline">
+          <span class="survey-results-bar-label">Yes</span>
+          <div class="survey-results-bar-track">
+            <div class="survey-results-bar-fill" style="width:${(yesCount / total * 100)}%"></div>
+          </div>
+          <span class="survey-results-bar-count">${yesCount}</span>
+        </div>
+      </div>
+      <div class="survey-results-bar-row">
+        <div class="survey-results-bar-row-inline">
+          <span class="survey-results-bar-label">No</span>
+          <div class="survey-results-bar-track">
+            <div class="survey-results-bar-fill" style="width:${(noCount / total * 100)}%"></div>
+          </div>
+          <span class="survey-results-bar-count">${noCount}</span>
+        </div>
       </div>
     `;
-  }).join('');
+  } else if (question.type === 'choice' || question.type === 'multiple_choice') {
+    const optionCounts = {};
+    (question.options || []).forEach((o) => { optionCounts[o.id] = 0; });
+    answers.forEach((answer) => {
+      const items = Array.isArray(answer) ? answer : [answer];
+      items.forEach((id) => {
+        optionCounts[id] = (optionCounts[id] || 0) + 1;
+      });
+    });
+    const maxCount = Math.max(...Object.values(optionCounts), 1);
 
-  openModal({
-    title: escapeHtml(survey.title) + ' - ' + t('admin.responses'),
-    content: responseHtml || '<p>' + escapeHtml(t('admin.noResponses')) + '</p>',
-    cancelText: t('general.close')
+    bodyHtml = (question.options || []).map((o) => {
+      const count = optionCounts[o.id] || 0;
+      return `
+        <div class="survey-results-bar-row">
+          <span class="survey-results-bar-label">${escapeHtml(o.label)}</span>
+          <div class="survey-results-bar-row-inline">
+            <div class="survey-results-bar-track">
+              <div class="survey-results-bar-fill" style="width:${maxCount > 0 ? (count / maxCount * 100) : 0}%"></div>
+            </div>
+            <span class="survey-results-bar-count">${count}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } else {
+    bodyHtml = answers.length === 0
+      ? '<p style="color:var(--color-text-muted);font-size:var(--font-sm)">—</p>'
+      : `<ul class="survey-results-text-list">${answers.map((answer, i) => {
+          const resp = responses.filter((r) => r.responses[questionIndex] != null && r.responses[questionIndex] !== '')[i];
+          return `<li class="survey-results-text-item">
+            ${escapeHtml(String(answer))}
+            ${resp ? '<div class="survey-results-text-item-meta">' + (resp.name ? escapeHtml(resp.name) : '<em>' + escapeHtml(t('admin.anonymous')) + '</em>') + ' · ' + formatDate(resp.submittedAt) + '</div>' : ''}
+          </li>`;
+        }).join('')}</ul>`;
+  }
+
+  return `
+    <div class="survey-results-question">
+      <h4 class="survey-results-question-title">
+        ${escapeHtml(question.text)}
+        <span class="survey-results-question-type">${escapeHtml(typeLabel)}</span>
+      </h4>
+      ${bodyHtml}
+    </div>
+  `;
+}
+
+function exportSurveyCsv(survey) {
+  const questions = survey.questions || [];
+  const responses = survey.responses || [];
+
+  const headers = [t('admin.respondent'), t('admin.date'), ...questions.map((q) => q.text)];
+  const rows = responses.map((r) => {
+    return [
+      r.name || t('admin.anonymous'),
+      formatDate(r.submittedAt),
+      ...questions.map((q, i) => {
+        const answer = r.responses[i];
+        if (answer == null) {
+          return '';
+        }
+        if (Array.isArray(answer)) {
+          return answer.map((id) => {
+            const option = (q.options || []).find((o) => o.id === id);
+            return option ? option.label : id;
+          }).join(', ');
+        }
+        if (q.type === 'yes_no') {
+          return answer === true || answer === 'yes' ? 'Yes' : 'No';
+        }
+        return String(answer);
+      })
+    ];
   });
+
+  const escape = (val) => {
+    const str = String(val).replace(/"/g, '""');
+    return /[",;\n\r]/.test(str) ? '"' + str + '"' : str;
+  };
+
+  const csvContent = [headers.map(escape).join(';'), ...rows.map((row) => row.map(escape).join(';'))].join('\r\n');
+  const bom = '﻿';
+  const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (survey.title || 'survey').replace(/[^a-zA-Z0-9äöüÄÖÜß _-]/g, '') + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function openSurveyDetails(survey) {
+  const responses = survey.responses || [];
+  const questions = survey.questions || [];
+
+  if (responses.length === 0) {
+    openModal({
+      title: escapeHtml(survey.title) + ' – ' + t('admin.responses'),
+      content: '<p>' + escapeHtml(t('admin.noResponses')) + '</p>',
+      cancelText: t('general.close')
+    });
+    return;
+  }
+
+  const ratingQuestions = questions.filter((q) => q.type === 'rating');
+  const ratingValues = ratingQuestions.flatMap((q, qi) => {
+    const idx = questions.indexOf(q);
+    return responses.map((r) => Number(r.responses[idx])).filter((v) => v >= 1 && v <= 5);
+  });
+  const overallAvg = ratingValues.length > 0 ? (ratingValues.reduce((s, v) => s + v, 0) / ratingValues.length) : null;
+
+  const statsHtml = `
+    <div class="survey-results-stats">
+      <div class="survey-results-stat">
+        <span class="survey-results-stat-value">${responses.length}</span>
+        <span class="survey-results-stat-label">${escapeHtml(t('admin.totalResponses'))}</span>
+      </div>
+      ${overallAvg !== null ? `
+        <div class="survey-results-stat">
+          <span class="survey-results-stat-value">${overallAvg.toFixed(1)}</span>
+          <span class="survey-results-stat-label">${escapeHtml(t('admin.averageRating'))}</span>
+        </div>
+      ` : ''}
+    </div>
+  `;
+
+  const questionsHtml = questions.map((q, i) => renderQuestionResults(q, i, responses)).join('');
+
+  const individualHtml = `
+    <details class="survey-results-individual">
+      <summary>${escapeHtml(t('admin.individualResponses'))} (${responses.length})</summary>
+      <div style="overflow-x:auto">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>${escapeHtml(t('admin.respondent'))}</th>
+              <th>${escapeHtml(t('admin.date'))}</th>
+              ${questions.map((q) => '<th>' + escapeHtml(q.text) + '</th>').join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${responses.map((r) => `
+              <tr>
+                <td>${r.name ? escapeHtml(r.name) : '<em>' + escapeHtml(t('admin.anonymous')) + '</em>'}</td>
+                <td>${formatDate(r.submittedAt)}</td>
+                ${questions.map((q, i) => '<td>' + formatAnswerDisplay(r.responses[i], q) + '</td>').join('')}
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </details>
+  `;
+
+  const content = `
+    <div class="survey-results-header">
+      ${statsHtml}
+      <button class="btn btn-secondary btn-small" id="survey-export-csv">
+        ${icon('download', 14)} ${escapeHtml(t('admin.exportCsv'))}
+      </button>
+    </div>
+    ${questionsHtml}
+    ${individualHtml}
+  `;
+
+  const modal = openModal({
+    title: escapeHtml(survey.title) + ' – ' + t('admin.responses'),
+    content,
+    cancelText: t('general.close'),
+    size: 'medium'
+  });
+
+  const exportButton = modal.querySelector('#survey-export-csv');
+  if (exportButton) {
+    exportButton.addEventListener('click', () => exportSurveyCsv(survey));
+  }
 }
 
 async function renderFeedAdmin(container, context) {
@@ -824,7 +1071,7 @@ function openFeedForm({ context, mode, item = null }) {
   const tagValue = escapeHtml(Array.isArray(item?.tags) ? item.tags.join(', ') : '');
   const createdAtValue = escapeHtml(formatDateTimeInput(item?.createdAt));
   const isResourceEdit = isEdit && (item?.feedSource === 'resource' || selectedKind !== 'update');
-  let selectedImage = item?.image?.url === item?.imageUrl ? item.image : null;
+  let selectedImage = item?.image?.url === item?.imageUrl ? item?.image : null;
   const kindOptions = FEED_KIND_OPTIONS.map((value) => `
     <option value="${value}" ${value === selectedKind ? 'selected' : ''}>${getFeedKindLabel(value)}</option>
   `).join('');

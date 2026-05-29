@@ -114,8 +114,23 @@
       }
     ],
     "active": true,
-    "responses": [],
+    "responses": [
+      {
+        "id": "2f316998-a9d8-4d46-bed6-8b6caf6c7177",
+        "name": "test",
+        "responses": [
+          "test",
+          [
+            "mailing-relevante-abstimmungen",
+            "code-repositories-architektur"
+          ],
+          "test 2",
+          3
+        ],
+        "submittedAt": "2026-05-28T15:38:52.292Z"
+      }
+    ],
     "createdAt": "2026-05-28T10:00:00.000Z",
-    "updatedAt": null
+    "updatedAt": "2026-05-28T15:38:52.293Z"
   }
 ]

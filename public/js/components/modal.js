@@ -14,7 +14,7 @@ function openModal(options) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
 
-  const sizeClass = options.size === 'wide' ? ' modal-content-wide' : '';
+  const sizeClass = options.size === 'wide' ? ' modal-content-wide' : options.size === 'medium' ? ' modal-content-medium' : '';
   const persistent = options.persistent === true;
   const contentHtml = `
     <div class="modal-content${sizeClass}">

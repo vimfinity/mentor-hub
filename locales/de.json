@@ -185,7 +185,12 @@
     "moveDown": "Nach unten",
     "setup": "Ersteinrichtung",
     "setupDescription": "Bitte setzen Sie ein Admin-Passwort (min. 8 Zeichen).",
-    "setupSuccess": "Passwort wurde gesetzt. Sie können sich jetzt anmelden."
+    "setupSuccess": "Passwort wurde gesetzt. Sie können sich jetzt anmelden.",
+    "exportCsv": "CSV exportieren",
+    "totalResponses": "Antworten gesamt",
+    "averageRating": "Durchschnitt",
+    "individualResponses": "Einzelne Antworten",
+    "respondent": "Teilnehmer"
   },
   "editor": {
     "toolbar": "Bausteine",
