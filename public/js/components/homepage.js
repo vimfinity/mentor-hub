@@ -66,6 +66,41 @@ async function render(container, context = {}) {
   const currentSort = VALID_SORTS.includes(requestedSort) ? requestedSort : 'newest';
   const requestedLayout = context.searchParams?.get('layout') || 'grid';
   const currentLayout = VALID_LAYOUTS.includes(requestedLayout) ? requestedLayout : 'grid';
+  const searchQuery = (context.searchParams?.get('q') || '').trim();
+
+  // Search mode: a flat, server-filtered result list that bypasses the curated
+  // highlights/sections so readers can find anything across the whole feed.
+  if (searchQuery) {
+    const matches = allItems.filter((item) => matchesQuery(item, searchQuery));
+    const sortedMatches = sortFeedItems(matches, currentSort);
+
+    container.innerHTML = `
+      <div class="feed-page">
+        ${renderFeedToolbar({ allItems, currentFilter, currentSort, currentLayout, searchQuery })}
+        <section class="feed-section feed-search-results">
+          <div class="feed-section-header">
+            <div>
+              <h2 class="feed-section-title">${t('feed.searchResultsTitle')}</h2>
+              <p class="feed-section-subtitle">${t('feed.searchResultsSubtitle')
+                .replace('{count}', String(sortedMatches.length))
+                .replace('{query}', escapeHtml(searchQuery))}</p>
+            </div>
+          </div>
+          ${sortedMatches.length === 0 ? `
+            <div class="feed-no-results"><p>${t('feed.noResults')}</p></div>
+          ` : `
+            <div class="feed-grid feed-grid-${escapeHtml(currentLayout)}">
+              ${sortedMatches.map((item, index) => renderFeedCard(item, index)).join('')}
+            </div>
+          `}
+        </section>
+      </div>
+    `;
+
+    bindEvents(container, context);
+    return;
+  }
+
   const filteredItems = currentFilter === 'all'
     ? allItems
     : allItems.filter((item) => item.kind === currentFilter);
@@ -80,7 +115,7 @@ async function render(container, context = {}) {
 
   container.innerHTML = `
     <div class="feed-page">
-      ${renderFeedToolbar({ allItems, currentFilter, currentSort, currentLayout })}
+      ${renderFeedToolbar({ allItems, currentFilter, currentSort, currentLayout, searchQuery })}
 
       ${renderHighlights(highlights)}
 
@@ -95,6 +130,28 @@ async function render(container, context = {}) {
   `;
 
   bindEvents(container, context);
+}
+
+/**
+ * Client-side mirror of the server feed search so the curated view and the
+ * search view stay consistent without an extra round-trip (the full feed is
+ * already cached locally).
+ */
+function matchesQuery(item, query) {
+  const needle = query.toLowerCase();
+  const haystack = [
+    item.title,
+    item.summary,
+    item.description,
+    item.source,
+    item.subtype,
+    item.type,
+    ...(Array.isArray(item.tags) ? item.tags : [])
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+  return haystack.includes(needle);
 }
 
 function preload() {
@@ -169,23 +226,31 @@ function sortFeedItems(items, sortOrder) {
   return sorted;
 }
 
-function renderFeedToolbar({ allItems, currentFilter, currentSort, currentLayout }) {
+function renderFeedToolbar({ allItems, currentFilter, currentSort, currentLayout, searchQuery = '' }) {
   const sortOptions = [
     { value: 'newest', label: t('general.sortNewest') },
     { value: 'oldest', label: t('general.sortOldest') },
     { value: 'title', label: t('general.sortTitleAsc') }
   ];
+  const isSearching = Boolean(searchQuery);
 
   return `
     <div class="feed-toolbar">
       <nav class="feed-category-tabs" aria-label="${escapeHtml(t('feed.categories'))}">
         ${VALID_FILTERS.filter((value) => value === 'all' || allItems.some((item) => item.kind === value)).map((value) => `
-          <button class="feed-category-tab ${value === currentFilter ? 'active' : ''}" data-kind-filter="${value}">
+          <button class="feed-category-tab ${value === currentFilter && !isSearching ? 'active' : ''}" data-kind-filter="${value}">
             ${t(FILTER_CONFIG[value].labelKey)}
           </button>
         `).join('')}
       </nav>
       <div class="feed-toolbar-actions">
+        <div class="feed-search">
+          ${icon('search', 15)}
+          <input type="search" class="feed-search-input" data-feed-search
+            value="${escapeHtml(searchQuery)}"
+            placeholder="${escapeHtml(t('feed.searchPlaceholder'))}"
+            aria-label="${escapeHtml(t('feed.searchPlaceholder'))}">
+        </div>
         <span class="feed-sort-label">${t('feed.sort')}</span>
         ${renderSelect({
           name: 'feed-sort',
@@ -509,13 +574,41 @@ function formatSourceLabel(source) {
   return knownLabels[source] || formatTag(source);
 }
 
+let feedSearchTimer = null;
+
 function bindEvents(container, context) {
   container.querySelectorAll('[data-kind-filter]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const filter = btn.dataset.kindFilter;
-      context.setSearchParams?.({ kind: filter === 'all' ? null : filter });
+      context.setSearchParams?.({ kind: filter === 'all' ? null : filter, q: null });
     });
   });
+
+  const searchInput = container.querySelector('[data-feed-search]');
+  if (searchInput) {
+    // Keep focus and caret across the re-render that a query change triggers.
+    if (searchInput.value) {
+      const end = searchInput.value.length;
+      searchInput.focus();
+      searchInput.setSelectionRange(end, end);
+    }
+
+    searchInput.addEventListener('input', () => {
+      const value = searchInput.value.trim();
+      window.clearTimeout(feedSearchTimer);
+      feedSearchTimer = window.setTimeout(() => {
+        context.setSearchParams?.({ q: value || null, kind: null, page: null }, { replace: true });
+      }, 250);
+    });
+
+    searchInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        searchInput.value = '';
+        window.clearTimeout(feedSearchTimer);
+        context.setSearchParams?.({ q: null });
+      }
+    });
+  }
 
   const sortSelect = container.querySelector('[data-select="feed-sort"]');
   if (sortSelect) {

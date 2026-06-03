@@ -99,19 +99,20 @@ async function getSurveyById(id) {
 
 function renderQuestion(question, index) {
   let inputHtml = '';
+  const qid = escapeHtml(question.id || ('q' + index));
 
   switch (question.type) {
     case 'free_text':
       inputHtml = `
         <textarea class="form-textarea question-input"
-          data-index="${index}"
+          data-index="${index}" data-question-id="${qid}"
           placeholder="${escapeHtml(t('survey.freeText'))}"
           rows="3"></textarea>
       `;
       break;
     case 'rating':
       inputHtml = `
-        <div class="star-rating question-input" data-index="${index}" data-value="0">
+        <div class="star-rating question-input" data-index="${index}" data-question-id="${qid}" data-value="0">
           ${[1, 2, 3, 4, 5].map((value) => `
             <span class="star" data-value="${value}">${icon('star', 28)}</span>
           `).join('')}
@@ -120,7 +121,7 @@ function renderQuestion(question, index) {
       break;
     case 'yes_no':
       inputHtml = `
-        <div class="yes-no-choice question-input" data-index="${index}" data-value="">
+        <div class="yes-no-choice question-input" data-index="${index}" data-question-id="${qid}" data-value="">
           <button type="button" class="yes-no-button" data-value="yes">
             ${icon('thumbsUp', 16)} ${escapeHtml(t('survey.yesLabel'))}
           </button>
@@ -132,7 +133,7 @@ function renderQuestion(question, index) {
       break;
     case 'choice':
       inputHtml = `
-        <div class="option-group question-input" data-index="${index}" data-value="">
+        <div class="option-group question-input" data-index="${index}" data-question-id="${qid}" data-value="">
           ${(question.options || []).map((option) => `
             <label class="option-choice">
               <input type="radio" name="question_${index}" value="${escapeHtml(getOptionValue(option))}">
@@ -144,7 +145,7 @@ function renderQuestion(question, index) {
       break;
     case 'multiple_choice':
       inputHtml = `
-        <div class="option-group question-input" data-index="${index}" data-value="">
+        <div class="option-group question-input" data-index="${index}" data-question-id="${qid}" data-value="">
           ${(question.options || []).map((option) => `
             <label class="option-choice">
               <input type="checkbox" name="question_${index}" value="${escapeHtml(getOptionValue(option))}">
@@ -157,7 +158,7 @@ function renderQuestion(question, index) {
     default:
       inputHtml = `
         <input type="text" class="form-input question-input"
-          data-index="${index}"
+          data-index="${index}" data-question-id="${qid}"
           placeholder="${escapeHtml(t('survey.freeText'))}">
       `;
   }
@@ -207,18 +208,22 @@ function updateStars(rating, value) {
 }
 
 async function submitSurvey(form, surveyId) {
-  const responses = [];
+  const answers = {};
 
   form.querySelectorAll('.question-input').forEach((input) => {
+    const questionId = input.dataset.questionId;
+    if (!questionId) {
+      return;
+    }
     if (input.tagName === 'TEXTAREA' || input.tagName === 'INPUT') {
-      responses.push(input.value.trim());
+      answers[questionId] = input.value.trim();
     } else if (input.classList.contains('star-rating')) {
-      responses.push(parseInt(input.dataset.value, 10) || 0);
+      answers[questionId] = parseInt(input.dataset.value, 10) || 0;
     } else if (input.classList.contains('yes-no-choice')) {
-      responses.push(input.dataset.value || '');
+      answers[questionId] = input.dataset.value || '';
     } else if (input.classList.contains('option-group')) {
       const selected = Array.from(input.querySelectorAll('input:checked')).map((option) => option.value);
-      responses.push(input.querySelector('input[type="checkbox"]') ? selected : (selected[0] || ''));
+      answers[questionId] = input.querySelector('input[type="checkbox"]') ? selected : (selected[0] || '');
     }
   });
 
@@ -229,7 +234,7 @@ async function submitSurvey(form, surveyId) {
 
   const result = await api.post('/api/surveys/' + encodeURIComponent(surveyId) + '/responses', {
     name: name || null,
-    responses
+    answers
   });
 
   submitButton.disabled = false;

@@ -6,6 +6,12 @@ const path = require('path');
 // Base path for persisted JSON data files.
 const dataDirectory = path.join(__dirname, '..', '..', 'data');
 
+// Directory holding timestamped backups taken before each overwrite.
+const backupDirectory = path.join(dataDirectory, 'backups');
+
+// How many backups to retain per data file.
+const MAX_BACKUPS_PER_FILE = 10;
+
 // Simple per-file write locks to keep read-modify-write cycles atomic per process.
 const writeLocks = new Map();
 
@@ -48,10 +54,54 @@ function writeDataFile(fileName, data) {
 }
 
 function writeJsonAtomically(filePath, data) {
+  backupExistingFile(filePath);
   const tempFilePath = filePath + '.tmp';
   const json = JSON.stringify(data, null, 2);
   fs.writeFileSync(tempFilePath, json, 'utf-8');
   fs.renameSync(tempFilePath, filePath);
+}
+
+/**
+ * Copies the current contents of a data file into a timestamped backup before
+ * it gets overwritten, then prunes old backups. Backup failures must never
+ * block the primary write, so errors are swallowed.
+ * @param {string} filePath - Absolute path of the file about to be overwritten
+ */
+function backupExistingFile(filePath) {
+  try {
+    if (!fs.existsSync(filePath)) {
+      return;
+    }
+
+    fs.mkdirSync(backupDirectory, { recursive: true });
+    const fileName = path.basename(filePath);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const backupPath = path.join(backupDirectory, `${fileName}.${timestamp}.bak`);
+    fs.copyFileSync(filePath, backupPath);
+    pruneBackups(fileName);
+  } catch (error) {
+    console.warn('Backup before write failed for', filePath, '-', error.message);
+  }
+}
+
+/**
+ * Keeps only the most recent MAX_BACKUPS_PER_FILE backups for a given file.
+ * @param {string} fileName - Data file name, for example "surveys.json"
+ */
+function pruneBackups(fileName) {
+  const prefix = fileName + '.';
+  const backups = fs.readdirSync(backupDirectory)
+    .filter((entry) => entry.startsWith(prefix) && entry.endsWith('.bak'))
+    .sort();
+
+  const excess = backups.length - MAX_BACKUPS_PER_FILE;
+  for (let index = 0; index < excess; index++) {
+    try {
+      fs.unlinkSync(path.join(backupDirectory, backups[index]));
+    } catch (error) {
+      // Ignore individual prune failures.
+    }
+  }
 }
 
 /**

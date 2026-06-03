@@ -235,7 +235,7 @@ function registerRoutes(router) {
   router.post('/api/admin/login', (req, res) => {
     const config = loadConfig();
 
-    if (!config.adminPasswordHash.length === 0) {
+    if (config.adminPasswordHash.length === 0) {
       sendJson(res, 503, { error: 'Initial setup required (POST /api/admin/setup)' });
       return;
     }
@@ -465,8 +465,8 @@ function registerRoutes(router) {
     }
 
     readBody(req, res, (body) => {
-      const direction = body?.direction || body?.richtung;
-      if (direction !== 'up' && direction !== 'down' && direction !== 'hoch' && direction !== 'down') {
+      const direction = body?.direction;
+      if (direction !== 'up' && direction !== 'down') {
         sendJson(res, 400, { error: 'Direction must be up or down' });
         return;
       }
@@ -719,6 +719,11 @@ function registerRoutes(router) {
     }
 
     readBody(req, res, (body) => {
+      if (body.adminComment !== undefined && String(body.adminComment).length > 2000) {
+        sendJson(res, 400, { error: 'Comment is too long (max 2000 characters)' });
+        return;
+      }
+
       const updated = concerns.update(params.id, body);
       if (!updated) {
         sendJson(res, 404, { error: 'Concern not found' });

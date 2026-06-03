@@ -58,7 +58,10 @@
     "backToFeed": "Zurück zur Übersicht",
     "detailEmpty": "Für diesen Eintrag liegt kein eigener Detail-Inhalt vor.",
     "detailMissingTitle": "Eintrag nicht gefunden",
-    "detailMissingText": "Dieser Beitrag existiert nicht oder wurde entfernt."
+    "detailMissingText": "Dieser Beitrag existiert nicht oder wurde entfernt.",
+    "searchPlaceholder": "Suchen…",
+    "searchResultsTitle": "Suchergebnisse",
+    "searchResultsSubtitle": "{count} Treffer für „{query}“"
   },
   "news": {
     "title": "Neuigkeiten",
@@ -190,7 +193,18 @@
     "totalResponses": "Antworten gesamt",
     "averageRating": "Durchschnitt",
     "individualResponses": "Einzelne Antworten",
-    "respondent": "Teilnehmer"
+    "respondent": "Teilnehmer",
+    "choice": "Einzelauswahl",
+    "multipleChoice": "Mehrfachauswahl",
+    "yes": "Ja",
+    "no": "Nein",
+    "responseCount": "{count} Antworten",
+    "adminComment": "Notiz",
+    "editComment": "Notiz bearbeiten",
+    "commentSaved": "Notiz gespeichert",
+    "filterAll": "Alle Status",
+    "filterByStatus": "Status filtern",
+    "noConcernsForFilter": "Keine Anliegen mit diesem Status."
   },
   "editor": {
     "toolbar": "Bausteine",

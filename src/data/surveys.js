@@ -10,6 +10,30 @@ const {
 
 const FILE_NAME = 'surveys.json';
 
+/**
+ * Normalizes incoming question payloads for persistence, assigning a stable
+ * id to any question that lacks one. Ids let responses survive question
+ * reordering, insertion or deletion.
+ * @param {Array} questions - Raw question payloads
+ * @returns {Array} Questions ready to persist
+ */
+function prepareQuestions(questions) {
+  return (questions || []).map((question) => ({
+    id: String(question.id || store.createId()),
+    text: trimLocalizedValue(question.text),
+    type: question.type || 'free_text',
+    options: (question.options || []).map((option) => {
+      if (option && typeof option === 'object' && !Array.isArray(option)) {
+        return {
+          id: String(option.id || option.value || '').trim(),
+          label: trimLocalizedValue(option.label || option.text || option.value || '')
+        };
+      }
+      return option;
+    })
+  }));
+}
+
 function normalizeOption(option, locale = DEFAULT_LOCALE) {
   if (option && typeof option === 'object' && !Array.isArray(option)) {
     const label = option.label || option.text || option.value || '';
@@ -28,9 +52,12 @@ function normalizeOption(option, locale = DEFAULT_LOCALE) {
   };
 }
 
-function normalizeQuestion(question, locale = DEFAULT_LOCALE) {
+function normalizeQuestion(question, index = 0, locale = DEFAULT_LOCALE) {
   const text = question.text || question.question || '';
   return {
+    // Stable identifier so responses can be keyed by question rather than by
+    // position. Legacy questions without an id fall back to a positional id.
+    id: question.id || ('q' + index),
     text: resolveLocalizedValue(text, locale),
     textLocalized: toLocalizedValue(text),
     type: question.type || 'free_text',
@@ -38,11 +65,43 @@ function normalizeQuestion(question, locale = DEFAULT_LOCALE) {
   };
 }
 
-function normalizeResponse(response) {
+function normalizeResponse(response, questions = []) {
+  // Newer responses store answers keyed by question id, which survives question
+  // reordering/insertion. Older responses only have a positional array. We
+  // always expose both: `answers` (id-keyed) and `responses` (a positional
+  // array realigned to the current question order) so consumers keep working.
+  const storedAnswers = response.answers && typeof response.answers === 'object' && !Array.isArray(response.answers)
+    ? response.answers
+    : null;
+  const legacyArray = Array.isArray(response.responses) ? response.responses : [];
+
+  let answers;
+  let positional;
+
+  if (storedAnswers) {
+    answers = { ...storedAnswers };
+    positional = questions.map((question) => {
+      const value = answers[question.id];
+      return value === undefined ? null : value;
+    });
+  } else {
+    // Map the legacy positional array onto the current question ids.
+    answers = {};
+    questions.forEach((question, index) => {
+      if (index < legacyArray.length) {
+        answers[question.id] = legacyArray[index];
+      }
+    });
+    positional = questions.length > 0
+      ? questions.map((question, index) => (index < legacyArray.length ? legacyArray[index] : null))
+      : legacyArray.slice();
+  }
+
   return {
     id: response.id,
     name: response.name || null,
-    responses: response.responses || [],
+    answers,
+    responses: positional,
     submittedAt: response.submittedAt || new Date().toISOString()
   };
 }
@@ -51,6 +110,8 @@ function normalizeSurvey(survey, index = 0, locale = DEFAULT_LOCALE) {
   const sortOrder = Number(survey.sortOrder);
   const title = survey.title || '';
   const description = survey.description || '';
+  const questions = (survey.questions || []).map((question, questionIndex) =>
+    normalizeQuestion(question, questionIndex, locale));
 
   return {
     id: survey.id,
@@ -58,9 +119,9 @@ function normalizeSurvey(survey, index = 0, locale = DEFAULT_LOCALE) {
     titleLocalized: toLocalizedValue(title),
     description: resolveLocalizedValue(description, locale),
     descriptionLocalized: toLocalizedValue(description),
-    questions: (survey.questions || []).map((question) => normalizeQuestion(question, locale)),
+    questions,
     active: survey.active,
-    responses: (survey.responses || []).map(normalizeResponse),
+    responses: (survey.responses || []).map((response) => normalizeResponse(response, questions)),
     sortOrder: Number.isFinite(sortOrder) ? sortOrder : index,
     createdAt: survey.createdAt || new Date().toISOString(),
     updatedAt: survey.updatedAt || null
@@ -119,19 +180,7 @@ function create(data) {
   const survey = {
     title: trimLocalizedValue(data.title),
     description: trimLocalizedValue(data.description || ''),
-    questions: (data.questions || []).map((question) => ({
-      text: trimLocalizedValue(question.text),
-      type: question.type || 'free_text',
-      options: (question.options || []).map((option) => {
-        if (option && typeof option === 'object' && !Array.isArray(option)) {
-          return {
-            id: String(option.id || option.value || '').trim(),
-            label: trimLocalizedValue(option.label || option.text || option.value || '')
-          };
-        }
-        return option;
-      })
-    })),
+    questions: prepareQuestions(data.questions),
     active: true,
     sortOrder: existing.length > 0
       ? Math.max(...existing.map((item) => Number(item.sortOrder) || 0)) + 1
@@ -158,19 +207,7 @@ function update(id, changes) {
     filteredChanges.description = trimLocalizedValue(changes.description);
   }
   if (changes.questions !== undefined) {
-    filteredChanges.questions = (changes.questions || []).map((question) => ({
-      text: trimLocalizedValue(question.text),
-      type: question.type || 'free_text',
-      options: (question.options || []).map((option) => {
-        if (option && typeof option === 'object' && !Array.isArray(option)) {
-          return {
-            id: String(option.id || option.value || '').trim(),
-            label: trimLocalizedValue(option.label || option.text || option.value || '')
-          };
-        }
-        return option;
-      })
-    }));
+    filteredChanges.questions = prepareQuestions(changes.questions);
   }
   if (changes.active !== undefined) {
     filteredChanges.active = changes.active;
@@ -231,13 +268,6 @@ function move(id, direction) {
  * @returns {boolean} True if successful
  */
 function addResponse(surveyId, response) {
-  const newResponse = {
-    id: store.createId(),
-    name: response.name || null,
-    responses: response.responses || [],
-    submittedAt: new Date().toISOString()
-  };
-
   return store.mutateDataFile(FILE_NAME, (surveys) => {
     const index = surveys.findIndex((survey) => survey.id === surveyId);
     if (index === -1) {
@@ -249,9 +279,38 @@ function addResponse(surveyId, response) {
       return { changed: false, result: false };
     }
 
+    // Persist answers keyed by question id so they stay correct even if the
+    // questions are later reordered. Accept either an id-keyed `answers` map
+    // (preferred) or a legacy positional `responses` array from older clients.
+    const questions = normalizedSurvey.questions;
+    const answers = {};
+    if (response.answers && typeof response.answers === 'object' && !Array.isArray(response.answers)) {
+      questions.forEach((question) => {
+        if (Object.prototype.hasOwnProperty.call(response.answers, question.id)) {
+          answers[question.id] = response.answers[question.id];
+        }
+      });
+    } else {
+      const positional = Array.isArray(response.responses) ? response.responses : [];
+      questions.forEach((question, questionIndex) => {
+        if (questionIndex < positional.length) {
+          answers[question.id] = positional[questionIndex];
+        }
+      });
+    }
+
+    const newResponse = {
+      id: store.createId(),
+      name: response.name || null,
+      answers,
+      submittedAt: new Date().toISOString()
+    };
+
+    // Persist the raw stored responses (id-keyed), not the normalized view.
+    const storedResponses = Array.isArray(surveys[index].responses) ? surveys[index].responses : [];
     surveys[index] = {
       ...surveys[index],
-      responses: [...normalizedSurvey.responses, newResponse],
+      responses: [...storedResponses, newResponse],
       updatedAt: new Date().toISOString()
     };
 

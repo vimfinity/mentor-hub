@@ -1,11 +1,13 @@
 'use strict';
 
 const crypto = require('crypto');
+const { loadConfig } = require('./config');
 
 // Active sessions: Map<token, { createdAt: number }>
 const sessions = new Map();
 const PASSWORD_SCHEME = 'scrypt';
 const PASSWORD_KEY_LENGTH = 64;
+const SESSION_CLEANUP_INTERVAL_MS = 15 * 60 * 1000;
 
 /**
  * Creates a password hash with an embedded algorithm marker and salt.
@@ -135,6 +137,16 @@ function cleanupSessions(maxDurationMs) {
     }
   }
 }
+
+// Periodically purge expired sessions so the in-memory map does not grow
+// unbounded between the lazy deletions performed on access.
+setInterval(() => {
+  try {
+    cleanupSessions(loadConfig().sessionDurationMs);
+  } catch (error) {
+    // Config read failures should never crash the cleanup timer.
+  }
+}, SESSION_CLEANUP_INTERVAL_MS).unref();
 
 module.exports = {
   hashPassword,

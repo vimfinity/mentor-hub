@@ -50,9 +50,28 @@ function setSecurityHeaders(res) {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  // Note: admin-authored rich content runs inside sandboxed srcdoc iframes
+  // (no allow-same-origin). Because srcdoc documents inherit this CSP, the
+  // 'unsafe-inline' script source is required for the autosize/author scripts
+  // in that isolated content; the shell itself ships no inline scripts. The
+  // added directives below lock down the common injection vectors (plugins,
+  // base tag hijacking, form exfiltration, and framing of this app).
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' https: data:; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; frame-src 'self' data:; child-src 'self' data:"
+    [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "img-src 'self' https: data:",
+      "font-src 'self' https://fonts.gstatic.com",
+      "connect-src 'self'",
+      "frame-src 'self' data:",
+      "child-src 'self' data:",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "frame-ancestors 'none'"
+    ].join('; ')
   );
 }
 
@@ -229,7 +248,6 @@ const server = http.createServer((req, res) => {
     res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify({
       error: 'Too many requests. Please try again later.',
-      error: 'Too many requests. Please try again later.',
       retryAfterSeconds: rateLimitStatus.retryAfterSeconds
     }));
     return;
@@ -283,7 +301,7 @@ server.listen(config.port, config.host, () => {
   console.log(`  Language:          ${config.defaultLanguage}`);
   console.log('-------------------------------------------');
 
-  if (!config.adminPasswordHash.length === 0) {
+  if (config.adminPasswordHash.length === 0) {
     console.log('');
     console.log('  WARNING: Admin password has not been set yet.');
     console.log('  Please call POST /api/admin/setup.');

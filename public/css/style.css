@@ -1204,6 +1204,44 @@ body.modal-open {
   overflow: hidden;
 }
 
+.filter-chip-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  padding: var(--space-lg) var(--space-lg) 0;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-md);
+  font: inherit;
+  font-size: var(--font-sm);
+  color: var(--color-text-muted);
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.filter-chip:hover {
+  border-color: var(--color-border-hover);
+}
+
+.filter-chip.active {
+  color: #fff;
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.filter-chip-count {
+  font-variant-numeric: tabular-nums;
+  font-size: var(--font-xs);
+  opacity: 0.8;
+}
+
 .admin-panel-table {
   width: 100%;
 }
@@ -2788,6 +2826,47 @@ body.modal-open {
   font-size: var(--font-sm);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-muted);
+}
+
+.feed-search {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 0 var(--space-md);
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  color: var(--color-text-muted);
+  transition: border-color 0.15s ease;
+}
+
+.feed-search:focus-within {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.feed-search-input {
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: var(--font-sm);
+  color: var(--color-text);
+  padding: var(--space-sm) 0;
+  width: 12rem;
+  max-width: 40vw;
+  outline: none;
+}
+
+.feed-search-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+/* The wrapper shows the focus ring via :focus-within, so the input itself
+   should not draw the global focus-visible outline (it would appear as a
+   rectangle inside the rounded pill). */
+.feed-search-input:focus,
+.feed-search-input:focus-visible {
+  outline: none;
 }
 
 .feed-layout-toggle {

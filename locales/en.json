@@ -58,7 +58,10 @@
     "backToFeed": "Back to feed",
     "detailEmpty": "This entry has no dedicated detail content.",
     "detailMissingTitle": "Entry not found",
-    "detailMissingText": "This item does not exist or has been removed."
+    "detailMissingText": "This item does not exist or has been removed.",
+    "searchPlaceholder": "Search…",
+    "searchResultsTitle": "Search results",
+    "searchResultsSubtitle": "{count} results for “{query}”"
   },
   "news": {
     "title": "News",
@@ -190,7 +193,18 @@
     "totalResponses": "Total responses",
     "averageRating": "Average",
     "individualResponses": "Individual responses",
-    "respondent": "Respondent"
+    "respondent": "Respondent",
+    "choice": "Single choice",
+    "multipleChoice": "Multiple choice",
+    "yes": "Yes",
+    "no": "No",
+    "responseCount": "{count} responses",
+    "adminComment": "Note",
+    "editComment": "Edit note",
+    "commentSaved": "Note saved",
+    "filterAll": "All statuses",
+    "filterByStatus": "Filter by status",
+    "noConcernsForFilter": "No concerns with this status."
   },
   "editor": {
     "toolbar": "Blocks",
