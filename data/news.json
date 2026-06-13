@@ -1,5 +1,39 @@
 [
   {
+    "id": "c48cbce9-90bb-4a97-91e4-d38fc8efd3f5",
+    "createdAt": "2026-06-09T10:00:00.000Z",
+    "title": {
+      "de-DE": "Claude Fable 5 und Claude Mythos 5",
+      "en-US": "Claude Fable 5 and Claude Mythos 5"
+    },
+    "content": {
+      "de-DE": "Anthropic veröffentlicht Claude Fable 5 für die allgemeine Nutzung und Claude Mythos 5 für ausgewählte vertrauenswürdige Programme.",
+      "en-US": "Anthropic releases Claude Fable 5 for general use and Claude Mythos 5 for selected trusted access programs."
+    },
+    "detailContent": {
+      "de-DE": "Anthropic startet Claude Fable 5, ein Mythos-Class-Modell für die allgemeine Nutzung mit neuen Sicherheitsmechanismen. Das Modell soll besonders bei Softwareentwicklung, Wissensarbeit, Vision, wissenschaftlicher Forschung und langen, komplexen Aufgaben stärker sein als frühere Claude-Modelle. Claude Mythos 5 basiert auf demselben Modell, ist aber zunächst nur für ausgewählte Cyberdefender, Infrastrukturpartner und künftig vertrauenswürdige Forschungspartner mit gelockerten Schutzmechanismen verfügbar. Beide Modelle kosten 10 US-Dollar pro Million Input-Token und 50 US-Dollar pro Million Output-Token; Entwickler können Fable 5 über `claude-fable-5` in der Claude API nutzen.",
+      "en-US": "Anthropic is launching Claude Fable 5, a Mythos-class model for general use with new safeguards. The model is positioned as Anthropic's strongest generally available Claude model, with gains in software engineering, knowledge work, vision, scientific research, and long-running complex tasks. Claude Mythos 5 uses the same underlying model, but is initially limited to selected cyberdefenders, infrastructure partners, and future trusted research partners with some safeguards lifted. Both models are priced at $10 per million input tokens and $50 per million output tokens; developers can use Fable 5 as `claude-fable-5` in the Claude API."
+    },
+    "imageUrl": "/uploads/images/24c854486dad2227803fd424235497e3f1021eb1698c995bd870fcd61cf6efd1.webp",
+    "url": "https://www.anthropic.com/news/claude-fable-5-mythos-5",
+    "type": "release",
+    "subtype": "release",
+    "summary": {
+      "de-DE": "Anthropic veröffentlicht Claude Fable 5 für die allgemeine Nutzung und Claude Mythos 5 für ausgewählte vertrauenswürdige Programme.",
+      "en-US": "Anthropic releases Claude Fable 5 for general use and Claude Mythos 5 for selected trusted access programs."
+    },
+    "source": "Anthropic News",
+    "tags": [
+      "release",
+      "anthropic",
+      "claude",
+      "fable",
+      "mythos"
+    ],
+    "featured": true,
+    "updatedAt": "2026-06-13T00:00:00.000Z"
+  },
+  {
     "id": "e887a6ce-6cf5-4ee6-adf8-2c631cbe395e",
     "createdAt": "2026-05-20T15:10:00.000Z",
     "title": {
